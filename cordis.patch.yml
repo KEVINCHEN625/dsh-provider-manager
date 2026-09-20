@@ -1,0 +1,3 @@
+- insert:
+    - id: provider-manager
+      name: dsh-provider-manager

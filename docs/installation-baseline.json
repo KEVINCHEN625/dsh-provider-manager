@@ -1,0 +1,107 @@
+{
+  "captured": "2026-09-20T16:58:12.716Z",
+  "profiles": {
+    "web": {
+      "dependencies": {
+        "@auggieteo/dsh-mcp-adapter": "^0.3.0",
+        "@dsh-external/workflow": "git+https://github.com/dsh-external/dsh_workflow.git",
+        "@linxin666/dsh-web-all": "^0.3.24",
+        "@mars-sea/dsh-commandcode-provider": "^0.11.6",
+        "@opencode2dsh/dsh-plugin": "^0.3.3",
+        "@vectorize-io/hindsight-coding-agents": "^0.6.1",
+        "dsh-llm-opencode-go": "https://github.com/NOirBRight/dsh-llm-opencode-go/releases/download/v0.1.28/dsh-llm-opencode-go-0.1.28.tgz",
+        "dsh-llm-providers-ui": "https://github.com/NOirBRight/dsh-llm-providers-ui/releases/download/v0.2.8/dsh-llm-providers-ui-0.2.8.tgz",
+        "dsh-spend": "^0.6.3",
+        "dshmarket": "^1.49.0"
+      },
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@linxin666/dsh-web-all",
+        "@vectorize-io/hindsight-coding-agents",
+        "@dsh-external/workflow",
+        "@mars-sea/dsh-commandcode-provider",
+        "dsh-llm-providers-ui",
+        "dsh-llm-opencode-go",
+        "@opencode2dsh/dsh-plugin",
+        "dsh-spend",
+        "dshmarket",
+        "@auggieteo/dsh-mcp-adapter"
+      ],
+      "packages": {
+        "@mars-sea/dsh-commandcode-provider": {
+          "version": "0.11.6",
+          "realpath": "/Users/kevinchen/.dsh/profiles/web/node_modules/@mars-sea/dsh-commandcode-provider",
+          "hashes": {
+            "lib/index.js": "e8142632ef41a285cfea3dc3359ca762e5fa0453e9fd9a025d44d9925156956a",
+            "lib/client.js": "918c0b5102f257a547589ef9d537fcebc4e5e22da8b756b09871e32375b02d6c"
+          }
+        },
+        "dsh-llm-opencode-go": {
+          "version": "0.1.28",
+          "realpath": "/Users/kevinchen/.dsh/profiles/web/node_modules/dsh-llm-opencode-go",
+          "hashes": {
+            "lib/index.js": "de7e75e4e78d4ab21354967507125787f0a3816ee6b54b9af5b4c81b174c8915",
+            "lib/client.js": "51610ff57d59c07139ff4c59e4b2a745d8f891cb5ccc1195db4bf8e088bd9689"
+          }
+        },
+        "dsh-llm-providers-ui": {
+          "version": "0.2.8",
+          "realpath": "/Users/kevinchen/.dsh/profiles/web/node_modules/dsh-llm-providers-ui",
+          "hashes": {
+            "lib/index.js": "713bfd7599091bb87370ea9cee45d2c6dc5c34fcfdf32874e2d008edde1e5eea",
+            "lib/client.js": "92958ecaef790ba6ae66f7fdb3897926a05e649971c51b058ca93e9d0c5cebbd"
+          }
+        },
+        "@opencode2dsh/dsh-plugin": {
+          "version": "0.3.3",
+          "realpath": "/Users/kevinchen/.dsh/profiles/web/node_modules/@opencode2dsh/dsh-plugin",
+          "hashes": {
+            "lib/index.js": "ac74de0e23240902fb8e6f52094396ffb7a34f8353b1d77e1d9412d1a6235e6c",
+            "lib/client.js": "ac1c9c551c9005bd37fc50a83bb5891ddb73d0d3eac1c1aa1c2ad4037859b8c0"
+          }
+        }
+      }
+    },
+    "headless": {
+      "dependencies": {
+        "@mars-sea/dsh-commandcode-provider": "^0.10.6",
+        "@opencode2dsh/dsh-plugin": "^0.3.1",
+        "dsh-llm-opencode-go": "https://github.com/NOirBRight/dsh-llm-opencode-go/releases/download/v0.1.28/dsh-llm-opencode-go-0.1.28.tgz"
+      },
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-headless",
+        "@mars-sea/dsh-commandcode-provider",
+        "dsh-llm-opencode-go",
+        "@opencode2dsh/dsh-plugin"
+      ],
+      "packages": {
+        "@mars-sea/dsh-commandcode-provider": {
+          "version": "0.10.6",
+          "realpath": "/Users/kevinchen/.dsh/profiles/headless/node_modules/@mars-sea/dsh-commandcode-provider",
+          "hashes": {
+            "lib/index.js": "a6a12d06f5da71e41d5b5d07c760d63ce42a2d0240868e5e618c7c4416b5257d",
+            "lib/client.js": "6c30b71f946870e408b4369c52684237646f1d261e5ec880ad3fd3f8a78a4dab"
+          }
+        },
+        "dsh-llm-opencode-go": {
+          "version": "0.1.28",
+          "realpath": "/Users/kevinchen/.dsh/profiles/headless/node_modules/dsh-llm-opencode-go",
+          "hashes": {
+            "lib/index.js": "08fa9d021bb07de5847ce5541ab652babef33d442886ddea1c00118530a6be42",
+            "lib/client.js": "51610ff57d59c07139ff4c59e4b2a745d8f891cb5ccc1195db4bf8e088bd9689"
+          }
+        },
+        "@opencode2dsh/dsh-plugin": {
+          "version": "0.3.1",
+          "realpath": "/Users/kevinchen/.dsh/profiles/headless/node_modules/@opencode2dsh/dsh-plugin",
+          "hashes": {
+            "lib/index.js": "5247b2672ccb869cf05ca91fb031ef41662fe8acd28301795bf3082ad1451aaf",
+            "lib/client.js": "72edee7f26e69c4d27844521e7f9c6f28912d40ca0b37717d424af502551abe3"
+          }
+        }
+      }
+    }
+  }
+}
