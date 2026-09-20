@@ -1,5 +1,7 @@
 # Current status
 
+User follow-up (2026-09-21): authorized retiring the old third-party provider plugins only after the self-maintained replacement independently passes compatibility tests. Current 0.1.1 still consumes their inference adapters, so removal is not yet allowed by that condition. Replacement scope and gates are recorded in [provider-retirement.md](provider-retirement.md). No old provider package was removed.
+
 Controller update (2026-09-21): version 0.1.1 is deployed to the real Web profile after isolated browser and same-home headless validation. Existing user settings and provider artifacts remain unchanged. See [deployment.md](deployment.md) for final evidence and the still-unconnected Muse Code subscription boundary. The executor-only checkpoint below records the earlier handoff, not a deployment blocker.
 
 Implementation, isolated Web/headless integration and the initial 0.1.0 real-profile deployment were accepted by the controller. The 0.1.1 candidate corrects only the OpenCode Go navigation copy to Settings → LLM Providers → OpenCode Go; its deployment remains with the controller. After review fixes, 34 Host/pack tests and 20 client tests passed. Evidence: `artifacts/release-host-tests.log`, `artifacts/release-client-tests.log`. Separate Host/Client TypeScript checks and tsdown build passed (`artifacts/release-typecheck.log`, `artifacts/release-build.log`). Tarball factory verification is recorded in `artifacts/release-pack.log` when packaged.
