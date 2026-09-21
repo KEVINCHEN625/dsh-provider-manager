@@ -47,3 +47,29 @@ export interface Snapshot {
   customRevision: number;
   muse: { installed: boolean; status: "CLI_ONLY"; docs: string };
 }
+export type QuotaStatus =
+  | "ready"
+  | "unsupported"
+  | "missing-credential"
+  | "source-unverified"
+  | "error";
+export interface QuotaWindow {
+  id: "five-hour" | "weekly" | "monthly";
+  usedPercent?: number;
+  remainingPercent?: number;
+  resetsAt?: string;
+}
+export interface QuotaSnapshot {
+  providerId: string;
+  status: QuotaStatus;
+  windows: QuotaWindow[];
+  fetchedAt?: string;
+  stale: boolean;
+  source?: "opencode-official" | "command-default-reference";
+  error?: "TIMEOUT" | "UNAUTHORIZED" | "UNAVAILABLE" | "INVALID_RESPONSE";
+}
+export interface QuotaRequest {
+  providerId: string;
+  bindingToken?: string;
+  refresh?: boolean;
+}

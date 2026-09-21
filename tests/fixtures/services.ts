@@ -5,7 +5,12 @@ export function fixture() {
       revision: 1,
       value: { apiKeyEnv: "OPENCODE_API_KEY", apiKey: "SENTINEL", models: [] },
     },
-    { ns: "llm-commandcode", revision: 1, value: {} },
+    {
+      ns: "llm-commandcode",
+      revision: 1,
+      value: {},
+      secrets: [{ path: ["apiKey"], set: false }],
+    },
     {
       ns: "llm-pi-ai",
       revision: 1,
@@ -34,18 +39,18 @@ export function fixture() {
       },
     },
     credentials: {
-      describe: async () => ({
-        configured: true,
+      describe: async (ref: string) => ({
+        configured: values.has(ref),
         writable,
         source: writable ? "file" : "env",
       }),
       set: async (ref: string, v: string) => {
         values.set(ref, v);
       },
-      resolve: async (ref: string) => ({
-        value: values.get(ref),
-        source: writable ? "file" : "env",
-      }),
+      resolve: async (ref: string) =>
+        values.has(ref)
+          ? { value: values.get(ref), source: writable ? "file" : "env" }
+          : undefined,
     },
     llm: {
       listProviders: () => [

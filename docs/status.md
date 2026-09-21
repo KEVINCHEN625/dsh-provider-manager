@@ -1,6 +1,9 @@
 # Current status
 
+Executor candidate (2026-09-21): compact quota UI batch implemented in-tree as **0.2.0**. Host-only OpenCode/Command readers and the compact list are in the candidate tarball. This is **not** deployed to `~/.dsh`, does **not** restart the real service, and does **not** uninstall old inference plugins. Controller acceptance remains required. See [acceptance.md](acceptance.md) and artifacts under `artifacts/quota-ui/20260921-exec/`.
+
 Planning handoff (2026-09-21): user requested a complete execution plan for another EXECUTOR, not implementation in this turn. The compact icon/quota overview and detail-page increment is specified in [quota-ui-plan.md](quota-ui-plan.md), with a copy-ready dispatch in [execute-quota-ui.md](execute-quota-ui.md). Independent plan review and the external-key cache correction are recorded there. No quota/UI product changes, deployment, or removals were performed in this planning turn.
+
 
 User follow-up (2026-09-21): authorized retiring the old third-party provider plugins only after the self-maintained replacement independently passes compatibility tests. Current 0.1.1 still consumes their inference adapters, so removal is not yet allowed by that condition. Replacement scope and gates are recorded in [provider-retirement.md](provider-retirement.md). No old provider package was removed.
 

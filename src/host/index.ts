@@ -9,7 +9,10 @@ export function apply(ctx: Context, config: Config = {}) {
   const manager = new Manager(ctx, config);
   ctx.inject(["connection", "webServer"], (scope) => {
     const lifetime = new AbortController();
-    scope.effect(() => () => lifetime.abort());
+    scope.effect(() => () => {
+      lifetime.abort();
+      manager.disposeQuota();
+    });
     // Cordis 4 scopes getter-returned RPC closures through a shadow Context.
     // Expose the already injected carrier on this same-fiber Context so the
     // public Connection helper can read it without borrowing its owner fiber.
@@ -41,6 +44,12 @@ export function apply(ctx: Context, config: Config = {}) {
                 value = await manager.card(text(p.providerId));
                 break;
               }
+              case "quota/read":
+                value = await manager.quota(
+                  payload,
+                  AbortSignal.any([signal, lifetime.signal]),
+                );
+                break;
               default:
                 throw new SafeError("UNSUPPORTED");
             }

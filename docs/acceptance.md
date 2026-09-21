@@ -30,3 +30,43 @@ The isolated UI successfully added `pm-ui`, saved a synthetic key, revealed and 
 Real installation used `--workspace-root` within the profile's own workspace (`packages: [.]`) and `--ignore-scripts`; it did not target the original source workspace. The failed first attempt remains `artifacts/live-install.log`, and success is `artifacts/live-install-workspace.log`. The controller used `launchctl kickstart -k gui/501/com.harness.deepseek-harness` for the existing service. Private backup remains at `~/.dsh/provider-manager-backups/20260921-5w5yfcig`.
 
 Version 0.1.1 corrects only the OpenCode Go native-page instructions, in host notice and English/Chinese UI copy, to Settings → LLM Providers → OpenCode Go. The package version and pack-gate target advance accordingly. No runtime behavior changed; 0.1.1 deployment is performed separately by the controller.
+
+## 0.2.0 candidate — compact list and read-only quota (executor, not deployed)
+
+Executor implemented the quota-ui plan in `/Users/kevinchen/Dev/dsh-provider-manager` only. `deepseek-harness` tracking files were unchanged (`git diff --exit-code`). The candidate was **not** installed into `~/.dsh` and the real service was not restarted. Old provider plugins were not uninstalled. This page being usable is not a claim that the manager can independently replace inference adapters.
+
+Support matrix in this candidate:
+
+| Surface | Overview | Query | Not done |
+| --- | --- | --- | --- |
+| OpenCode Go | Real key/read result | Official usage 5h/week/month | No routing or plan change; no generation |
+| Command Code GOAT | Missing / source-unverified / windows | Official credits when default source is confirmable | No multi-account guess; no auth.json |
+| Muse Code | CLI fact + subscription not connected | None | No fake bar; Meta API is not a subscription |
+| Custom / unknown | Credential + models + unsupported | None | No arbitrary `/usage` |
+
+Client never backfills previous windows on RPC or validation failure. Host cache identity includes HMAC(key), so a rotated key with the same bindingToken cannot reuse another account’s windows. Command `secrets` sidecar missing ⇒ source-unverified.
+
+Commands (cwd manager, frozen lockfile). Evidence: `artifacts/quota-ui/20260921-exec/`.
+
+| Command | Exit | Log |
+| --- | --- | --- |
+| `pnpm install --frozen-lockfile` | 0 | `merge-frozen-lockfile.log` |
+| `pnpm run typecheck` | 0 | `merge-typecheck.log`, `merge-typecheck-2.log` |
+| `pnpm run test` | 0 | `merge-host-tests.log` / `merge-host-tests-2.log` (71) |
+| `pnpm run test:client` | 0 | `merge-client-tests.log` / `merge-client-tests-2.log` (32) |
+| `pnpm run format:check` | 0 | `merge-format-check.log` |
+| `pnpm run build` | 0 | `merge-build.log`, `merge-build-2.log` |
+| `pnpm run check:pack` | 0 | `merge-pack.log`, `merge-pack-2.log` |
+| `git diff --check` | 0 | `merge-diff-check.log` |
+| `git -C deepseek-harness diff --exit-code` | 0 | `merge-dsh-clean.log` |
+
+Host red/green history retained: `h-red.log`, `h-green-1.log`, `h-green-2.log`. Client red history: `u-client.log`, `u-client-2.log`.
+
+Candidate tarball (after README/acceptance update) is recorded in the executor delivery report with SHA256. `scripts/check-pack.mjs` reads the version from `package.json`. Immutable 0.1.1 hashed tarball was not overwritten.
+
+Isolated Web: public `@deepseek-ai/dsh@0.1.5-rc.2` under `artifacts/quota-ui/20260921-exec/isolated/` with allowlisted env (no inherited API keys). Plugin add of the hashed tarball succeeded. Screenshots (synthetic data, not a real subscription): `ui-1280-overview.png`, `ui-768-overview.png`, `ui-dark-overview.png`, `ui-add-form.png`, `ui-details-key-saved.png`, `ui-375-wrap.png`. Compact list, add `pm-ui`, save synthetic key, reveal/hide without screenshot of the secret, details keyboard Enter, dark theme, and 375px two-row wrap were exercised. Muse shows CLI-not-detected and quota unsupported. Custom `pm-ui` shows quota unsupported. Isolated OpenCode/Command quota reads returned UNAVAILABLE (no managed default key in that HOME); that is not a fake 100% bar. Network audit: no remote icon URLs; client.js only includes the Muse docs `https://dev.meta.ai/docs/muse-code/subscriptions` link. Log: `isolate-plugin-add.log`, `isolate-network-audit.log`, `ui-375-overflow.log`.
+
+Real official usage GET was **not** executed: process env had no OpenCode/Command keys, isolated HOME did not inherit them, `auth.json` was not read, and the real Web profile was not used. Command missing/unverified without network is covered by Host tests (`tests/quota.spec.ts`). 0/100/unknown/stale/expired-reset/no-backfill/key-rotation cases are covered by Host and client tests, not by a live subscription screenshot.
+
+Rollback: keep installing `artifacts/dsh-provider-manager-0.1.1-73d7079b8678.tgz` until the controller accepts 0.2.0. Quota UI availability does not satisfy [provider-retirement.md](provider-retirement.md).
+

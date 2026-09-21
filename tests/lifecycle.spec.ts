@@ -41,11 +41,28 @@ test("real Cordis delayed DI and repeated mount dispose own one RPC and HTTP reg
   expect(
     await handler("reveal", {}, new AbortController().signal),
   ).toMatchObject({ ok: false, error: { code: "UNSUPPORTED" } });
+  expect(
+    await handler(
+      "quota/read",
+      { providerId: "commandcode" },
+      new AbortController().signal,
+    ),
+  ).toMatchObject({
+    ok: true,
+    value: { status: "missing-credential", windows: [], stale: false },
+  });
   await first.dispose();
   expect(channels.size).toBe(0);
   expect(routes.size).toBe(0);
   expect(
     await handler("snapshot", {}, new AbortController().signal),
+  ).toMatchObject({ ok: false });
+  expect(
+    await handler(
+      "quota/read",
+      { providerId: "commandcode" },
+      new AbortController().signal,
+    ),
   ).toMatchObject({ ok: false });
   const second = ctx.plugin(plugin);
   await tick();

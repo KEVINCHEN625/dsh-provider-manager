@@ -3,7 +3,8 @@ import { readFileSync, mkdtempSync, realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import vm from "node:vm";
 import { createRequire } from "node:module";
-const target = resolve("artifacts/dsh-provider-manager-0.1.1.tgz");
+const source = JSON.parse(readFileSync("package.json", "utf8"));
+const target = resolve(`artifacts/${source.name}-${source.version}.tgz`);
 const directory = mkdtempSync(resolve("artifacts/pack-check-"));
 execFileSync("tar", ["-xzf", target, "-C", directory]);
 const root = resolve(directory, "package");
@@ -19,6 +20,8 @@ for (const file of [
 ])
   readFileSync(resolve(root, file));
 if (
+  manifest.name !== source.name ||
+  manifest.version !== source.version ||
   manifest.dsh.bundle.patch !== "./cordis.patch.yml" ||
   manifest.dsh.client.platform !== "web"
 )

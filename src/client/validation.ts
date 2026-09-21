@@ -1,4 +1,10 @@
-import { protocols, type Provider, type Snapshot } from "../shared/protocol.js";
+import {
+  protocols,
+  type Provider,
+  type Snapshot,
+  type QuotaSnapshot,
+  type QuotaWindow,
+} from "../shared/protocol.js";
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw { code: "UNAVAILABLE" };
@@ -78,4 +84,82 @@ export function validateSnapshot(value: unknown): Snapshot {
       docs: string(muse.docs),
     },
   };
+}
+const quotaStatuses = [
+  "ready",
+  "unsupported",
+  "missing-credential",
+  "source-unverified",
+  "error",
+] as const;
+const quotaErrors = [
+  "TIMEOUT",
+  "UNAUTHORIZED",
+  "UNAVAILABLE",
+  "INVALID_RESPONSE",
+] as const;
+const quotaSources = [
+  "opencode-official",
+  "command-default-reference",
+] as const;
+const quotaWindows = ["five-hour", "weekly", "monthly"] as const;
+function iso(value: unknown): string {
+  const text = string(value);
+  const parsed = Date.parse(text);
+  if (!Number.isFinite(parsed)) throw { code: "UNAVAILABLE" };
+  return text;
+}
+function percent(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
+    throw { code: "UNAVAILABLE" };
+  return value;
+}
+export function validateQuota(value: unknown): QuotaSnapshot {
+  const data = record(value);
+  if (!quotaStatuses.includes(data.status as (typeof quotaStatuses)[number]))
+    throw { code: "UNAVAILABLE" };
+  if (!Array.isArray(data.windows) || data.windows.length > 3)
+    throw { code: "UNAVAILABLE" };
+  const seen = new Set<string>();
+  const windows: QuotaWindow[] = data.windows.map((item) => {
+    const window = record(item);
+    const id = window.id;
+    if (
+      !quotaWindows.includes(id as (typeof quotaWindows)[number]) ||
+      seen.has(id as string)
+    )
+      throw { code: "UNAVAILABLE" };
+    seen.add(id as string);
+    const next: QuotaWindow = { id: id as QuotaWindow["id"] };
+    if (window.usedPercent !== undefined)
+      next.usedPercent = percent(window.usedPercent);
+    if (window.remainingPercent !== undefined)
+      next.remainingPercent = percent(window.remainingPercent);
+    if (
+      next.usedPercent !== undefined &&
+      next.remainingPercent !== undefined &&
+      next.remainingPercent !== Math.max(0, 100 - next.usedPercent)
+    )
+      throw { code: "UNAVAILABLE" };
+    if (window.resetsAt !== undefined) next.resetsAt = iso(window.resetsAt);
+    return next;
+  });
+  const snapshot: QuotaSnapshot = {
+    providerId: string(data.providerId),
+    status: data.status as QuotaSnapshot["status"],
+    windows,
+    stale: boolean(data.stale),
+  };
+  if (data.fetchedAt !== undefined) snapshot.fetchedAt = iso(data.fetchedAt);
+  if (data.error !== undefined) {
+    if (!quotaErrors.includes(data.error as (typeof quotaErrors)[number]))
+      throw { code: "UNAVAILABLE" };
+    snapshot.error = data.error as QuotaSnapshot["error"];
+  }
+  if (data.source !== undefined) {
+    if (!quotaSources.includes(data.source as (typeof quotaSources)[number]))
+      throw { code: "UNAVAILABLE" };
+    snapshot.source = data.source as QuotaSnapshot["source"];
+  }
+  return snapshot;
 }

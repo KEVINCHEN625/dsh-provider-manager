@@ -3,17 +3,21 @@ import type { Provider } from "../shared/protocol.js";
 import { protocols } from "../shared/protocol.js";
 import type { Controller, State } from "./controller.js";
 import type { Translate, LocaleKey } from "./locales.js";
-import { Result } from "./ProviderCard.js";
+import { Result } from "./Result.js";
 export function CustomProviderForm({
   controller,
   state,
   t,
   editing,
+  onClose,
+  onSaved,
 }: {
   controller: Controller;
   state: State;
   t: Translate;
   editing?: Provider;
+  onClose?: () => void;
+  onSaved?: (route: string) => void;
 }) {
   const id = useId();
   const [, render] = useState(0);
@@ -58,7 +62,9 @@ export function CustomProviderForm({
             ? { defaultMaxTokens: Number(draft.defaultMaxTokens) }
             : {}),
         };
-        void controller.saveConfig(payload);
+        void controller.saveConfig(payload).then((saved) => {
+          if (saved) onSaved?.(draft.route);
+        });
       }}
     >
       <h3>{t(editing ? "edit" : "custom")}</h3>
@@ -100,6 +106,11 @@ export function CustomProviderForm({
       >
         {t("save")}
       </button>
+      {onClose && (
+        <button type="button" onClick={onClose}>
+          {t("closeForm")}
+        </button>
+      )}
       <Result
         operation={state.operations.config}
         success={t("configSaved")}

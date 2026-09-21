@@ -33,7 +33,16 @@ const snapshot = {
 };
 function setup(dict = en, rpc: any = async () => snapshot) {
   const c = new Controller({
-    rpc,
+    rpc: async (endpoint: string, payload: any) => {
+      if (endpoint === "quota/read")
+        return {
+          providerId: payload?.providerId || provider.id,
+          status: "unsupported",
+          windows: [],
+          stale: false,
+        };
+      return rpc(endpoint, payload);
+    },
     reveal: async () => ({
       value: "SYNTHETIC",
       source: "env",
@@ -45,6 +54,18 @@ function setup(dict = en, rpc: any = async () => snapshot) {
   );
   return { c, ...ui };
 }
+async function openAdd(dict = en) {
+  fireEvent.click(
+    await screen.findByRole("button", { name: dict.addProvider }),
+  );
+}
+async function openDetails(name = "OpenCode Go", dict = en) {
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: `${dict.details}: ${name}`,
+    }),
+  );
+}
 test("read failure has retry, then catalog and source; custom draft survives reload", async () => {
   let fail = true;
   const { c } = setup(en, async () => {
@@ -54,8 +75,11 @@ test("read failure has retry, then catalog and source; custom draft survives rel
   await screen.findByRole("button", { name: "Retry" });
   fail = false;
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+  await screen.findByText("OpenCode Go");
+  await openDetails();
   await screen.findByText("fixture-model");
   expect(screen.getByText("env")).toBeTruthy();
+  await openAdd();
   fireEvent.change(screen.getByLabelText("Route"), {
     target: { value: "draft-route" },
   });
@@ -69,7 +93,7 @@ test("read failure has retry, then catalog and source; custom draft survives rel
 });
 test("reveal and replacement input clear on blur, visibility and unmount", async () => {
   const { c, unmount } = setup();
-  await screen.findByText("fixture-model");
+  await openDetails();
   fireEvent.click(screen.getByRole("button", { name: "Show key" }));
   await screen.findByDisplayValue("SYNTHETIC");
   fireEvent(window, new Event("blur"));
@@ -97,7 +121,9 @@ test("Chinese labels readable and failure does not claim zero models", async () 
     providers: [{ ...provider, models: [], catalogError: "UNAVAILABLE" }],
   }));
   await screen.findByText("OpenCode Go");
+  await openAdd(zh);
   expect(screen.getByLabelText("模型 ID（每行一个）")).toBeTruthy();
+  await openDetails("OpenCode Go", zh);
   expect(screen.getByText("模型目录暂不可用")).toBeTruthy();
   expect(screen.queryByText("0 models")).toBeNull();
 });
@@ -109,12 +135,13 @@ test("config conflict and key success remain independent; inputs are labeled", a
     if (endpoint === "credential/set") return provider.credential;
     return snapshot;
   });
-  await screen.findByText("fixture-model");
+  await openDetails();
   fireEvent.change(screen.getByLabelText("New key"), {
     target: { value: "NEW-SYNTHETIC" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Save key" }));
   await screen.findByText("Key saved");
+  await openAdd();
   for (const [label, value] of [
     ["Name", "Demo"],
     ["Route", "demo"],
@@ -138,18 +165,23 @@ test("credential permission failure does not hide a successfully read model coun
     ...snapshot,
     providers: [{ ...provider, error: "REF_NOT_ALLOWED" }],
   }));
+  await openDetails();
   await screen.findByText("fixture-model");
   expect(screen.getByText("1 models")).toBeTruthy();
   expect(screen.queryByText("Model catalog unavailable")).toBeNull();
 });
 test("new provider resets an existing unsaved new form visibly", async () => {
   setup();
-  await screen.findByText("fixture-model");
+  await screen.findByText("OpenCode Go");
+  await openAdd();
   fireEvent.change(screen.getByLabelText("Route"), {
     target: { value: "old-draft" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "New provider" }));
-  expect((screen.getByLabelText("Route") as HTMLInputElement).value).toBe("");
+  fireEvent.click(screen.getByRole("button", { name: en.closeForm }));
+  fireEvent.click(screen.getByRole("button", { name: en.addProvider }));
+  expect((screen.getByLabelText("Route") as HTMLInputElement).value).toBe(
+    "old-draft",
+  );
 });
 test("unreadable credential status is unknown rather than reported absent", async () => {
   setup(en, async () => ({
@@ -158,7 +190,7 @@ test("unreadable credential status is unknown rather than reported absent", asyn
       { ...provider, credential: undefined, error: "REF_NOT_ALLOWED" },
     ],
   }));
-  await screen.findByText("fixture-model");
+  await screen.findByText("OpenCode Go");
   expect(screen.queryByText(/No key configured/)).toBeNull();
 });
 test("dirty edit uses its original revision across metadata reload, explicit re-edit rebases", async () => {
@@ -183,6 +215,7 @@ test("dirty edit uses its original revision across metadata reload, explicit re-
     };
   });
   await screen.findByText("Demo");
+  await openDetails("Demo");
   fireEvent.click(screen.getByRole("button", { name: "Edit configuration" }));
   fireEvent.change(screen.getByLabelText("Name"), {
     target: { value: "Draft" },
@@ -207,7 +240,8 @@ test("new dirty draft retains first change revision on reconnect", async () => {
     }
     return { ...snapshot, customRevision: revision };
   });
-  await screen.findByText("fixture-model");
+  await screen.findByText("OpenCode Go");
+  await openAdd();
   for (const [label, value] of [
     ["Name", "Demo"],
     ["Route", "demo"],
@@ -229,5 +263,6 @@ test("malformed snapshot displays retry and never renders incomplete cards", asy
   expect(screen.queryByText("Muse Code")).toBeNull();
   malformed = false;
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-  await screen.findByText("fixture-model");
+  await screen.findByText("OpenCode Go");
+  expect(screen.queryByText("fixture-model")).toBeNull();
 });

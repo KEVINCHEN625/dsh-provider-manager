@@ -14,6 +14,15 @@ import {
   type Protocol,
 } from "../shared/protocol.js";
 import { detectMuse } from "./muse.js";
+import {
+  QuotaReader,
+  commandSourceAmbiguous,
+  unofficialEndpoint,
+  untilAborted,
+  OPENCODE_USAGE_URL,
+  COMMAND_CREDITS_URL,
+} from "./quota.js";
+import type { QuotaSnapshot } from "../shared/protocol.js";
 type Services = Pick<Context, "settings" | "credentials" | "llm">;
 export interface Config {
   authorizedExistingRefs?: Record<string, string>;
@@ -51,7 +60,121 @@ export class Manager {
   constructor(
     private services: Services,
     private config: Config = {},
+    private quotaReader: QuotaReader = new QuotaReader(),
   ) {}
+  disposeQuota() {
+    this.quotaReader.dispose();
+  }
+  async quota(input: unknown, signal?: AbortSignal): Promise<QuotaSnapshot> {
+    signal?.throwIfAborted();
+    const p = exact(input, ["providerId", "bindingToken", "refresh"]);
+    const providerId = text(p.providerId);
+    if (p.refresh !== undefined && typeof p.refresh !== "boolean")
+      throw new SafeError("INVALID_INPUT");
+    if (p.bindingToken !== undefined && typeof p.bindingToken !== "string")
+      throw new SafeError("INVALID_INPUT");
+    if (providerId.startsWith("custom:")) {
+      try {
+        this.binding(providerId);
+      } catch (error) {
+        if (error instanceof SafeError && error.code === "REF_NOT_ALLOWED")
+          throw new SafeError("INVALID_INPUT");
+        throw error;
+      }
+      return {
+        providerId,
+        status: "unsupported",
+        windows: [],
+        stale: false,
+      };
+    }
+    if (providerId !== "opencode-go" && providerId !== "commandcode")
+      throw new SafeError("INVALID_INPUT");
+    const source =
+      providerId === "opencode-go"
+        ? "opencode-official"
+        : "command-default-reference";
+    let binding: ReturnType<Manager["binding"]>;
+    try {
+      binding = this.binding(providerId);
+    } catch (error) {
+      if (error instanceof SafeError && error.code === "REF_NOT_ALLOWED")
+        return {
+          providerId,
+          source,
+          status: "missing-credential",
+          windows: [],
+          stale: false,
+        };
+      throw error;
+    }
+    if (p.bindingToken && p.bindingToken !== binding.token)
+      throw new SafeError("BINDING_CHANGED");
+    const profile = binding.profile as Record<string, unknown>;
+    if (unofficialEndpoint(providerId, profile))
+      return {
+        providerId,
+        source,
+        status: "unsupported",
+        windows: [],
+        stale: false,
+      };
+    if (
+      providerId === "commandcode" &&
+      commandSourceAmbiguous(
+        profile,
+        binding.d.secrets as { path: string[]; set: boolean }[] | undefined,
+      )
+    )
+      return {
+        providerId,
+        source,
+        status: "source-unverified",
+        windows: [],
+        stale: false,
+      };
+    const resolve = () =>
+      this.services.credentials.resolve(credentialRef(binding.ref));
+    const resolved = signal
+      ? await untilAborted(resolve(), signal)
+      : await resolve();
+    const key =
+      typeof resolved?.value === "string" ? resolved.value.trim() : "";
+    if (!key)
+      return {
+        providerId,
+        source,
+        status: "missing-credential",
+        windows: [],
+        stale: false,
+      };
+    const credentialSource =
+      typeof resolved?.source === "string" ? resolved.source : undefined;
+    return this.quotaReader.load({
+      providerId,
+      source,
+      url:
+        providerId === "opencode-go" ? OPENCODE_USAGE_URL : COMMAND_CREDITS_URL,
+      kind: providerId === "opencode-go" ? "opencode" : "command",
+      bindingToken: binding.token,
+      credentialSource,
+      key,
+      refresh: p.refresh === true,
+      signal,
+      stillCurrent: async () => {
+        signal?.throwIfAborted();
+        const latest = this.binding(providerId);
+        if (latest.token !== binding.token) return false;
+        const again = signal
+          ? await untilAborted(
+              this.services.credentials.resolve(credentialRef(latest.ref)),
+              signal,
+            )
+          : await this.services.credentials.resolve(credentialRef(latest.ref));
+        return again?.value === key && again?.source === credentialSource;
+      },
+    });
+  }
   descriptors() {
     return this.services.settings.describe({ redactSecrets: true });
   }
@@ -117,6 +240,7 @@ export class Manager {
     signal?.throwIfAborted();
     this.check(input, true);
     await this.services.credentials.set(ref, value);
+    this.quotaReader.invalidate(text(p.providerId));
     const info = await this.services.credentials.describe(ref);
     return {
       configured: info.configured,

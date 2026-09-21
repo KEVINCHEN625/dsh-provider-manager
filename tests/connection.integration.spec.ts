@@ -62,6 +62,19 @@ test("real WebServer + Connection: authenticated snapshot, exact reveal, disposa
     const data = await snapshot.json();
     expect(data.result.ok).toBe(true);
     expect(JSON.stringify(data)).not.toContain("SENTINEL");
+    const quota = await request("quota/read", { providerId: "commandcode" });
+    expect(quota.status).toBe(200);
+    const quotaBody = await quota.json();
+    expect(quotaBody.result).toMatchObject({
+      ok: true,
+      value: {
+        providerId: "commandcode",
+        status: "missing-credential",
+        windows: [],
+        stale: false,
+      },
+    });
+    expect(JSON.stringify(quotaBody)).not.toContain("SYNTHETIC");
     const provider = data.result.value.providers[0];
     const binding = {
       providerId: provider.id,

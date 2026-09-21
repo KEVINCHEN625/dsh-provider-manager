@@ -79,3 +79,34 @@ test("cancellation during metadata describe cannot begin persistent key write", 
   await expect(task).rejects.toBeDefined();
   expect(f.values.get("OPENCODE_API_KEY")).toBe("SYNTHETIC");
 });
+test("set invalidates quota cache so the next read cannot reuse the old key window", async () => {
+  const { Manager } = await import("../src/host/providers.js");
+  const { QuotaReader } = await import("../src/host/quota.js");
+  const f = fixture();
+  let calls = 0;
+  const m: any = new Manager(
+    f.services,
+    {},
+    new QuotaReader({
+      fetch: async () =>
+        new Response(
+          JSON.stringify({ rolling: { percent: ++calls === 1 ? 15 : 45 } }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+    }),
+  );
+  const p = (await m.snapshot()).providers[0];
+  expect(
+    (await m.quota({ providerId: p.id, bindingToken: p.bindingToken }))
+      .windows[0].usedPercent,
+  ).toBe(15);
+  await m.set({
+    providerId: p.id,
+    bindingToken: p.bindingToken,
+    value: "SYNTHETIC-AFTER-SET",
+  });
+  expect(
+    (await m.quota({ providerId: p.id, bindingToken: p.bindingToken }))
+      .windows[0].usedPercent,
+  ).toBe(45);
+});

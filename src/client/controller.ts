@@ -2,8 +2,9 @@ import {
   validateSnapshot,
   validateProvider,
   validateCredential,
+  validateQuota,
 } from "./validation.js";
-import type { Provider, Snapshot } from "../shared/protocol.js";
+import type { Provider, Snapshot, QuotaSnapshot } from "../shared/protocol.js";
 
 export interface Transport {
   rpc(
@@ -20,11 +21,17 @@ export type Operation = {
   status: "idle" | "loading" | "success" | "error";
   error?: string;
 };
+export type QuotaView = {
+  status: "loading" | QuotaSnapshot["status"] | "error";
+  snapshot?: QuotaSnapshot;
+  error?: string;
+};
 export interface State {
   status: "idle" | "loading" | "ready" | "error";
   snapshot?: Snapshot;
   error?: string;
   operations: Record<string, Operation>;
+  quotas: Record<string, QuotaView>;
   revealed?: { providerId: string; value: string; source?: string };
   clearEpoch: number;
 }
@@ -38,13 +45,14 @@ const codes = new Set([
   "UNSUPPORTED",
   "UNAVAILABLE",
   "TIMEOUT",
+  "INVALID_RESPONSE",
 ]);
 export function errorCode(error: unknown): string {
   const code = (error as { code?: string })?.code;
   return code && codes.has(code) ? code : "UNAVAILABLE";
 }
 export class Controller {
-  state: State = { status: "idle", operations: {}, clearEpoch: 0 };
+  state: State = { status: "idle", operations: {}, quotas: {}, clearEpoch: 0 };
   drafts: Record<string, string> = {};
   draftRevision?: number;
   changeDraft(name: string, value: string) {
@@ -55,12 +63,17 @@ export class Controller {
   private requests = new Set<AbortController>();
   private loadGeneration = 0;
   private revealGeneration = 0;
+  private quotaGeneration: Record<string, number> = {};
+  private quotaAbort = new Map<string, AbortController>();
+  private quotaPoll?: ReturnType<typeof setInterval>;
+  private visible = true;
   private disposed = false;
   private timer?: ReturnType<typeof setTimeout>;
   private revealAbort?: AbortController;
   constructor(
     private transport: Transport,
     private timeout = 15000,
+    private quotaPollMs = 300000,
   ) {}
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -102,6 +115,7 @@ export class Controller {
   }
   async load() {
     const generation = ++this.loadGeneration;
+    this.abortQuotas();
     this.update({ status: "loading", error: undefined });
     try {
       const snapshot = validateSnapshot(
@@ -110,7 +124,8 @@ export class Controller {
         ),
       );
       if (generation === this.loadGeneration)
-        this.update({ status: "ready", snapshot });
+        this.update({ status: "ready", snapshot, quotas: {} });
+      if (generation === this.loadGeneration) this.readVisibleQuotas();
     } catch (error) {
       if (generation === this.loadGeneration)
         this.update({ status: "error", error: errorCode(error) });
@@ -195,6 +210,7 @@ export class Controller {
           },
         });
       this.operation(key, { status: "success" });
+      await this.refreshQuota(provider, true);
       return true;
     } catch (error) {
       this.operation(key, { status: "error", error: errorCode(error) });
@@ -250,13 +266,111 @@ export class Controller {
   connectionChanged(connected: boolean) {
     this.hide();
     ++this.loadGeneration;
+    this.abortQuotas();
+    this.stopPoll();
     for (const request of this.requests) request.abort();
     if (connected) void this.load();
     else this.update({ status: "error", error: "UNAVAILABLE" });
   }
+  visibilityChanged(visible: boolean) {
+    this.visible = visible;
+    if (!visible) {
+      this.stopPoll();
+      this.abortQuotas();
+      return;
+    }
+    this.readExpiredQuotas();
+    this.ensurePoll();
+  }
+  async refreshQuota(
+    provider: Pick<Provider, "id" | "bindingToken">,
+    refresh = false,
+  ) {
+    if (this.disposed) return;
+    const id = provider.id;
+    const generation = (this.quotaGeneration[id] ?? 0) + 1;
+    this.quotaGeneration[id] = generation;
+    this.quotaAbort.get(id)?.abort();
+    const abort = new AbortController();
+    this.quotaAbort.set(id, abort);
+    this.update({
+      quotas: { ...this.state.quotas, [id]: { status: "loading" } },
+    });
+    try {
+      const snapshot = validateQuota(
+        await this.request(
+          (signal) =>
+            this.transport.rpc(
+              "quota/read",
+              {
+                providerId: id,
+                ...(provider.bindingToken
+                  ? { bindingToken: provider.bindingToken }
+                  : {}),
+                ...(refresh ? { refresh: true } : {}),
+              },
+              signal,
+            ),
+          abort,
+        ),
+      );
+      if (generation !== this.quotaGeneration[id] || this.disposed) return;
+      this.update({
+        quotas: {
+          ...this.state.quotas,
+          [id]: { status: snapshot.status, snapshot },
+        },
+      });
+    } catch (error) {
+      if (generation !== this.quotaGeneration[id] || this.disposed) return;
+      this.update({
+        quotas: {
+          ...this.state.quotas,
+          [id]: { status: "error", error: errorCode(error) },
+        },
+      });
+    }
+  }
+  private readVisibleQuotas() {
+    if (!this.visible || this.state.status !== "ready") return;
+    this.ensurePoll();
+    for (const provider of this.state.snapshot?.providers ?? [])
+      void this.refreshQuota(provider);
+  }
+  private readExpiredQuotas() {
+    if (!this.visible || this.state.status !== "ready") return;
+    const now = Date.now();
+    for (const provider of this.state.snapshot?.providers ?? []) {
+      const fetched = this.state.quotas[provider.id]?.snapshot?.fetchedAt;
+      const age = fetched
+        ? now - Date.parse(fetched)
+        : Number.POSITIVE_INFINITY;
+      if (!Number.isFinite(age) || age >= this.quotaPollMs)
+        void this.refreshQuota(provider);
+    }
+  }
+  private ensurePoll() {
+    if (this.quotaPoll || this.disposed || !this.visible) return;
+    this.quotaPoll = setInterval(
+      () => this.readExpiredQuotas(),
+      this.quotaPollMs,
+    );
+  }
+  private stopPoll() {
+    clearInterval(this.quotaPoll);
+    this.quotaPoll = undefined;
+  }
+  private abortQuotas() {
+    for (const id of Object.keys(this.quotaGeneration))
+      this.quotaGeneration[id] += 1;
+    for (const abort of this.quotaAbort.values()) abort.abort();
+    this.quotaAbort.clear();
+  }
   dispose() {
     this.hide();
     ++this.loadGeneration;
+    this.abortQuotas();
+    this.stopPoll();
     for (const request of this.requests) request.abort();
     this.disposed = true;
     this.listeners.clear();
