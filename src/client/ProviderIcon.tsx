@@ -56,9 +56,13 @@ export function ProviderIcon({ id, name }: { id: string; name: string }) {
             key.includes("bigmodel") ||
             key.includes("z.ai")
           ? "zcode"
-          : key.includes("openrouter")
-            ? "openrouter"
-            : "generic";
+          : key.includes("minimax")
+            ? "minimax"
+            : key.includes("mimo") || key.includes("xiaomimimo")
+              ? "mimo"
+              : key.includes("openrouter")
+                ? "openrouter"
+                : "generic";
   return (
     <span className="pm-icon" data-mark={kind} aria-hidden="true" title={name}>
       {kind === "opencode" && (
@@ -105,6 +109,26 @@ export function ProviderIcon({ id, name }: { id: string; name: string }) {
             stroke="currentColor"
             strokeWidth="1.8"
             strokeLinejoin="round"
+          />
+        </Svg>
+      )}
+      {kind === "mimo" && (
+        <Svg viewBox="0 0 24 24">
+          <path
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            d="M5 17V7l7 8 7-8v10"
+          />
+        </Svg>
+      )}
+      {kind === "minimax" && (
+        <Svg viewBox="0 0 24 24">
+          <path
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            d="M4 16 8 8l4 8 4-8 4 8"
           />
         </Svg>
       )}

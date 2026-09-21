@@ -7,6 +7,7 @@ export interface ApiRegion {
   labelKey: "regionChina" | "regionOverseas";
   baseURL: string;
   anthropicURL?: string;
+  aliases?: readonly string[];
 }
 
 export interface ApiPreset {
@@ -40,7 +41,7 @@ export const API_PRESETS: readonly ApiPreset[] = [
     name: "ZCode",
     route: "zcode",
     api: "openai-completions",
-    models: "glm-5.2\nglm-5.1\nglm-5-turbo\nglm-4.7\nglm-4.5-air",
+    models: "glm-5.3-flash\nglm-5.3\nglm-5.2\nglm-5-turbo",
     regions: [
       {
         ...china("https://open.bigmodel.cn/api/coding/paas/v4"),
@@ -51,7 +52,53 @@ export const API_PRESETS: readonly ApiPreset[] = [
         anthropicURL: "https://api.z.ai/api/anthropic",
       },
     ],
-    defaultContextWindow: "204800",
+    defaultContextWindow: "1048576",
+    defaultMaxTokens: "131072",
+  },
+  {
+    id: "mimo",
+    name: "MiMo",
+    route: "mimo",
+    api: "openai-completions",
+    models: "mimo-v2.5-pro\nmimo-v2.5",
+    regions: [
+      {
+        ...china("https://token-plan-cn.xiaomimimo.com/v1"),
+        anthropicURL: "https://token-plan-cn.xiaomimimo.com/anthropic",
+      },
+      {
+        ...overseas("https://token-plan-sgp.xiaomimimo.com/v1"),
+        anthropicURL: "https://token-plan-sgp.xiaomimimo.com/anthropic",
+        aliases: [
+          "https://token-plan-ams.xiaomimimo.com/v1",
+          "https://token-plan-ams.xiaomimimo.com/anthropic",
+        ],
+      },
+    ],
+    defaultContextWindow: "1048576",
+    defaultMaxTokens: "131072",
+  },
+  {
+    id: "minimax",
+    name: "MiniMax",
+    route: "minimax",
+    api: "openai-completions",
+    models: "MiniMax-M3\nMiniMax-M2.7\nMiniMax-M2.7-highspeed",
+    regions: [
+      {
+        ...china("https://api.minimax.cn/v1"),
+        anthropicURL: "https://api.minimax.cn/anthropic",
+        aliases: [
+          "https://api.minimaxi.com/v1",
+          "https://api.minimaxi.com/anthropic",
+        ],
+      },
+      {
+        ...overseas("https://api.minimax.io/v1"),
+        anthropicURL: "https://api.minimax.io/anthropic",
+      },
+    ],
+    defaultContextWindow: "1048576",
     defaultMaxTokens: "131072",
   },
   {
@@ -194,7 +241,7 @@ export function matchPreset(input: {
 }
 
 function regionUrls(region: ApiRegion) {
-  return [region.baseURL, region.anthropicURL]
+  return [region.baseURL, region.anthropicURL, ...(region.aliases ?? [])]
     .filter((value): value is string => !!value)
     .map(normalizeUrl);
 }

@@ -9,6 +9,8 @@ import {
 
 test("ZCode is one route with China and Overseas coding endpoints", () => {
   const zcode = API_PRESETS.find((preset) => preset.id === "zcode");
+  expect(zcode?.models).toContain("glm-5.3-flash");
+  expect(zcode?.models).toContain("glm-5.3");
   expect(zcode?.route).toBe("zcode");
   expect(zcode?.regions?.map((region) => region.id)).toEqual([
     "china",
@@ -43,8 +45,62 @@ test("ZCode Anthropic URLs stay on the same card as Completions", () => {
   );
 });
 
+test("MiMo and MiniMax keep one route with China / Overseas URLs", () => {
+  const mimo = API_PRESETS.find((preset) => preset.id === "mimo")!;
+  expect(presetDraft(mimo).baseURL).toBe(
+    "https://token-plan-cn.xiaomimimo.com/v1",
+  );
+  expect(presetDraft(mimo, "overseas").baseURL).toBe(
+    "https://token-plan-sgp.xiaomimimo.com/v1",
+  );
+  expect(presetDraft(mimo, "overseas").route).toBe("mimo");
+  expect(
+    matchRegion(mimo, "https://token-plan-ams.xiaomimimo.com/v1")?.id,
+  ).toBe("overseas");
+  expect(regionBaseURL(mimo.regions![0], "anthropic-messages")).toBe(
+    "https://token-plan-cn.xiaomimimo.com/anthropic",
+  );
+
+  const minimax = API_PRESETS.find((preset) => preset.id === "minimax")!;
+  expect(presetDraft(minimax).baseURL).toBe("https://api.minimax.cn/v1");
+  expect(presetDraft(minimax, "overseas").baseURL).toBe(
+    "https://api.minimax.io/v1",
+  );
+  expect(matchRegion(minimax, "https://api.minimaxi.com/v1/")?.id).toBe(
+    "china",
+  );
+  expect(regionBaseURL(minimax.regions![1], "anthropic-messages")).toBe(
+    "https://api.minimax.io/anthropic",
+  );
+});
+
 test("blank draft does not attach a known API", () => {
   expect(matchPreset({ route: "", baseURL: "" })).toBeUndefined();
+});
+
+test("preset routes and endpoint URLs do not collide", () => {
+  const routes = API_PRESETS.map((preset) => preset.route);
+  expect(new Set(routes).size).toBe(routes.length);
+  for (const route of routes) {
+    expect([
+      "opencode-go",
+      "commandcode",
+      "deepseek-official",
+      "cliproxy",
+      "muse-code",
+    ]).not.toContain(route);
+  }
+  const urls = API_PRESETS.flatMap((preset) => [
+    preset.baseURL,
+    ...(preset.regions ?? []).flatMap((region) => [
+      region.baseURL,
+      region.anthropicURL,
+      ...(region.aliases ?? []),
+    ]),
+  ])
+    .filter((value): value is string => !!value)
+    .map((value) => value.replace(/\/$/, ""));
+  expect(new Set(urls).size).toBe(urls.length);
 });
 
 test("OpenRouter and other gateways fill official base URLs", () => {

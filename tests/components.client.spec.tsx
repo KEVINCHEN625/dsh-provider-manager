@@ -309,6 +309,10 @@ test("ZCode preset keeps one route and switches China / Overseas URLs", async ()
     "https://open.bigmodel.cn/api/coding/paas/v4",
   );
   expect(
+    (screen.getByLabelText("Model IDs (one per line)") as HTMLTextAreaElement)
+      .value,
+  ).toContain("glm-5.3-flash");
+  expect(
     (
       screen.getByRole("radio", {
         name: new RegExp(en.regionChina),
@@ -363,4 +367,38 @@ test("ZCode list card shows an Overseas badge", async () => {
   await screen.findByText("ZCode");
   expect(screen.getByText(en.regionOverseas)).toBeTruthy();
   expect(document.querySelector('.pm-icon[data-mark="zcode"]')).toBeTruthy();
+});
+test("MiMo and MiniMax presets keep one route and switch China / Overseas URLs", async () => {
+  setup();
+  fireEvent.click(await screen.findByRole("button", { name: en.addProvider }));
+  fireEvent.change(screen.getByLabelText(en.apiPreset), {
+    target: { value: "mimo" },
+  });
+  expect((screen.getByLabelText("Route") as HTMLInputElement).value).toBe(
+    "mimo",
+  );
+  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe(
+    "https://token-plan-cn.xiaomimimo.com/v1",
+  );
+  fireEvent.click(
+    screen.getByRole("radio", { name: new RegExp(en.regionOverseas) }),
+  );
+  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe(
+    "https://token-plan-sgp.xiaomimimo.com/v1",
+  );
+  fireEvent.change(screen.getByLabelText(en.apiPreset), {
+    target: { value: "minimax" },
+  });
+  expect((screen.getByLabelText("Route") as HTMLInputElement).value).toBe(
+    "minimax",
+  );
+  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe(
+    "https://api.minimax.cn/v1",
+  );
+  fireEvent.click(
+    screen.getByRole("radio", { name: new RegExp(en.regionOverseas) }),
+  );
+  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe(
+    "https://api.minimax.io/v1",
+  );
 });

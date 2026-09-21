@@ -54,7 +54,7 @@ export const en = {
   regionChina: "China",
   regionOverseas: "Overseas",
   regionHelp:
-    "China and Overseas keys are not interchangeable. Use the URL that issued the key. ZCode Coding Plan uses /api/coding/paas/v4 for OpenAI Completions and /api/anthropic for Anthropic Messages — not the general /api/paas/v4.",
+    "China and Overseas keys are not interchangeable. Use the URL shown on the console that issued the key. ZCode Coding Plan: /api/coding/paas/v4 or /api/anthropic. MiMo Token Plan: token-plan-cn (China) or token-plan-sgp (Overseas; Europe is token-plan-ams). MiniMax: api.minimax.cn (China) or api.minimax.io (Overseas).",
   name: "Name",
   route: "Route",
   baseURL: "Base URL",
@@ -167,7 +167,7 @@ export const zh: Record<LocaleKey, string> = {
   regionChina: "中国",
   regionOverseas: "海外",
   regionHelp:
-    "中国和海外的 key 不能混用，请选签发该 key 的网址。ZCode 编程套餐：OpenAI Completions 用 /api/coding/paas/v4，Anthropic Messages 用 /api/anthropic，不要用通用 /api/paas/v4。",
+    "中国和海外的 key 不能混用，请用签发该 key 的控制台网址。ZCode 编程套餐：/api/coding/paas/v4 或 /api/anthropic。MiMo Token Plan：中国 token-plan-cn，海外 token-plan-sgp（欧洲是 token-plan-ams）。MiniMax：中国 api.minimax.cn，海外 api.minimax.io。",
   name: "名称",
   route: "路由",
   baseURL: "Base URL",
