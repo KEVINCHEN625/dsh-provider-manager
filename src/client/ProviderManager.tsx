@@ -63,6 +63,10 @@ export function ProviderManager({
     setEditing(undefined);
     setFormOpen(true);
   };
+  const selectDetail = (id?: string) => {
+    controller.hide();
+    setOpenId(id);
+  };
   const fetched = Object.values(state.quotas)
     .map((quota) => quota.snapshot?.fetchedAt)
     .filter((value): value is string => Boolean(value))
@@ -103,7 +107,7 @@ export function ProviderManager({
             t={t}
             edit={edit}
             open={openId === provider.id}
-            onToggle={(next) => setOpenId(next ? provider.id : undefined)}
+            onToggle={(next) => selectDetail(next ? provider.id : undefined)}
           />
         ))}
         {state.snapshot && (
@@ -111,7 +115,7 @@ export function ProviderManager({
             installed={state.snapshot.muse.installed}
             t={t}
             open={openId === "muse"}
-            onToggle={(next) => setOpenId(next ? "muse" : undefined)}
+            onToggle={(next) => selectDetail(next ? "muse" : undefined)}
           />
         )}
       </div>
@@ -126,7 +130,7 @@ export function ProviderManager({
           onSaved={(route) => {
             setFormOpen(false);
             setEditing(undefined);
-            if (!editing) setOpenId("custom:" + route);
+            if (!editing) selectDetail("custom:" + route);
           }}
         />
       )}

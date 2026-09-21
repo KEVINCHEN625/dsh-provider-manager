@@ -65,6 +65,26 @@ export class Manager {
   disposeQuota() {
     this.quotaReader.dispose();
   }
+  private customExists(route: string) {
+    const d = this.descriptors().find((item) => item.ns === "llm-pi-ai");
+    const value = d?.value;
+    const providers =
+      value && typeof value === "object" && !Array.isArray(value)
+        ? (value as Record<string, unknown>).providers
+        : undefined;
+    if (
+      providers &&
+      typeof providers === "object" &&
+      !Array.isArray(providers) &&
+      Object.hasOwn(providers, route)
+    )
+      return true;
+    if (this.services.llm.listProviders().some((item) => item.id === route))
+      return true;
+    return this.services.llm
+      .listConfigurableProviders()
+      .some((item) => item.provider === route);
+  }
   async quota(input: unknown, signal?: AbortSignal): Promise<QuotaSnapshot> {
     signal?.throwIfAborted();
     const p = exact(input, ["providerId", "bindingToken", "refresh"]);
@@ -74,13 +94,8 @@ export class Manager {
     if (p.bindingToken !== undefined && typeof p.bindingToken !== "string")
       throw new SafeError("INVALID_INPUT");
     if (providerId.startsWith("custom:")) {
-      try {
-        this.binding(providerId);
-      } catch (error) {
-        if (error instanceof SafeError && error.code === "REF_NOT_ALLOWED")
-          throw new SafeError("INVALID_INPUT");
-        throw error;
-      }
+      if (!this.customExists(providerId.slice(7)))
+        throw new SafeError("INVALID_INPUT");
       return {
         providerId,
         status: "unsupported",
@@ -94,6 +109,14 @@ export class Manager {
       providerId === "opencode-go"
         ? "opencode-official"
         : "command-default-reference";
+    const timeoutSnapshot = (): QuotaSnapshot => ({
+      providerId,
+      source,
+      status: "error",
+      error: "TIMEOUT",
+      windows: [],
+      stale: false,
+    });
     let binding: ReturnType<Manager["binding"]>;
     try {
       binding = this.binding(providerId);
@@ -133,47 +156,106 @@ export class Manager {
         windows: [],
         stale: false,
       };
-    const resolve = () =>
-      this.services.credentials.resolve(credentialRef(binding.ref));
-    const resolved = signal
-      ? await untilAborted(resolve(), signal)
-      : await resolve();
-    const key =
-      typeof resolved?.value === "string" ? resolved.value.trim() : "";
-    if (!key)
-      return {
+    const bound = this.quotaReader.bindDeadline(signal);
+    try {
+      const resolve = () =>
+        this.services.credentials.resolve(credentialRef(binding.ref));
+      let resolved: Awaited<ReturnType<typeof resolve>>;
+      try {
+        resolved = await untilAborted(resolve(), bound.signal);
+      } catch (error) {
+        if (bound.timedOut()) return timeoutSnapshot();
+        throw error;
+      }
+      const key =
+        typeof resolved?.value === "string" ? resolved.value.trim() : "";
+      if (!key)
+        return {
+          providerId,
+          source,
+          status: "missing-credential",
+          windows: [],
+          stale: false,
+        };
+      const credentialSource =
+        typeof resolved?.source === "string" ? resolved.source : undefined;
+      let latest: ReturnType<Manager["binding"]>;
+      try {
+        latest = this.binding(providerId);
+      } catch (error) {
+        if (error instanceof SafeError && error.code === "REF_NOT_ALLOWED")
+          return {
+            providerId,
+            source,
+            status: "missing-credential",
+            windows: [],
+            stale: false,
+          };
+        throw error;
+      }
+      if (latest.token !== binding.token)
+        throw new SafeError("BINDING_CHANGED");
+      let again: Awaited<ReturnType<typeof resolve>>;
+      try {
+        again = await untilAborted(
+          this.services.credentials.resolve(credentialRef(latest.ref)),
+          bound.signal,
+        );
+      } catch (error) {
+        if (bound.timedOut()) return timeoutSnapshot();
+        throw error;
+      }
+      const againKey =
+        typeof again?.value === "string" ? again.value.trim() : "";
+      if (againKey !== key || again?.source !== credentialSource) {
+        if (!againKey)
+          return {
+            providerId,
+            source,
+            status: "missing-credential",
+            windows: [],
+            stale: false,
+          };
+        return {
+          providerId,
+          source,
+          status: "error",
+          error: "UNAVAILABLE",
+          windows: [],
+          stale: false,
+        };
+      }
+      return await this.quotaReader.load({
         providerId,
         source,
-        status: "missing-credential",
-        windows: [],
-        stale: false,
-      };
-    const credentialSource =
-      typeof resolved?.source === "string" ? resolved.source : undefined;
-    return this.quotaReader.load({
-      providerId,
-      source,
-      url:
-        providerId === "opencode-go" ? OPENCODE_USAGE_URL : COMMAND_CREDITS_URL,
-      kind: providerId === "opencode-go" ? "opencode" : "command",
-      bindingToken: binding.token,
-      credentialSource,
-      key,
-      refresh: p.refresh === true,
-      signal,
-      stillCurrent: async () => {
-        signal?.throwIfAborted();
-        const latest = this.binding(providerId);
-        if (latest.token !== binding.token) return false;
-        const again = signal
-          ? await untilAborted(
-              this.services.credentials.resolve(credentialRef(latest.ref)),
-              signal,
-            )
-          : await this.services.credentials.resolve(credentialRef(latest.ref));
-        return again?.value === key && again?.source === credentialSource;
-      },
-    });
+        url:
+          providerId === "opencode-go"
+            ? OPENCODE_USAGE_URL
+            : COMMAND_CREDITS_URL,
+        kind: providerId === "opencode-go" ? "opencode" : "command",
+        bindingToken: binding.token,
+        credentialSource,
+        key,
+        refresh: p.refresh === true,
+        signal: bound.signal,
+        timedOut: bound.timedOut,
+        stillCurrent: async () => {
+          bound.signal.throwIfAborted();
+          const live = this.binding(providerId);
+          if (live.token !== binding.token) return false;
+          const now = await untilAborted(
+            this.services.credentials.resolve(credentialRef(live.ref)),
+            bound.signal,
+          );
+          return now?.value === key && now?.source === credentialSource;
+        },
+      });
+    } catch (error) {
+      if (bound.timedOut()) return timeoutSnapshot();
+      throw error;
+    } finally {
+      bound.dispose();
+    }
   }
   descriptors() {
     return this.services.settings.describe({ redactSecrets: true });

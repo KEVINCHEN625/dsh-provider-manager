@@ -34,6 +34,7 @@ export interface QuotaLoadInput {
   key: string;
   refresh?: boolean;
   signal?: AbortSignal;
+  timedOut?: () => boolean;
   stillCurrent: () => Promise<boolean>;
 }
 
@@ -132,8 +133,11 @@ function parseCommandWindow(value: unknown): Omit<QuotaWindow, "id"> {
     ? isoFromCommandMs(value.resetAt)
     : undefined;
   const window: Omit<QuotaWindow, "id"> = {};
-  if (used !== undefined && cap !== undefined && cap > 0)
-    Object.assign(window, percents((used / cap) * 100));
+  if (used !== undefined && cap !== undefined && cap > 0) {
+    const usedPercent = (used / cap) * 100;
+    if (Number.isFinite(usedPercent))
+      Object.assign(window, percents(usedPercent));
+  }
   if (resetsAt) window.resetsAt = resetsAt;
   return window;
 }
@@ -222,40 +226,6 @@ export async function untilAborted<T>(
   }
 }
 
-function raceDeadline<T>(
-  promise: Promise<T>,
-  ms: number,
-  signal: AbortSignal,
-): Promise<{ timedOut: true } | { value: T }> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => resolve({ timedOut: true }), ms);
-    const onAbort = () => {
-      clearTimeout(timer);
-      reject(
-        signal.reason ??
-          new DOMException("This operation was aborted", "AbortError"),
-      );
-    };
-    signal.addEventListener("abort", onAbort, { once: true });
-    if (signal.aborted) {
-      onAbort();
-      return;
-    }
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        signal.removeEventListener("abort", onAbort);
-        resolve({ value });
-      },
-      (error) => {
-        clearTimeout(timer);
-        signal.removeEventListener("abort", onAbort);
-        reject(error);
-      },
-    );
-  });
-}
-
 async function readBounded(
   response: Response,
   max: number,
@@ -269,22 +239,22 @@ async function readBounded(
   const reader = response.body.getReader();
   const chunks: Buffer[] = [];
   let size = 0;
+  const release = () => {
+    void reader.cancel().catch(() => {});
+  };
   try {
     while (true) {
-      signal.throwIfAborted();
-      const { done, value } = await reader.read();
+      const { done, value } = await untilAborted(reader.read(), signal);
       if (done) break;
       size += value.byteLength;
       if (size > max) {
-        await reader.cancel();
+        release();
         throw new SafeError("INVALID_RESPONSE");
       }
       chunks.push(Buffer.from(value));
     }
   } catch (error) {
-    try {
-      await reader.cancel();
-    } catch {}
+    release();
     throw error;
   }
   return new TextDecoder().decode(Buffer.concat(chunks));
@@ -300,7 +270,7 @@ function copySnapshot(snapshot: QuotaSnapshot): QuotaSnapshot {
 export class QuotaReader {
   private fetchImpl: typeof fetch;
   private now: () => number;
-  private timeoutMs: number;
+  readonly timeoutMs: number;
   private salt = randomBytes(32);
   private cache = new Map<string, CacheEntry>();
   private inflight = new Map<string, AbortController>();
@@ -310,6 +280,18 @@ export class QuotaReader {
     this.fetchImpl = options.fetch ?? fetch;
     this.now = options.now ?? Date.now;
     this.timeoutMs = options.timeoutMs ?? QUOTA_TIMEOUT_MS;
+  }
+
+  bindDeadline(signal?: AbortSignal) {
+    const timeout = new AbortController();
+    const timer = setTimeout(() => timeout.abort(), this.timeoutMs);
+    return {
+      signal: signal
+        ? AbortSignal.any([signal, timeout.signal])
+        : timeout.signal,
+      timedOut: () => timeout.signal.aborted && !signal?.aborted,
+      dispose: () => clearTimeout(timer),
+    };
   }
 
   private fingerprint(
@@ -361,134 +343,195 @@ export class QuotaReader {
     if (cached && cached.identity !== identity)
       this.cache.delete(input.providerId);
     const current = this.cache.get(input.providerId);
-    if (
-      current &&
-      current.identity === identity &&
-      input.refresh !== true &&
-      this.now() - current.storedAt < QUOTA_TTL_MS
-    )
-      return copySnapshot(current.snapshot);
-    if (this.inflight.has(input.providerId)) throw new SafeError("UNAVAILABLE");
-    const generation = (this.generation.get(input.providerId) ?? 0) + 1;
-    this.generation.set(input.providerId, generation);
-    const local = new AbortController();
-    this.inflight.set(input.providerId, local);
-    const combined = AbortSignal.any([
-      ...(input.signal ? [input.signal] : []),
-      local.signal,
-    ]);
-    const fail = (
+    const bound = input.timedOut
+      ? {
+          signal: input.signal as AbortSignal,
+          timedOut: input.timedOut,
+          dispose: () => {},
+        }
+      : this.bindDeadline(input.signal);
+    const empty = (
       status: QuotaStatus,
       error?: QuotaSnapshot["error"],
-      stale = false,
-    ): QuotaSnapshot => {
-      const usable =
-        stale && current && current.identity === identity
-          ? current.snapshot
-          : undefined;
-      return {
-        providerId: input.providerId,
-        source: input.source,
-        status,
-        error,
-        stale: Boolean(usable),
-        windows: usable ? usable.windows.map((window) => ({ ...window })) : [],
-        ...(usable?.fetchedAt ? { fetchedAt: usable.fetchedAt } : {}),
-      };
-    };
+    ): QuotaSnapshot => ({
+      providerId: input.providerId,
+      source: input.source,
+      status,
+      error,
+      stale: false,
+      windows: [],
+    });
     try {
-      input.signal?.throwIfAborted();
-      let response: Response;
-      try {
-        const raced = await raceDeadline(
-          Promise.resolve(
-            this.fetchImpl(input.url, {
-              method: "GET",
-              redirect: "error",
-              cache: "no-store",
-              signal: combined,
-              headers: {
-                Accept: "application/json",
-                Authorization: "Bearer " + input.key,
-              },
-            }),
-          ),
-          this.timeoutMs,
-          combined,
+      if (bound.signal.aborted) {
+        if (bound.timedOut()) return empty("error", "TIMEOUT");
+        throw (
+          bound.signal.reason ??
+          new DOMException("This operation was aborted", "AbortError")
         );
-        if ("timedOut" in raced) return fail("error", "TIMEOUT", true);
-        response = raced.value;
-      } catch (error) {
-        if (this.generation.get(input.providerId) !== generation) throw error;
-        if (input.signal?.aborted) throw error;
-        if (local.signal.aborted) throw error;
-        return fail("error", "UNAVAILABLE", true);
       }
-      if (this.generation.get(input.providerId) !== generation)
-        return fail("error", "UNAVAILABLE");
-      if (!(await input.stillCurrent())) return fail("error", "UNAVAILABLE");
-      if (response.status === 401 || response.status === 403) {
+      if (
+        current &&
+        current.identity === identity &&
+        input.refresh !== true &&
+        this.now() - current.storedAt < QUOTA_TTL_MS
+      ) {
         try {
-          await response.body?.cancel();
-        } catch {}
-        return fail("error", "UNAUTHORIZED", true);
+          const same = await untilAborted(
+            Promise.resolve(input.stillCurrent()),
+            bound.signal,
+          );
+          if (!same) return empty("error", "UNAVAILABLE");
+          return copySnapshot(current.snapshot);
+        } catch (error) {
+          if (bound.timedOut()) return empty("error", "TIMEOUT");
+          throw error;
+        }
       }
-      if (response.status === 404) {
+      if (this.inflight.has(input.providerId))
+        throw new SafeError("UNAVAILABLE");
+      const generation = (this.generation.get(input.providerId) ?? 0) + 1;
+      this.generation.set(input.providerId, generation);
+      const local = new AbortController();
+      this.inflight.set(input.providerId, local);
+      const combined = AbortSignal.any([bound.signal, local.signal]);
+      const abortedByCaller = () => combined.aborted && !bound.timedOut();
+      const confirm = async () => {
         try {
-          await response.body?.cancel();
-        } catch {}
+          return await untilAborted(
+            Promise.resolve(input.stillCurrent()),
+            combined,
+          );
+        } catch (error) {
+          if (bound.timedOut() || abortedByCaller()) throw error;
+          return false;
+        }
+      };
+      const fail = async (
+        status: QuotaStatus,
+        error?: QuotaSnapshot["error"],
+        stale = false,
+      ): Promise<QuotaSnapshot> => {
+        let usable: QuotaSnapshot | undefined;
+        if (stale && current && current.identity === identity) {
+          let same = false;
+          try {
+            same = await untilAborted(
+              Promise.resolve(input.stillCurrent()),
+              combined,
+            );
+          } catch (caught) {
+            if (bound.timedOut()) same = false;
+            else if (abortedByCaller()) throw caught;
+            else same = false;
+          }
+          if (same) usable = current.snapshot;
+        }
         return {
           providerId: input.providerId,
           source: input.source,
-          status: "unsupported",
-          windows: [],
-          stale: false,
+          status,
+          error,
+          stale: Boolean(usable),
+          windows: usable
+            ? usable.windows.map((window) => ({ ...window }))
+            : [],
+          ...(usable?.fetchedAt ? { fetchedAt: usable.fetchedAt } : {}),
         };
-      }
-      if (!response.ok) {
-        try {
-          await response.body?.cancel();
-        } catch {}
-        return fail("error", "UNAVAILABLE", true);
-      }
-      let text: string;
-      try {
-        text = await readBounded(response, QUOTA_MAX_BYTES, combined);
-      } catch (error) {
-        if (input.signal?.aborted || local.signal.aborted) throw error;
-        return fail("error", "INVALID_RESPONSE", true);
-      }
-      let body: unknown;
-      try {
-        body = JSON.parse(text);
-      } catch {
-        return fail("error", "INVALID_RESPONSE", true);
-      }
-      const windows =
-        input.kind === "opencode"
-          ? parseOpenCodeUsage(body)
-          : parseCommandCredits(body);
-      if (!windows) return fail("error", "INVALID_RESPONSE", true);
-      const snapshot: QuotaSnapshot = {
-        providerId: input.providerId,
-        source: input.source,
-        status: "ready",
-        stale: false,
-        windows,
-        fetchedAt: new Date(this.now()).toISOString(),
       };
-      if (this.generation.get(input.providerId) !== generation)
-        return fail("error", "UNAVAILABLE");
-      if (!(await input.stillCurrent())) return fail("error", "UNAVAILABLE");
-      this.cache.set(input.providerId, {
-        identity,
-        snapshot: copySnapshot(snapshot),
-        storedAt: this.now(),
-      });
-      return snapshot;
+      try {
+        if (!(await confirm())) return empty("error", "UNAVAILABLE");
+        let response: Response;
+        try {
+          response = await untilAborted(
+            Promise.resolve(
+              this.fetchImpl(input.url, {
+                method: "GET",
+                redirect: "error",
+                cache: "no-store",
+                signal: combined,
+                headers: {
+                  Accept: "application/json",
+                  Authorization: "Bearer " + input.key,
+                },
+              }),
+            ),
+            combined,
+          );
+        } catch (error) {
+          if (this.generation.get(input.providerId) !== generation) throw error;
+          if (bound.timedOut()) return fail("error", "TIMEOUT", true);
+          if (abortedByCaller()) throw error;
+          return fail("error", "UNAVAILABLE", true);
+        }
+        if (this.generation.get(input.providerId) !== generation)
+          return empty("error", "UNAVAILABLE");
+        if (!(await confirm())) return empty("error", "UNAVAILABLE");
+        if (response.status === 401 || response.status === 403) {
+          void response.body?.cancel().catch(() => {});
+          return fail("error", "UNAUTHORIZED", true);
+        }
+        if (response.status === 404) {
+          void response.body?.cancel().catch(() => {});
+          return {
+            providerId: input.providerId,
+            source: input.source,
+            status: "unsupported",
+            windows: [],
+            stale: false,
+          };
+        }
+        if (!response.ok) {
+          void response.body?.cancel().catch(() => {});
+          return fail("error", "UNAVAILABLE", true);
+        }
+        let text: string;
+        try {
+          text = await readBounded(response, QUOTA_MAX_BYTES, combined);
+        } catch (error) {
+          if (this.generation.get(input.providerId) !== generation) throw error;
+          if (bound.timedOut()) return fail("error", "TIMEOUT", true);
+          if (abortedByCaller()) throw error;
+          return fail("error", "INVALID_RESPONSE", true);
+        }
+        let body: unknown;
+        try {
+          body = JSON.parse(text);
+        } catch {
+          return fail("error", "INVALID_RESPONSE", true);
+        }
+        const windows =
+          input.kind === "opencode"
+            ? parseOpenCodeUsage(body)
+            : parseCommandCredits(body);
+        if (!windows) return fail("error", "INVALID_RESPONSE", true);
+        const snapshot: QuotaSnapshot = {
+          providerId: input.providerId,
+          source: input.source,
+          status: "ready",
+          stale: false,
+          windows,
+          fetchedAt: new Date(this.now()).toISOString(),
+        };
+        if (this.generation.get(input.providerId) !== generation)
+          return empty("error", "UNAVAILABLE");
+        if (!(await confirm())) return empty("error", "UNAVAILABLE");
+        this.cache.set(input.providerId, {
+          identity,
+          snapshot: copySnapshot(snapshot),
+          storedAt: this.now(),
+        });
+        return snapshot;
+      } catch (error) {
+        if (this.generation.get(input.providerId) !== generation) throw error;
+        if (bound.timedOut()) return fail("error", "TIMEOUT", true);
+        if (abortedByCaller()) throw error;
+        throw error;
+      } finally {
+        if (this.inflight.get(input.providerId) === local)
+          this.inflight.delete(input.providerId);
+      }
     } finally {
-      if (this.inflight.get(input.providerId) === local)
-        this.inflight.delete(input.providerId);
+      bound.dispose();
     }
   }
 }

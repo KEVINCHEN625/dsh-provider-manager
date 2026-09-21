@@ -105,17 +105,36 @@ const quotaSources = [
 const quotaWindows = ["five-hour", "weekly", "monthly"] as const;
 function iso(value: unknown): string {
   const text = string(value);
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/.test(text))
+    throw { code: "UNAVAILABLE" };
   const parsed = Date.parse(text);
   if (!Number.isFinite(parsed)) throw { code: "UNAVAILABLE" };
+  const year = new Date(parsed).getUTCFullYear();
+  if (year < 2000 || year > 2100) throw { code: "UNAVAILABLE" };
   return text;
 }
-function percent(value: unknown): number {
+function usedPercent(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
     throw { code: "UNAVAILABLE" };
   return value;
 }
-export function validateQuota(value: unknown): QuotaSnapshot {
+function remainingPercent(value: unknown): number {
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value < 0 ||
+    value > 100
+  )
+    throw { code: "UNAVAILABLE" };
+  return value;
+}
+export function validateQuota(
+  value: unknown,
+  expectedProviderId: string,
+): QuotaSnapshot {
   const data = record(value);
+  if (string(data.providerId) !== expectedProviderId)
+    throw { code: "UNAVAILABLE" };
   if (!quotaStatuses.includes(data.status as (typeof quotaStatuses)[number]))
     throw { code: "UNAVAILABLE" };
   if (!Array.isArray(data.windows) || data.windows.length > 3)
@@ -132,9 +151,9 @@ export function validateQuota(value: unknown): QuotaSnapshot {
     seen.add(id as string);
     const next: QuotaWindow = { id: id as QuotaWindow["id"] };
     if (window.usedPercent !== undefined)
-      next.usedPercent = percent(window.usedPercent);
+      next.usedPercent = usedPercent(window.usedPercent);
     if (window.remainingPercent !== undefined)
-      next.remainingPercent = percent(window.remainingPercent);
+      next.remainingPercent = remainingPercent(window.remainingPercent);
     if (
       next.usedPercent !== undefined &&
       next.remainingPercent !== undefined &&
@@ -145,7 +164,7 @@ export function validateQuota(value: unknown): QuotaSnapshot {
     return next;
   });
   const snapshot: QuotaSnapshot = {
-    providerId: string(data.providerId),
+    providerId: expectedProviderId,
     status: data.status as QuotaSnapshot["status"],
     windows,
     stale: boolean(data.stale),

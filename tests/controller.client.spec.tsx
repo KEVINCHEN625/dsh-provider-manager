@@ -1,5 +1,6 @@
 import { test, expect, vi } from "vitest";
 import { Controller } from "../src/client/controller.js";
+import { validateQuota } from "../src/client/validation.js";
 const fixtureCard = (id: string, model = id) => ({
   id,
   name: id,
@@ -360,5 +361,91 @@ test("malformed quota payloads never enter client state", async () => {
     expect(c.state.quotas["opencode-go"]?.status).toBe("error"),
   );
   expect(c.state.quotas["opencode-go"]?.snapshot).toBeUndefined();
+  c.dispose();
+});
+
+const validQuota = quotaFixture("opencode-go", [
+  { id: "five-hour", usedPercent: 20, remainingPercent: 80 },
+]);
+
+test("validateQuota rejects mismatched id, non-ISO time, range, and remaining overflow", () => {
+  expect(() =>
+    validateQuota({ ...validQuota, providerId: "commandcode" }, "opencode-go"),
+  ).toThrow();
+  expect(() =>
+    validateQuota(
+      { ...validQuota, fetchedAt: "2026-09-21 00:00:00" },
+      "opencode-go",
+    ),
+  ).toThrow();
+  expect(() =>
+    validateQuota(
+      { ...validQuota, fetchedAt: "1999-01-01T00:00:00.000Z" },
+      "opencode-go",
+    ),
+  ).toThrow();
+  expect(() =>
+    validateQuota(
+      {
+        ...validQuota,
+        windows: [{ id: "five-hour", remainingPercent: 1000 }],
+      },
+      "opencode-go",
+    ),
+  ).toThrow();
+  expect(() =>
+    validateQuota(
+      {
+        ...validQuota,
+        windows: [
+          { id: "five-hour", remainingPercent: Number.POSITIVE_INFINITY },
+        ],
+      },
+      "opencode-go",
+    ),
+  ).toThrow();
+  expect(
+    validateQuota(
+      {
+        ...validQuota,
+        windows: [{ id: "weekly", remainingPercent: 40 }],
+      },
+      "opencode-go",
+    ).windows[0].remainingPercent,
+  ).toBe(40);
+});
+
+test("providerId mismatch or remaining overflow does not keep previous windows", async () => {
+  let payload: unknown = quotaFixture("opencode-go", [
+    { id: "five-hour", usedPercent: 0, remainingPercent: 100 },
+  ]);
+  const c = new Controller({
+    rpc: async (endpoint) => {
+      if (endpoint === "snapshot")
+        return fixtureSnapshot([
+          { ...fixtureCard("opencode-go"), bindingToken: "t" },
+        ]);
+      return payload;
+    },
+    reveal: async () => ({ value: "", revealTTL: 1 }),
+  });
+  await c.load();
+  await vi.waitFor(() =>
+    expect(
+      c.state.quotas["opencode-go"]?.snapshot?.windows[0].remainingPercent,
+    ).toBe(100),
+  );
+  payload = quotaFixture("commandcode", [
+    { id: "five-hour", usedPercent: 1, remainingPercent: 99 },
+  ]);
+  await c.refreshQuota({ id: "opencode-go", bindingToken: "t" }, true);
+  expect(c.state.quotas["opencode-go"]?.snapshot).toBeUndefined();
+  expect(c.state.quotas["opencode-go"]?.status).toBe("error");
+  payload = quotaFixture("opencode-go", [
+    { id: "five-hour", remainingPercent: 1000 },
+  ]);
+  await c.refreshQuota({ id: "opencode-go", bindingToken: "t" }, true);
+  expect(c.state.quotas["opencode-go"]?.snapshot).toBeUndefined();
+  expect(c.state.quotas["opencode-go"]?.status).toBe("error");
   c.dispose();
 });

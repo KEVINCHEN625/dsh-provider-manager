@@ -313,6 +313,7 @@ export class Controller {
             ),
           abort,
         ),
+        id,
       );
       if (generation !== this.quotaGeneration[id] || this.disposed) return;
       this.update({

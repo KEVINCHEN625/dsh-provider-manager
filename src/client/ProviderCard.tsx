@@ -73,20 +73,20 @@ export function ProviderCard({
         >
           {t("details")}
         </summary>
-        {open && (
-          <ProviderDetails
-            provider={provider}
-            controller={controller}
-            state={state}
-            t={t}
-            edit={edit}
-            onClose={() => {
-              controller.hide();
-              onToggle(false);
-            }}
-          />
-        )}
       </details>
+      {open && (
+        <ProviderDetails
+          provider={provider}
+          controller={controller}
+          state={state}
+          t={t}
+          edit={edit}
+          onClose={() => {
+            controller.hide();
+            onToggle(false);
+          }}
+        />
+      )}
     </article>
   );
 }
@@ -126,19 +126,19 @@ export function MuseCard({
         >
           {t("details")}
         </summary>
-        {open && (
-          <div className="pm-details-body">
-            <p>{t("museHelp")}</p>
-            <a
-              href="https://dev.meta.ai/docs/muse-code/subscriptions"
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t("docs")}
-            </a>
-          </div>
-        )}
       </details>
+      {open && (
+        <div className="pm-details-body">
+          <p>{t("museHelp")}</p>
+          <a
+            href="https://dev.meta.ai/docs/muse-code/subscriptions"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t("docs")}
+          </a>
+        </div>
+      )}
     </article>
   );
 }

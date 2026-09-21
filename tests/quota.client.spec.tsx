@@ -171,6 +171,17 @@ test("closing details clears revealed key and add form keeps drafts", async () =
   );
 });
 
+test("expanded details body is a row-level grid item so Back stays on one line", async () => {
+  setup();
+  await openDetails();
+  const body = document.querySelector(".pm-details-body");
+  expect(body?.parentElement?.classList.contains("pm-row")).toBe(true);
+  expect(body?.closest("details")).toBeNull();
+  expect(screen.getByRole("button", { name: en.back }).textContent).toBe(
+    en.back,
+  );
+});
+
 test("details summary is keyboard operable and Muse states facts without a quota bar", async () => {
   setup();
   await screen.findByText("Muse Code");
@@ -182,4 +193,139 @@ test("details summary is keyboard operable and Muse states facts without a quota
   fireEvent.keyDown(details, { key: "Enter" });
   await screen.findByText("fixture-model");
   expect(screen.getByText("5h remaining 100%")).toBeTruthy();
+});
+
+const command = {
+  id: "commandcode",
+  name: "Command Code GOAT",
+  available: true,
+  revision: 1,
+  bindingToken: "command-token",
+  credential: { configured: true, writable: true, source: "file" },
+  models: [{ id: "command-model" }],
+};
+
+function dualSetup(
+  reveal: () => Promise<{ value: string; source: string; revealTTL: number }>,
+) {
+  const c = new Controller({
+    rpc: async (endpoint: string, payload: any) =>
+      endpoint === "quota/read"
+        ? {
+            providerId: payload?.providerId,
+            status: "unsupported",
+            windows: [],
+            stale: false,
+          }
+        : {
+            ...snapshot,
+            providers: [provider, command],
+          },
+    reveal,
+  });
+  const ui = render(
+    <ProviderManager createController={() => c} t={(key) => en[key]} />,
+  );
+  return { c, ...ui };
+}
+
+test("switching details to Muse and back requires Show key again", async () => {
+  const { c } = dualSetup(async () => ({
+    value: "SYNTHETIC_REVIEW_KEY",
+    source: "file",
+    revealTTL: 30000,
+  }));
+  try {
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Details: OpenCode Go" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Show key" }));
+    await screen.findByDisplayValue("SYNTHETIC_REVIEW_KEY");
+    fireEvent.change(screen.getByLabelText("New key"), {
+      target: { value: "PENDING-SECRET" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Details: Muse Code" }));
+    expect(screen.queryByDisplayValue("SYNTHETIC_REVIEW_KEY")).toBeNull();
+    expect(screen.queryByDisplayValue("PENDING-SECRET")).toBeNull();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Details: OpenCode Go" }),
+    );
+    expect(screen.queryByDisplayValue("SYNTHETIC_REVIEW_KEY")).toBeNull();
+    expect(screen.queryByDisplayValue("PENDING-SECRET")).toBeNull();
+    expect((screen.getByLabelText("New key") as HTMLInputElement).value).toBe(
+      "",
+    );
+  } finally {
+    c.dispose();
+  }
+});
+
+test("switching A to B, Back, collapse, and unmount all hide revealed keys", async () => {
+  const { c, unmount } = dualSetup(async () => ({
+    value: "SYNTHETIC_A",
+    source: "file",
+    revealTTL: 30000,
+  }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Details: OpenCode Go" }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Show key" }));
+  await screen.findByDisplayValue("SYNTHETIC_A");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Details: Command Code GOAT" }),
+  );
+  expect(screen.queryByDisplayValue("SYNTHETIC_A")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Details: OpenCode Go" }));
+  expect(screen.queryByDisplayValue("SYNTHETIC_A")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Show key" }));
+  await screen.findByDisplayValue("SYNTHETIC_A");
+  fireEvent.click(screen.getByRole("button", { name: en.back }));
+  expect(screen.queryByDisplayValue("SYNTHETIC_A")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Details: OpenCode Go" }));
+  fireEvent.click(screen.getByRole("button", { name: "Show key" }));
+  await screen.findByDisplayValue("SYNTHETIC_A");
+  fireEvent.click(screen.getByRole("button", { name: "Details: OpenCode Go" }));
+  expect(screen.queryByDisplayValue("SYNTHETIC_A")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Details: OpenCode Go" }));
+  fireEvent.click(screen.getByRole("button", { name: "Show key" }));
+  await screen.findByDisplayValue("SYNTHETIC_A");
+  unmount();
+  expect(c.state.revealed).toBeUndefined();
+});
+
+test("late reveal after switching details cannot display the previous key", async () => {
+  let release: ((value: unknown) => void) | undefined;
+  const { c } = dualSetup(
+    () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+  );
+  try {
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Details: OpenCode Go" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Show key" }));
+    await waitFor(() =>
+      expect(c.state.operations["reveal:opencode-go"]?.status).toBe("loading"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Details: Muse Code" }));
+    release?.({
+      value: "LATE_REVEAL_KEY",
+      source: "file",
+      revealTTL: 30000,
+    });
+    await waitFor(() =>
+      expect(c.state.operations["reveal:opencode-go"]?.status).not.toBe(
+        "loading",
+      ),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Details: OpenCode Go" }),
+    );
+    expect(screen.queryByDisplayValue("LATE_REVEAL_KEY")).toBeNull();
+    expect(c.state.revealed).toBeUndefined();
+  } finally {
+    c.dispose();
+  }
 });

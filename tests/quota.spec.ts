@@ -26,6 +26,37 @@ function windowOf(windows: unknown[], id: string) {
   return (windows as { id: string }[]).find((w) => w.id === id);
 }
 
+function loadInput(
+  overrides: Record<string, unknown> = {},
+): Parameters<QuotaReader["load"]>[0] {
+  return {
+    providerId: "opencode-go",
+    source: "opencode-official",
+    url: OPENCODE_USAGE_URL,
+    kind: "opencode",
+    bindingToken: "fixture-token",
+    credentialSource: "file",
+    key: "SYNTHETIC",
+    stillCurrent: async () => true,
+    ...overrides,
+  };
+}
+
+async function settles<T>(promise: Promise<T>, ms = 400): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`did not settle within ${ms}ms`)),
+      ms,
+    );
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 test.each([
   {
     name: "used 0 → remaining 100",
@@ -638,4 +669,419 @@ test("same-identity error may keep host stale windows; timeout does not invent 1
     stale: true,
     windows: [{ id: "five-hour", usedPercent: 22, remainingPercent: 78 }],
   });
+});
+
+test("Command overflow used/cap does not emit infinite percents", () => {
+  const windows = parseCommandCredits({
+    windowLimits: { fiveHour: { used: 1e308, cap: 1e-308 } },
+  });
+  const five = windowOf(windows!, "five-hour") as
+    | { usedPercent?: number; remainingPercent?: number }
+    | undefined;
+  expect(five?.usedPercent).toBeUndefined();
+  expect(five?.remainingPercent).toBeUndefined();
+  expect(JSON.stringify(windows)).not.toMatch(/Infinity|null/i);
+});
+
+test("headers-pending timeout aborts the fetch signal and allows retry", async () => {
+  const rejections: unknown[] = [];
+  const onUnhandled = (reason: unknown) => rejections.push(reason);
+  process.on("unhandledRejection", onUnhandled);
+  let fetchSignal: AbortSignal | undefined;
+  let calls = 0;
+  const reader = new QuotaReader({
+    timeoutMs: 30,
+    fetch: (_url, init) => {
+      calls += 1;
+      fetchSignal = init.signal as AbortSignal;
+      if (calls === 1) return new Promise(() => {});
+      return jsonResponse({ rolling: { percent: 6 } });
+    },
+  });
+  try {
+    const result = await settles(reader.load(loadInput()));
+    expect(result).toMatchObject({
+      status: "error",
+      error: "TIMEOUT",
+      windows: [],
+      stale: false,
+    });
+    expect(fetchSignal?.aborted).toBe(true);
+    expect(
+      await settles(reader.load(loadInput({ refresh: true }))),
+    ).toMatchObject({
+      status: "ready",
+      windows: [{ id: "five-hour", usedPercent: 6, remainingPercent: 94 }],
+    });
+    expect(rejections).toEqual([]);
+  } finally {
+    process.off("unhandledRejection", onUnhandled);
+  }
+});
+
+test("headers arrive immediately but hung body settles, cancels reader, and does not cache", async () => {
+  let canceled = false;
+  let calls = 0;
+  const reader = new QuotaReader({
+    timeoutMs: 30,
+    fetch: () => {
+      calls += 1;
+      if (calls === 1)
+        return Promise.resolve(
+          new Response(
+            new ReadableStream({
+              start() {},
+              cancel() {
+                canceled = true;
+                return new Promise(() => {});
+              },
+            }),
+          ),
+        );
+      return jsonResponse({ rolling: { percent: 9 } });
+    },
+  });
+  const result = await settles(reader.load(loadInput()));
+  expect(result).toMatchObject({
+    status: "error",
+    error: "TIMEOUT",
+    windows: [],
+    stale: false,
+  });
+  expect(canceled).toBe(true);
+  expect(
+    await settles(reader.load(loadInput({ refresh: true }))),
+  ).toMatchObject({
+    windows: [{ id: "five-hour", usedPercent: 9, remainingPercent: 91 }],
+  });
+});
+
+test("credential resolve pending is covered by the injected deadline", async () => {
+  const f = fixture();
+  const fetchImpl = vi.fn(async () =>
+    jsonResponse({ rolling: { percent: 1 } }),
+  );
+  f.services.credentials.resolve = () => new Promise(() => {});
+  const m = manager(f, new QuotaReader({ fetch: fetchImpl, timeoutMs: 30 }));
+  const result = await settles(m.quota({ providerId: "opencode-go" }));
+  expect(result).toMatchObject({
+    status: "error",
+    error: "TIMEOUT",
+    windows: [],
+    stale: false,
+  });
+  expect(fetchImpl).not.toHaveBeenCalled();
+});
+
+test("final identity recheck pending is covered by the deadline", async () => {
+  let hang = false;
+  const reader = new QuotaReader({
+    timeoutMs: 40,
+    fetch: async () => {
+      hang = true;
+      return jsonResponse({ rolling: { percent: 4 } });
+    },
+  });
+  const result = await settles(
+    reader.load(
+      loadInput({
+        stillCurrent: () =>
+          hang ? new Promise(() => {}) : Promise.resolve(true),
+      }),
+    ),
+  );
+  expect(result).toMatchObject({
+    status: "error",
+    error: "TIMEOUT",
+    windows: [],
+    stale: false,
+  });
+});
+
+test("caller abort after hung body settles, aborts, and allows retry", async () => {
+  let fetchSignal: AbortSignal | undefined;
+  let canceled = false;
+  let reading = false;
+  let calls = 0;
+  const abort = new AbortController();
+  const reader = new QuotaReader({
+    timeoutMs: 5000,
+    fetch: (_url, init) => {
+      calls += 1;
+      fetchSignal = init.signal as AbortSignal;
+      if (calls === 1)
+        return Promise.resolve(
+          new Response(
+            new ReadableStream({
+              pull() {
+                reading = true;
+              },
+              cancel() {
+                canceled = true;
+              },
+            }),
+          ),
+        );
+      return jsonResponse({ rolling: { percent: 5 } });
+    },
+  });
+  const pending = reader.load(loadInput({ signal: abort.signal }));
+  await vi.waitFor(() => expect(reading).toBe(true));
+  abort.abort();
+  const aborted = await Promise.race([
+    pending.then(
+      () => "resolved" as const,
+      () => "rejected" as const,
+    ),
+    new Promise<"hung">((resolve) => setTimeout(() => resolve("hung"), 400)),
+  ]);
+  expect(aborted).toBe("rejected");
+  expect(fetchSignal?.aborted).toBe(true);
+  expect(canceled).toBe(true);
+  expect(await settles(reader.load(loadInput()))).toMatchObject({
+    windows: [{ id: "five-hour", usedPercent: 5, remainingPercent: 95 }],
+  });
+});
+
+test("plugin dispose after hung body settles and does not cache a late body", async () => {
+  let reading = false;
+  let calls = 0;
+  const reader = new QuotaReader({
+    timeoutMs: 5000,
+    fetch: () => {
+      calls += 1;
+      if (calls === 1)
+        return Promise.resolve(
+          new Response(
+            new ReadableStream({
+              pull() {
+                reading = true;
+              },
+            }),
+          ),
+        );
+      return jsonResponse({ rolling: { percent: 8 } });
+    },
+  });
+  const m = manager(fixture(), reader);
+  const pending = m.quota({ providerId: "opencode-go" });
+  await vi.waitFor(() => expect(reading).toBe(true));
+  m.disposeQuota();
+  const disposed = await Promise.race([
+    pending.then(
+      () => "resolved" as const,
+      () => "rejected" as const,
+    ),
+    new Promise<"hung">((resolve) => setTimeout(() => resolve("hung"), 400)),
+  ]);
+  expect(disposed).toBe("rejected");
+  expect(await settles(m.quota({ providerId: "opencode-go" }))).toMatchObject({
+    windows: [{ id: "five-hour", usedPercent: 8, remainingPercent: 92 }],
+  });
+});
+
+test("identity change during failed refresh does not return the previous windows", async () => {
+  let current = true;
+  let rejectFetch: ((error: Error) => void) | undefined;
+  let calls = 0;
+  const reader = new QuotaReader({
+    timeoutMs: 1000,
+    fetch: async () => {
+      calls += 1;
+      if (calls === 1) return jsonResponse({ rolling: { percent: 22 } });
+      return new Promise((_, reject) => {
+        rejectFetch = reject;
+      });
+    },
+  });
+  const input = loadInput({
+    stillCurrent: async () => current,
+  });
+  await reader.load(input);
+  const pending = reader.load({ ...input, refresh: true });
+  await vi.waitFor(() => expect(calls).toBe(2));
+  current = false;
+  rejectFetch?.(new Error("synthetic failure"));
+  const result = await settles(pending);
+  expect(result.stale).toBe(false);
+  expect(result.windows).toEqual([]);
+  expect(result.status).toBe("error");
+});
+
+test.each([
+  {
+    name: "timeout",
+    fail: () => new Promise<Response>(() => {}),
+    error: "TIMEOUT",
+  },
+  {
+    name: "unauthorized",
+    fail: async () => jsonResponse({ error: "nope" }, 401),
+  },
+  {
+    name: "bad json",
+    fail: async () => new Response("not-json", { status: 200 }),
+  },
+])(
+  "identity change during $name does not keep stale windows",
+  async ({ fail, error }) => {
+    let current = true;
+    let calls = 0;
+    const reader = new QuotaReader({
+      timeoutMs: 30,
+      fetch: () => {
+        calls += 1;
+        if (calls === 1) return jsonResponse({ rolling: { percent: 22 } });
+        current = false;
+        return fail();
+      },
+    });
+    const input = loadInput({ stillCurrent: async () => current });
+    await reader.load(input);
+    const result = await settles(reader.load({ ...input, refresh: true }));
+    expect(result.status).toBe("error");
+    expect(result.stale).toBe(false);
+    expect(result.windows).toEqual([]);
+    if (error) expect(result.error).toBe(error);
+  },
+);
+
+test("revision change during credential resolve does not send fetch", async () => {
+  const f = fixture();
+  let release: ((value: unknown) => void) | undefined;
+  const fetchImpl = vi.fn(async () =>
+    jsonResponse({ rolling: { percent: 1 } }),
+  );
+  f.services.credentials.resolve = () =>
+    new Promise((resolve) => {
+      release = resolve;
+    });
+  const m = manager(f, new QuotaReader({ fetch: fetchImpl, timeoutMs: 1000 }));
+  const pending = m.quota({ providerId: "opencode-go" });
+  await vi.waitFor(() => expect(release).toBeDefined());
+  f.sections[0].revision++;
+  release?.({ value: "SYNTHETIC", source: "file" });
+  await settles(pending.catch((error) => error));
+  expect(fetchImpl).not.toHaveBeenCalled();
+});
+
+test("live key change during resolve does not send fetch", async () => {
+  const f = fixture();
+  let release: ((value: unknown) => void) | undefined;
+  let n = 0;
+  const fetchImpl = vi.fn(async () =>
+    jsonResponse({ rolling: { percent: 1 } }),
+  );
+  f.services.credentials.resolve = async () => {
+    n += 1;
+    if (n === 1)
+      return new Promise((resolve) => {
+        release = resolve;
+      });
+    return { value: f.values.get("OPENCODE_API_KEY"), source: "file" };
+  };
+  const m = manager(f, new QuotaReader({ fetch: fetchImpl, timeoutMs: 1000 }));
+  const pending = m.quota({ providerId: "opencode-go" });
+  await vi.waitFor(() => expect(release).toBeDefined());
+  f.values.set("OPENCODE_API_KEY", "SYNTHETIC-ROTATED");
+  release?.({ value: "SYNTHETIC", source: "file" });
+  const result = await settles(pending);
+  expect(fetchImpl).not.toHaveBeenCalled();
+  expect(result.windows).toEqual([]);
+});
+
+test("old in-flight request cannot clobber a newer cache after set", async () => {
+  const f = fixture();
+  const pending = new Map<string, (value: Response) => void>();
+  const fetchWait = vi.fn(
+    (_url: string, init: RequestInit) =>
+      new Promise<Response>((resolve) => {
+        pending.set(
+          String((init.headers as Record<string, string>).Authorization),
+          resolve,
+        );
+      }),
+  );
+  const m = manager(f, new QuotaReader({ fetch: fetchWait, timeoutMs: 1000 }));
+  const p = (await m.snapshot()).providers[0];
+  const first = m.quota({ providerId: p.id, bindingToken: p.bindingToken });
+  const firstOutcome = first.then(
+    () => "resolved" as const,
+    () => "rejected" as const,
+  );
+  await vi.waitFor(() => expect(pending.has("Bearer SYNTHETIC")).toBe(true));
+  await m.set({
+    providerId: p.id,
+    bindingToken: p.bindingToken,
+    value: "SYNTHETIC-NEW",
+  });
+  const second = m.quota({ providerId: p.id, bindingToken: p.bindingToken });
+  await vi.waitFor(() =>
+    expect(pending.has("Bearer SYNTHETIC-NEW")).toBe(true),
+  );
+  pending.get("Bearer SYNTHETIC-NEW")?.(
+    jsonResponse({ rolling: { percent: 88 } }),
+  );
+  expect((await settles(second)).windows[0].usedPercent).toBe(88);
+  pending.get("Bearer SYNTHETIC")?.(jsonResponse({ rolling: { percent: 11 } }));
+  expect(await firstOutcome).toBe("rejected");
+  expect(
+    (
+      await m.quota({
+        providerId: p.id,
+        bindingToken: p.bindingToken,
+      })
+    ).windows[0].usedPercent,
+  ).toBe(88);
+});
+
+test("existing unmanaged Local and cliproxy quota is unsupported without key or network", async () => {
+  const f = fixture();
+  const resolve = vi.fn(f.services.credentials.resolve);
+  f.services.credentials.resolve = resolve;
+  f.sections[2].value.providers.cliproxy = {
+    name: "Local",
+    api: "openai-completions",
+    baseURL: "http://127.0.0.1:9999/v1",
+    apiKeyEnv: "SYNTHETIC_LOCAL_REF",
+    models: [],
+  };
+  const listed = f.services.llm.listProviders();
+  f.services.llm.listProviders = () => [
+    ...listed,
+    { id: "local", name: "Local" },
+  ];
+  const fetchImpl = vi.fn(async () => {
+    throw new Error("must not fetch");
+  });
+  const m = manager(f, new QuotaReader({ fetch: fetchImpl }));
+  await expect(
+    m.quota({ providerId: "custom:cliproxy" }),
+  ).resolves.toMatchObject({
+    providerId: "custom:cliproxy",
+    status: "unsupported",
+    windows: [],
+    stale: false,
+  });
+  await expect(m.quota({ providerId: "custom:local" })).resolves.toMatchObject({
+    providerId: "custom:local",
+    status: "unsupported",
+    windows: [],
+    stale: false,
+  });
+  await expect(
+    m.quota({ providerId: "custom:not-installed" }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  await expect(
+    m.reveal({ providerId: "custom:cliproxy", bindingToken: "x" }),
+  ).rejects.toMatchObject({ code: "REF_NOT_ALLOWED" });
+  await expect(
+    m.set({
+      providerId: "custom:cliproxy",
+      bindingToken: "x",
+      value: "SYNTHETIC",
+    }),
+  ).rejects.toMatchObject({ code: "REF_NOT_ALLOWED" });
+  expect(fetchImpl).not.toHaveBeenCalled();
+  expect(resolve).not.toHaveBeenCalled();
 });

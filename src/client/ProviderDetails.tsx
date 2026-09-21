@@ -30,7 +30,7 @@ export function ProviderDetails({
   return (
     <div className="pm-details-body">
       {onClose && (
-        <button type="button" onClick={onClose}>
+        <button type="button" className="pm-back" onClick={onClose}>
           {t("back")}
         </button>
       )}

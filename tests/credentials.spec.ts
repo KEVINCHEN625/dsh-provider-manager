@@ -79,6 +79,24 @@ test("cancellation during metadata describe cannot begin persistent key write", 
   await expect(task).rejects.toBeDefined();
   expect(f.values.get("OPENCODE_API_KEY")).toBe("SYNTHETIC");
 });
+test("unmanaged cliproxy cannot be revealed or set even when quota is unsupported", async () => {
+  const f = fixture();
+  f.sections[2].value.providers.cliproxy = {
+    api: "openai-completions",
+    apiKeyEnv: "SYNTHETIC_LOCAL_REF",
+  };
+  const m: any = new Manager(f.services);
+  await expect(
+    m.reveal({ providerId: "custom:cliproxy", bindingToken: "x" }),
+  ).rejects.toMatchObject({ code: "REF_NOT_ALLOWED" });
+  await expect(
+    m.set({
+      providerId: "custom:cliproxy",
+      bindingToken: "x",
+      value: "SYNTHETIC",
+    }),
+  ).rejects.toMatchObject({ code: "REF_NOT_ALLOWED" });
+});
 test("set invalidates quota cache so the next read cannot reuse the old key window", async () => {
   const { Manager } = await import("../src/host/providers.js");
   const { QuotaReader } = await import("../src/host/quota.js");
