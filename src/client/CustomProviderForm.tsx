@@ -3,10 +3,15 @@ import type { Provider } from "../shared/protocol.js";
 import { protocols } from "../shared/protocol.js";
 import {
   API_PRESETS,
+  isContext1m,
+  lookupPresetModel,
   matchPreset,
   matchRegion,
+  modelContextWindow,
+  parseModelRows,
   presetDraft,
   regionBaseURL,
+  serializeModelDraft,
   type RegionId,
 } from "../shared/api-presets.js";
 import type { Controller, State } from "./controller.js";
@@ -36,11 +41,16 @@ export function CustomProviderForm({
     baseURL: draft.baseURL,
   });
   const region = matchRegion(preset, draft.baseURL);
+  const rows = parseModelRows(draft.models, draft.context1m);
   const apply = (fields: Record<string, string>) => {
     for (const [name, value] of Object.entries(fields))
       controller.changeDraft(name, value);
     render((n) => n + 1);
   };
+  const setRows = (next: { id: string; context1m: boolean }[]) =>
+    apply(
+      serializeModelDraft(next.length ? next : [{ id: "", context1m: false }]),
+    );
   const field = (name: string, label: LocaleKey, type = "text") => (
     <div>
       <label htmlFor={`${id}-${name}`}>{t(label)}</label>
@@ -63,15 +73,19 @@ export function CustomProviderForm({
       className="pm-card"
       onSubmit={(event) => {
         event.preventDefault();
+        const models = parseModelRows(draft.models, draft.context1m)
+          .map((row) => ({ ...row, id: row.id.trim() }))
+          .filter((row) => row.id);
+        if (!models.length) return;
         const payload = {
           route: draft.route,
           name: draft.name,
           baseURL: draft.baseURL,
           api: draft.api || protocols[0],
-          models: (draft.models || "")
-            .split("\n")
-            .map((s) => s.trim())
-            .filter(Boolean),
+          models: models.map((row) => ({
+            id: row.id,
+            contextWindow: modelContextWindow(row.id, row.context1m),
+          })),
           revision: controller.draftRevision,
           editing: !!editing,
           ...(draft.defaultContextWindow
@@ -150,16 +164,72 @@ export function CustomProviderForm({
           <option key={api}>{api}</option>
         ))}
       </select>
-      <label htmlFor={`${id}-models`}>{t("models")}</label>
-      <textarea
-        id={`${id}-models`}
-        required
-        value={draft.models || ""}
-        onChange={(e) => {
-          controller.changeDraft("models", e.target.value);
-          render((n) => n + 1);
-        }}
-      />
+      <fieldset className="pm-models">
+        <legend>{t("models")}</legend>
+        <p className="pm-help">{t("context1mHelp")}</p>
+        {rows.map((row, index) => (
+          <div className="pm-model-row" key={index}>
+            <input
+              id={`${id}-model-${index}`}
+              aria-label={`${t("modelId")} ${index + 1}`}
+              value={row.id}
+              required={index === 0 && !rows.some((item) => item.id.trim())}
+              onChange={(e) => {
+                const nextId = e.target.value;
+                const prev = row.id.trim();
+                const trimmed = nextId.trim();
+                let context1m = row.context1m;
+                if (trimmed !== prev) {
+                  const known = lookupPresetModel(trimmed);
+                  if (known) context1m = isContext1m(known.contextWindow);
+                }
+                setRows(
+                  rows.map((item, j) =>
+                    j === index ? { id: nextId, context1m } : item,
+                  ),
+                );
+              }}
+            />
+            <label className="pm-model-1m">
+              <input
+                type="checkbox"
+                checked={row.context1m}
+                aria-label={`${t("context1m")} ${row.id.trim() || index + 1}`}
+                onChange={(e) =>
+                  setRows(
+                    rows.map((item, j) =>
+                      j === index
+                        ? { ...item, context1m: e.target.checked }
+                        : item,
+                    ),
+                  )
+                }
+              />
+              {t("context1m")}
+            </label>
+            <button
+              type="button"
+              className="pm-quiet"
+              aria-label={`${t("removeModel")} ${index + 1}`}
+              onClick={() =>
+                setRows(
+                  rows.length === 1
+                    ? [{ id: "", context1m: false }]
+                    : rows.filter((_, j) => j !== index),
+                )
+              }
+            >
+              {t("removeModel")}
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => setRows([...rows, { id: "", context1m: false }])}
+        >
+          {t("addModel")}
+        </button>
+      </fieldset>
       {field("defaultContextWindow", "contextWindow", "number")}
       {field("defaultMaxTokens", "maxTokens", "number")}
       <button

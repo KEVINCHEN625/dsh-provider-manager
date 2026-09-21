@@ -1,16 +1,19 @@
 import { test, expect } from "vitest";
 import {
   API_PRESETS,
+  CONTEXT_1M,
   matchPreset,
   matchRegion,
+  modelContextWindow,
+  modelHas1m,
   presetDraft,
   regionBaseURL,
 } from "../src/shared/api-presets.js";
 
 test("ZCode is one route with China and Overseas coding endpoints", () => {
   const zcode = API_PRESETS.find((preset) => preset.id === "zcode");
-  expect(zcode?.models).toContain("glm-5.3-flash");
-  expect(zcode?.models).toContain("glm-5.3");
+  expect(zcode?.models.map((model) => model.id)).toContain("glm-5.3-flash");
+  expect(zcode?.models.map((model) => model.id)).toContain("glm-5.3");
   expect(zcode?.route).toBe("zcode");
   expect(zcode?.regions?.map((region) => region.id)).toEqual([
     "china",
@@ -119,4 +122,48 @@ test("OpenRouter and other gateways fill official base URLs", () => {
   expect(
     presetDraft(API_PRESETS.find((preset) => preset.id === "gemini")!).baseURL,
   ).toBe("https://generativelanguage.googleapis.com/v1beta/openai");
+});
+
+test("plan presets tick 1M only on models that officially support it", () => {
+  const zcode = API_PRESETS.find((preset) => preset.id === "zcode")!;
+  const byId = Object.fromEntries(
+    zcode.models.map((model) => [model.id, model.contextWindow]),
+  );
+  expect(byId["glm-5.3-flash"]).toBe(CONTEXT_1M);
+  expect(byId["glm-5.3"]).toBe(CONTEXT_1M);
+  expect(byId["glm-5.2"]).toBe(CONTEXT_1M);
+  expect(byId["glm-5-turbo"]).toBe(200_000);
+  const draft = presetDraft(zcode);
+  expect(draft.models.split("\n")).toEqual([
+    "glm-5.3-flash",
+    "glm-5.3",
+    "glm-5.2",
+    "glm-5-turbo",
+  ]);
+  expect(draft.context1m.split("\n")).toEqual(["1", "1", "1", "0"]);
+  expect(draft.defaultContextWindow).toBe("");
+  expect(modelContextWindow("glm-5.3", true)).toBe(CONTEXT_1M);
+  expect(modelContextWindow("glm-5-turbo", false)).toBe(200_000);
+  expect(modelContextWindow("glm-5.3", false)).toBe(262_144);
+  expect(modelHas1m({ id: "glm-5-turbo" })).toBe(false);
+  expect(modelHas1m({ id: "glm-5-turbo" }, CONTEXT_1M)).toBe(false);
+
+  const mimo = API_PRESETS.find((preset) => preset.id === "mimo")!;
+  expect(mimo.models.every((model) => model.contextWindow === CONTEXT_1M)).toBe(
+    true,
+  );
+
+  const minimax = API_PRESETS.find((preset) => preset.id === "minimax")!;
+  expect(
+    Object.fromEntries(
+      minimax.models.map((model) => [model.id, model.contextWindow]),
+    ),
+  ).toEqual({
+    "MiniMax-M3": 1_000_000,
+    "MiniMax-M2.7": 204_800,
+    "MiniMax-M2.7-highspeed": 204_800,
+  });
+  expect(modelContextWindow("MiniMax-M3", true)).toBe(1_000_000);
+  expect(modelContextWindow("MiniMax-M2.7", false)).toBe(204_800);
+  expect(modelContextWindow("MiniMax-M2.7", true)).toBe(CONTEXT_1M);
 });

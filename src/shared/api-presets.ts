@@ -2,6 +2,13 @@ import type { Protocol } from "./protocol.js";
 
 export type RegionId = "china" | "overseas";
 
+/** DSH / GLM-style 1,048,576-token window. */
+export const CONTEXT_1M = 1_048_576;
+/** Smallest official window that still counts as “1M” (MiniMax-M3 is 1,000,000). */
+export const CONTEXT_1M_MIN = 1_000_000;
+/** llm-pi-ai fallback when a model has no listed size. */
+export const CONTEXT_FALLBACK = 262_144;
+
 export interface ApiRegion {
   id: RegionId;
   labelKey: "regionChina" | "regionOverseas";
@@ -10,12 +17,17 @@ export interface ApiRegion {
   aliases?: readonly string[];
 }
 
+export interface PresetModel {
+  id: string;
+  contextWindow: number;
+}
+
 export interface ApiPreset {
   id: string;
   name: string;
   route: string;
   api: Protocol;
-  models: string;
+  models: readonly PresetModel[];
   baseURL?: string;
   regions?: readonly ApiRegion[];
   defaultContextWindow?: string;
@@ -34,6 +46,11 @@ const overseas = (baseURL: string): ApiRegion => ({
   baseURL,
 });
 
+const model = (id: string, contextWindow: number): PresetModel => ({
+  id,
+  contextWindow,
+});
+
 /** Known OpenAI-compatible (or Anthropic Messages) APIs for the custom llm-pi-ai form. */
 export const API_PRESETS: readonly ApiPreset[] = [
   {
@@ -41,7 +58,12 @@ export const API_PRESETS: readonly ApiPreset[] = [
     name: "ZCode",
     route: "zcode",
     api: "openai-completions",
-    models: "glm-5.3-flash\nglm-5.3\nglm-5.2\nglm-5-turbo",
+    models: [
+      model("glm-5.3-flash", CONTEXT_1M),
+      model("glm-5.3", CONTEXT_1M),
+      model("glm-5.2", CONTEXT_1M),
+      model("glm-5-turbo", 200_000),
+    ],
     regions: [
       {
         ...china("https://open.bigmodel.cn/api/coding/paas/v4"),
@@ -52,7 +74,6 @@ export const API_PRESETS: readonly ApiPreset[] = [
         anthropicURL: "https://api.z.ai/api/anthropic",
       },
     ],
-    defaultContextWindow: "1048576",
     defaultMaxTokens: "131072",
   },
   {
@@ -60,7 +81,10 @@ export const API_PRESETS: readonly ApiPreset[] = [
     name: "MiMo",
     route: "mimo",
     api: "openai-completions",
-    models: "mimo-v2.5-pro\nmimo-v2.5",
+    models: [
+      model("mimo-v2.5-pro", CONTEXT_1M),
+      model("mimo-v2.5", CONTEXT_1M),
+    ],
     regions: [
       {
         ...china("https://token-plan-cn.xiaomimimo.com/v1"),
@@ -75,7 +99,6 @@ export const API_PRESETS: readonly ApiPreset[] = [
         ],
       },
     ],
-    defaultContextWindow: "1048576",
     defaultMaxTokens: "131072",
   },
   {
@@ -83,7 +106,11 @@ export const API_PRESETS: readonly ApiPreset[] = [
     name: "MiniMax",
     route: "minimax",
     api: "openai-completions",
-    models: "MiniMax-M3\nMiniMax-M2.7\nMiniMax-M2.7-highspeed",
+    models: [
+      model("MiniMax-M3", 1_000_000),
+      model("MiniMax-M2.7", 204_800),
+      model("MiniMax-M2.7-highspeed", 204_800),
+    ],
     regions: [
       {
         ...china("https://api.minimax.cn/v1"),
@@ -98,7 +125,6 @@ export const API_PRESETS: readonly ApiPreset[] = [
         anthropicURL: "https://api.minimax.io/anthropic",
       },
     ],
-    defaultContextWindow: "1048576",
     defaultMaxTokens: "131072",
   },
   {
@@ -107,14 +133,17 @@ export const API_PRESETS: readonly ApiPreset[] = [
     route: "openrouter",
     api: "openai-completions",
     baseURL: "https://openrouter.ai/api/v1",
-    models: "openai/gpt-4o-mini\ngoogle/gemini-2.5-flash",
+    models: [
+      model("openai/gpt-4o-mini", 128_000),
+      model("google/gemini-2.5-flash", CONTEXT_1M),
+    ],
   },
   {
     id: "siliconflow",
     name: "SiliconFlow",
     route: "siliconflow",
     api: "openai-completions",
-    models: "deepseek-ai/DeepSeek-V3.2",
+    models: [model("deepseek-ai/DeepSeek-V3.2", 128_000)],
     regions: [
       china("https://api.siliconflow.cn/v1"),
       overseas("https://api.siliconflow.com/v1"),
@@ -125,7 +154,7 @@ export const API_PRESETS: readonly ApiPreset[] = [
     name: "Moonshot",
     route: "moonshot",
     api: "openai-completions",
-    models: "kimi-k2.5",
+    models: [model("kimi-k2.5", 262_144)],
     regions: [
       china("https://api.moonshot.cn/v1"),
       overseas("https://api.moonshot.ai/v1"),
@@ -137,7 +166,10 @@ export const API_PRESETS: readonly ApiPreset[] = [
     route: "deepseek-api",
     api: "openai-completions",
     baseURL: "https://api.deepseek.com",
-    models: "deepseek-chat\ndeepseek-reasoner",
+    models: [
+      model("deepseek-chat", 128_000),
+      model("deepseek-reasoner", 128_000),
+    ],
   },
   {
     id: "openai",
@@ -145,7 +177,7 @@ export const API_PRESETS: readonly ApiPreset[] = [
     route: "openai-api",
     api: "openai-completions",
     baseURL: "https://api.openai.com/v1",
-    models: "gpt-4.1-mini",
+    models: [model("gpt-4.1-mini", CONTEXT_1M)],
   },
   {
     id: "anthropic",
@@ -153,7 +185,7 @@ export const API_PRESETS: readonly ApiPreset[] = [
     route: "anthropic-api",
     api: "anthropic-messages",
     baseURL: "https://api.anthropic.com",
-    models: "claude-sonnet-4-5",
+    models: [model("claude-sonnet-4-5", 200_000)],
   },
   {
     id: "groq",
@@ -161,7 +193,7 @@ export const API_PRESETS: readonly ApiPreset[] = [
     route: "groq",
     api: "openai-completions",
     baseURL: "https://api.groq.com/openai/v1",
-    models: "llama-3.3-70b-versatile",
+    models: [model("llama-3.3-70b-versatile", 128_000)],
   },
   {
     id: "together",
@@ -169,7 +201,7 @@ export const API_PRESETS: readonly ApiPreset[] = [
     route: "together",
     api: "openai-completions",
     baseURL: "https://api.together.xyz/v1",
-    models: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    models: [model("meta-llama/Llama-3.3-70B-Instruct-Turbo", 128_000)],
   },
   {
     id: "fireworks",
@@ -177,7 +209,9 @@ export const API_PRESETS: readonly ApiPreset[] = [
     route: "fireworks",
     api: "openai-completions",
     baseURL: "https://api.fireworks.ai/inference/v1",
-    models: "accounts/fireworks/models/llama-v3p3-70b-instruct",
+    models: [
+      model("accounts/fireworks/models/llama-v3p3-70b-instruct", 128_000),
+    ],
   },
   {
     id: "dashscope",
@@ -185,7 +219,7 @@ export const API_PRESETS: readonly ApiPreset[] = [
     route: "dashscope",
     api: "openai-completions",
     baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    models: "qwen-plus",
+    models: [model("qwen-plus", 131_072)],
   },
   {
     id: "gemini",
@@ -193,7 +227,7 @@ export const API_PRESETS: readonly ApiPreset[] = [
     route: "gemini-api",
     api: "openai-completions",
     baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
-    models: "gemini-2.5-flash",
+    models: [model("gemini-2.5-flash", CONTEXT_1M)],
   },
   {
     id: "mistral",
@@ -201,7 +235,7 @@ export const API_PRESETS: readonly ApiPreset[] = [
     route: "mistral",
     api: "openai-completions",
     baseURL: "https://api.mistral.ai/v1",
-    models: "mistral-small-latest",
+    models: [model("mistral-small-latest", 128_000)],
   },
   {
     id: "meta",
@@ -209,8 +243,10 @@ export const API_PRESETS: readonly ApiPreset[] = [
     route: "meta",
     api: "openai-responses",
     baseURL: "https://api.meta.ai/v1",
-    models: "muse-spark-1.3\nmuse-spark-1.3-contributor",
-    defaultContextWindow: "1048576",
+    models: [
+      model("muse-spark-1.3", CONTEXT_1M),
+      model("muse-spark-1.3-contributor", CONTEXT_1M),
+    ],
     defaultMaxTokens: "131072",
   },
 ];
@@ -258,6 +294,72 @@ export function matchRegion(preset: ApiPreset | undefined, baseURL?: string) {
   return preset?.regions?.find((region) => regionUrls(region).includes(url));
 }
 
+export function isContext1m(window: number | undefined) {
+  return (window ?? 0) >= CONTEXT_1M_MIN;
+}
+
+export function lookupPresetModel(id: string): PresetModel | undefined {
+  const needle = id.trim();
+  if (!needle) return undefined;
+  for (const preset of API_PRESETS) {
+    const found = preset.models.find((item) => item.id === needle);
+    if (found) return found;
+  }
+}
+
+export function modelContextWindow(id: string, context1m: boolean): number {
+  const known = lookupPresetModel(id)?.contextWindow;
+  if (context1m) {
+    if (typeof known === "number" && isContext1m(known)) return known;
+    return CONTEXT_1M;
+  }
+  if (typeof known === "number" && !isContext1m(known)) return known;
+  return CONTEXT_FALLBACK;
+}
+
+export function modelHas1m(
+  model: { id: string; contextWindow?: number },
+  fallback?: number,
+) {
+  if (typeof model.contextWindow === "number")
+    return isContext1m(model.contextWindow);
+  const known = lookupPresetModel(model.id);
+  if (known) return isContext1m(known.contextWindow);
+  return isContext1m(fallback);
+}
+
+export function formatContextWindow(window: number) {
+  if (isContext1m(window)) return "1M";
+  if (window % 1000 === 0) return `${window / 1000}K`;
+  return String(window);
+}
+
+export function parseModelRows(
+  models: string | undefined,
+  flags: string | undefined,
+): { id: string; context1m: boolean }[] {
+  const ids = models === undefined || models === "" ? [""] : models.split("\n");
+  const bits = (flags ?? "").split("\n");
+  return ids.map((id, i) => {
+    const bit = bits[i];
+    if (bit === "1") return { id, context1m: true };
+    if (bit === "0") return { id, context1m: false };
+    return {
+      id,
+      context1m: isContext1m(lookupPresetModel(id)?.contextWindow),
+    };
+  });
+}
+
+export function serializeModelDraft(
+  rows: { id: string; context1m: boolean }[],
+): { models: string; context1m: string } {
+  return {
+    models: rows.map((row) => row.id).join("\n"),
+    context1m: rows.map((row) => (row.context1m ? "1" : "0")).join("\n"),
+  };
+}
+
 export function presetDraft(
   preset: ApiPreset,
   regionId?: RegionId,
@@ -269,7 +371,12 @@ export function presetDraft(
     route: preset.route,
     baseURL: region?.baseURL ?? preset.baseURL ?? "",
     api: preset.api,
-    models: preset.models,
+    ...serializeModelDraft(
+      preset.models.map((item) => ({
+        id: item.id,
+        context1m: isContext1m(item.contextWindow),
+      })),
+    ),
     defaultContextWindow: preset.defaultContextWindow ?? "",
     defaultMaxTokens: preset.defaultMaxTokens ?? "",
   };

@@ -5,6 +5,7 @@ import type { Translate, LocaleKey } from "./locales.js";
 import { Result } from "./Result.js";
 import { QuotaSummary } from "./QuotaSummary.js";
 import { META_MODEL_API } from "../shared/meta-api.js";
+import { formatContextWindow } from "../shared/api-presets.js";
 import { CustomProviderForm } from "./CustomProviderForm.js";
 import { ProviderIcon } from "./ProviderIcon.js";
 
@@ -192,6 +193,9 @@ export function ProviderDetails({
             <li key={model.id}>
               {model.id}
               {model.api ? ` · ${model.api}` : ""}
+              {model.contextWindow
+                ? ` · ${formatContextWindow(model.contextWindow)}`
+                : ""}
             </li>
           ))}
         </ul>
