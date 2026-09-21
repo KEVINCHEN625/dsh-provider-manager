@@ -113,3 +113,15 @@ test("catalog failure is independent of credential management failure", async ()
   const unavailable = await m.card("opencode-go");
   expect(unavailable.catalogError).toBe("UNAVAILABLE");
 });
+test("reserved Muse route and unknown cards are rejected", async () => {
+  const m: any = new Manager(fixture().services);
+  await expect(m.save({ ...draft, route: "muse-code" })).rejects.toMatchObject({
+    code: "CONFLICT",
+  });
+  await expect(m.card("not-a-provider")).rejects.toMatchObject({
+    code: "INVALID_INPUT",
+  });
+  const s = await m.snapshot();
+  expect(s.muse.status).toBe("CLI_ONLY");
+  expect(s.providers.every((p: { notice?: string }) => !p.notice)).toBe(true);
+});

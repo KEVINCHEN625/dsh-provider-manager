@@ -76,15 +76,22 @@ async function openDetails(name = "OpenCode Go") {
 
 test("overview is compact and shows remaining quota without expanding models", async () => {
   setup();
-  await screen.findByText("5h remaining 100%");
+  await screen.findByRole("progressbar", {
+    name: /5-hour window remaining 100%/,
+  });
   expect(screen.queryByText("fixture-model")).toBeNull();
   expect(screen.queryByLabelText("New key")).toBeNull();
   expect(screen.getByText(/1 models/)).toBeTruthy();
   expect(screen.getByText(new RegExp(en.configured))).toBeTruthy();
   expect(screen.queryByText(en.available)).toBeNull();
+  expect(screen.getByText(en.columnQuota)).toBeTruthy();
   await openDetails();
+  expect(
+    screen.queryByRole("button", { name: `${en.details}: Muse Code` }),
+  ).toBeNull();
   await screen.findByText("fixture-model");
   expect(screen.getByLabelText("New key")).toBeTruthy();
+  expect(screen.getByLabelText(en.apiUrl)).toBeTruthy();
 });
 
 test("zero remaining, unknown, zero-cap and missing reset do not invent a 5h bar", async () => {
@@ -96,9 +103,16 @@ test("zero remaining, unknown, zero-cap and missing reset do not invent a 5h bar
         ])
       : snapshot,
   );
-  await screen.findByText("Weekly remaining 0%");
+  await screen.findByRole("progressbar", {
+    name: /Weekly window remaining 0%/,
+  });
+  expect(screen.queryByText(en.quotaCapUnknown)).toBeNull();
+  expect(
+    screen.queryByRole("progressbar", { name: /5-hour window remaining/ }),
+  ).toBeNull();
+  expect(screen.getAllByRole("progressbar")).toHaveLength(1);
+  await openDetails();
   expect(screen.getByText(new RegExp(en.quotaCapUnknown))).toBeTruthy();
-  expect(screen.queryByText(/5h remaining/)).toBeNull();
   expect(screen.getAllByRole("progressbar")).toHaveLength(1);
 });
 
@@ -115,9 +129,13 @@ test("expired reset shows waiting without restoring 100%", async () => {
         ])
       : snapshot,
   );
-  await screen.findByText("5h remaining 60%");
+  await screen.findByRole("progressbar", {
+    name: /5-hour window remaining 60%/,
+  });
   expect(screen.getByText(en.quotaWaiting)).toBeTruthy();
-  expect(screen.queryByText("5h remaining 100%")).toBeNull();
+  expect(
+    screen.queryByRole("progressbar", { name: /5-hour window remaining 100%/ }),
+  ).toBeNull();
 });
 
 test("stale host windows are labeled and unknown quota has no progressbar", async () => {
@@ -130,7 +148,9 @@ test("stale host windows are labeled and unknown quota has no progressbar", asyn
         })
       : snapshot,
   );
-  await screen.findByText("5h remaining 80%");
+  await screen.findByRole("progressbar", {
+    name: /5-hour window remaining 80%/,
+  });
   expect(screen.getByText(en.quotaStale)).toBeTruthy();
   first.unmount();
   const { unmount } = setup(en, async (endpoint: string) =>
@@ -150,16 +170,17 @@ test("stale host windows are labeled and unknown quota has no progressbar", asyn
 
 test("closing details clears revealed key and add form keeps drafts", async () => {
   setup();
-  await screen.findByText("5h remaining 100%");
+  await screen.findByRole("progressbar", {
+    name: /5-hour window remaining 100%/,
+  });
   await openDetails();
   fireEvent.click(screen.getByRole("button", { name: "Show key" }));
   await screen.findByDisplayValue("SYNTHETIC");
   expect(screen.getByRole("button", { name: en.back })).toBeTruthy();
-  fireEvent.click(
-    screen.getByRole("button", { name: `${en.details}: OpenCode Go` }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: en.back }));
   expect(screen.queryByDisplayValue("SYNTHETIC")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: en.addProvider }));
+  expect(screen.queryByText("OpenCode Go")).toBeNull();
   fireEvent.change(screen.getByLabelText("Route"), {
     target: { value: "kept-draft" },
   });
@@ -171,28 +192,33 @@ test("closing details clears revealed key and add form keeps drafts", async () =
   );
 });
 
-test("expanded details body is a row-level grid item so Back stays on one line", async () => {
+test("details page replaces the list and Back returns to overview", async () => {
   setup();
   await openDetails();
-  const body = document.querySelector(".pm-details-body");
-  expect(body?.parentElement?.classList.contains("pm-row")).toBe(true);
-  expect(body?.closest("details")).toBeNull();
+  expect(document.querySelector(".pm-page")).toBeTruthy();
+  expect(
+    screen.queryByRole("button", { name: `${en.details}: Muse Code` }),
+  ).toBeNull();
   expect(screen.getByRole("button", { name: en.back }).textContent).toBe(
     en.back,
   );
+  fireEvent.click(screen.getByRole("button", { name: en.back }));
+  expect(screen.getByRole("button", { name: en.addProvider })).toBeTruthy();
 });
 
 test("details summary is keyboard operable and Muse states facts without a quota bar", async () => {
   setup();
   await screen.findByText("Muse Code");
-  expect(screen.getByText(en.museBoundary)).toBeTruthy();
+  expect(screen.getByText("CLI not detected")).toBeTruthy();
   const details = await screen.findByRole("button", {
     name: `${en.details}: OpenCode Go`,
   });
   details.focus();
-  fireEvent.keyDown(details, { key: "Enter" });
+  fireEvent.click(details);
   await screen.findByText("fixture-model");
-  expect(screen.getByText("5h remaining 100%")).toBeTruthy();
+  expect(
+    screen.getByRole("progressbar", { name: /5-hour window remaining 100%/ }),
+  ).toBeTruthy();
 });
 
 const command = {
@@ -244,9 +270,11 @@ test("switching details to Muse and back requires Show key again", async () => {
     fireEvent.change(screen.getByLabelText("New key"), {
       target: { value: "PENDING-SECRET" },
     });
+    fireEvent.click(screen.getByRole("button", { name: en.back }));
     fireEvent.click(screen.getByRole("button", { name: "Details: Muse Code" }));
     expect(screen.queryByDisplayValue("SYNTHETIC_REVIEW_KEY")).toBeNull();
     expect(screen.queryByDisplayValue("PENDING-SECRET")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: en.back }));
     fireEvent.click(
       screen.getByRole("button", { name: "Details: OpenCode Go" }),
     );
@@ -271,10 +299,12 @@ test("switching A to B, Back, collapse, and unmount all hide revealed keys", asy
   );
   fireEvent.click(screen.getByRole("button", { name: "Show key" }));
   await screen.findByDisplayValue("SYNTHETIC_A");
+  fireEvent.click(screen.getByRole("button", { name: en.back }));
   fireEvent.click(
     screen.getByRole("button", { name: "Details: Command Code GOAT" }),
   );
   expect(screen.queryByDisplayValue("SYNTHETIC_A")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: en.back }));
   fireEvent.click(screen.getByRole("button", { name: "Details: OpenCode Go" }));
   expect(screen.queryByDisplayValue("SYNTHETIC_A")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Show key" }));
@@ -284,7 +314,7 @@ test("switching A to B, Back, collapse, and unmount all hide revealed keys", asy
   fireEvent.click(screen.getByRole("button", { name: "Details: OpenCode Go" }));
   fireEvent.click(screen.getByRole("button", { name: "Show key" }));
   await screen.findByDisplayValue("SYNTHETIC_A");
-  fireEvent.click(screen.getByRole("button", { name: "Details: OpenCode Go" }));
+  fireEvent.click(screen.getByRole("button", { name: en.back }));
   expect(screen.queryByDisplayValue("SYNTHETIC_A")).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Details: OpenCode Go" }));
   fireEvent.click(screen.getByRole("button", { name: "Show key" }));
@@ -309,6 +339,7 @@ test("late reveal after switching details cannot display the previous key", asyn
     await waitFor(() =>
       expect(c.state.operations["reveal:opencode-go"]?.status).toBe("loading"),
     );
+    fireEvent.click(screen.getByRole("button", { name: en.back }));
     fireEvent.click(screen.getByRole("button", { name: "Details: Muse Code" }));
     release?.({
       value: "LATE_REVEAL_KEY",
@@ -320,6 +351,7 @@ test("late reveal after switching details cannot display the previous key", asyn
         "loading",
       ),
     );
+    fireEvent.click(screen.getByRole("button", { name: en.back }));
     fireEvent.click(
       screen.getByRole("button", { name: "Details: OpenCode Go" }),
     );
@@ -328,4 +360,45 @@ test("late reveal after switching details cannot display the previous key", asyn
   } finally {
     c.dispose();
   }
+});
+
+test("command missing-credential does not also print unverified", async () => {
+  setup(en, async (endpoint: string, payload: any) =>
+    endpoint === "quota/read"
+      ? {
+          providerId: payload?.providerId ?? "commandcode",
+          status: "missing-credential",
+          source: "command-default-reference",
+          windows: [],
+          stale: false,
+        }
+      : { ...snapshot, providers: [command] },
+  );
+  await screen.findByText(en.quotaMissing);
+  expect(screen.queryByText(en.quotaUnverified)).toBeNull();
+});
+
+test("command ready quota shows unverified caveat only in details", async () => {
+  setup(en, async (endpoint: string, payload: any) =>
+    endpoint === "quota/read"
+      ? {
+          providerId: payload?.providerId ?? "commandcode",
+          status: "ready",
+          source: "command-default-reference",
+          stale: false,
+          fetchedAt: "2026-09-21T00:00:00.000Z",
+          windows: [{ id: "five-hour", usedPercent: 10, remainingPercent: 90 }],
+        }
+      : { ...snapshot, providers: [command] },
+  );
+  await screen.findByRole("progressbar", {
+    name: /5-hour window remaining 90%/,
+  });
+  expect(screen.queryByText(en.quotaUnverified)).toBeNull();
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: `${en.details}: Command Code GOAT`,
+    }),
+  );
+  expect(screen.getByText(en.quotaUnverified)).toBeTruthy();
 });

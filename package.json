@@ -1,6 +1,24 @@
 {
   "name": "dsh-provider-manager",
-  "version": "0.2.1",
+  "version": "0.2.3",
+  "description": "DeepSeek Harness settings page for provider credentials, OpenCode Go / Command Code quota, custom APIs, and Muse Code guidance.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KEVINCHEN625/dsh-provider-manager.git"
+  },
+  "homepage": "https://github.com/KEVINCHEN625/dsh-provider-manager#readme",
+  "bugs": {
+    "url": "https://github.com/KEVINCHEN625/dsh-provider-manager/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "llm",
+    "opencode",
+    "provider"
+  ],
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/host/index.d.ts",
@@ -18,8 +36,8 @@
     "lib",
     "cordis.patch.yml",
     "README.md",
-    "docs/upgrade.md",
-    "docs/acceptance.md"
+    "README.zh.md",
+    "LICENSE"
   ],
   "dsh": {
     "bundle": {
@@ -34,6 +52,11 @@
         "@deepseek-ai/dsh-client-ui-slots",
         "@deepseek-ai/dsh-client-ui-renderer"
       ]
+    },
+    "compatibility": {
+      "dshReleases": {
+        "0.1.5-rc.2": "compatible"
+      }
     }
   },
   "scripts": {
@@ -45,16 +68,16 @@
     "format:check": "prettier --check src tests scripts"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "^4.0.2",
-    "@deepseek-ai/dsh-client-connection": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-locale": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-renderer": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-settings": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-client-ui-slots": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-credentials": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-host-webserver": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-llm": "0.1.5-rc.2",
-    "@deepseek-ai/dsh-settings": "0.1.5-rc.2",
+    "@deepseek-ai/cordis": ">=4.0.2 <5.0.0",
+    "@deepseek-ai/dsh-client-connection": "*",
+    "@deepseek-ai/dsh-client-locale": "*",
+    "@deepseek-ai/dsh-client-ui-renderer": "*",
+    "@deepseek-ai/dsh-client-ui-settings": "*",
+    "@deepseek-ai/dsh-client-ui-slots": "*",
+    "@deepseek-ai/dsh-credentials": "*",
+    "@deepseek-ai/dsh-host-webserver": "*",
+    "@deepseek-ai/dsh-llm": "*",
+    "@deepseek-ai/dsh-settings": "*",
     "react": "^18.2.0"
   },
   "devDependencies": {

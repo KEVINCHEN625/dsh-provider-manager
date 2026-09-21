@@ -350,6 +350,8 @@ export class Manager {
   }
   async card(id: string): Promise<Provider> {
     const f = fixed[id];
+    if (!f && (!id.startsWith("custom:") || id.length <= "custom:".length))
+      throw new SafeError("INVALID_INPUT");
     const route = f ? id : id.slice(7);
     const d = this.descriptors().find((d) => d.ns === (f?.ns ?? "llm-pi-ai"));
     const card: Provider = {
@@ -359,12 +361,6 @@ export class Manager {
       revision: d?.revision ?? 0,
       models: [],
     };
-    if (id === "commandcode")
-      card.notice =
-        "默认引用管理：字面 apiKey、多账户及官方 auth.json 可能优先或 fallback。本页不读取登录文件、不代表每次请求实际 key；套餐资格请在原插件确认。原入口：设置 → Models / Command Code。";
-    if (id === "opencode-go")
-      card.notice =
-        "保留原插件套餐过滤与额度入口：设置 → LLM Providers → OpenCode Go。";
     try {
       const b = this.binding(id);
       const info = await this.services.credentials.describe(

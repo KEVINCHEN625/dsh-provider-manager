@@ -79,6 +79,7 @@ test("read failure has retry, then catalog and source; custom draft survives rel
   await openDetails();
   await screen.findByText("fixture-model");
   expect(screen.getByText("env")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: en.back }));
   await openAdd();
   fireEvent.change(screen.getByLabelText("Route"), {
     target: { value: "draft-route" },
@@ -87,9 +88,8 @@ test("read failure has retry, then catalog and source; custom draft survives rel
   expect((screen.getByLabelText("Route") as HTMLInputElement).value).toBe(
     "draft-route",
   );
-  expect(
-    screen.getByText("DSH subscription execution is not connected."),
-  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: en.closeForm }));
+  expect(screen.getByText("CLI not detected")).toBeTruthy();
 });
 test("reveal and replacement input clear on blur, visibility and unmount", async () => {
   const { c, unmount } = setup();
@@ -123,6 +123,7 @@ test("Chinese labels readable and failure does not claim zero models", async () 
   await screen.findByText("OpenCode Go");
   await openAdd(zh);
   expect(screen.getByLabelText("模型 ID（每行一个）")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: zh.closeForm }));
   await openDetails("OpenCode Go", zh);
   expect(screen.getByText("模型目录暂不可用")).toBeTruthy();
   expect(screen.queryByText("0 models")).toBeNull();
@@ -141,6 +142,7 @@ test("config conflict and key success remain independent; inputs are labeled", a
   });
   fireEvent.click(screen.getByRole("button", { name: "Save key" }));
   await screen.findByText("Key saved");
+  fireEvent.click(screen.getByRole("button", { name: en.back }));
   await openAdd();
   for (const [label, value] of [
     ["Name", "Demo"],
@@ -151,7 +153,6 @@ test("config conflict and key success remain independent; inputs are labeled", a
     fireEvent.change(screen.getByLabelText(label), { target: { value } });
   fireEvent.click(screen.getByRole("button", { name: "Save configuration" }));
   await screen.findByText(en.CONFLICT);
-  expect(screen.getByText("Key saved")).toBeTruthy();
   expect((screen.getByLabelText("Route") as HTMLInputElement).value).toBe(
     "demo",
   );
@@ -265,4 +266,33 @@ test("malformed snapshot displays retry and never renders incomplete cards", asy
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
   await screen.findByText("OpenCode Go");
   expect(screen.queryByText("fixture-model")).toBeNull();
+});
+test("OpenCode mark and Meta Model API draft from Muse details", async () => {
+  setup();
+  await screen.findByText("OpenCode Go");
+  expect(
+    document.querySelector('.pm-icon[data-mark="opencode"]')?.innerHTML,
+  ).toContain("M384 416H128V96H384V416");
+  expect(screen.queryByText(en.museBoundary)).toBeNull();
+  fireEvent.click(
+    screen.getByRole("button", { name: `${en.details}: Muse Code` }),
+  );
+  expect(screen.getByText(en.museBoundary)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: en.addMetaApi }));
+  expect((screen.getByLabelText("Name") as HTMLInputElement).value).toBe(
+    "Meta Model API",
+  );
+  expect((screen.getByLabelText("Route") as HTMLInputElement).value).toBe(
+    "meta",
+  );
+  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe(
+    "https://api.meta.ai/v1",
+  );
+  expect((screen.getByLabelText("Protocol") as HTMLSelectElement).value).toBe(
+    "openai-responses",
+  );
+  expect(
+    (screen.getByLabelText("Model IDs (one per line)") as HTMLTextAreaElement)
+      .value,
+  ).toContain("muse-spark-1.3");
 });

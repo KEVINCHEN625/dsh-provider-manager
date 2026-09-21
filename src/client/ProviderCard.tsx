@@ -1,38 +1,19 @@
 import type { Provider } from "../shared/protocol.js";
-import type { Controller, State } from "./controller.js";
+import type { State } from "./controller.js";
 import type { Translate, LocaleKey } from "./locales.js";
-import { ProviderIcon } from "./ProviderIcon.js";
+import { ProviderIcon, RoleBadge } from "./ProviderIcon.js";
 import { QuotaSummary } from "./QuotaSummary.js";
-import { ProviderDetails } from "./ProviderDetails.js";
-
-function toggleDetails(
-  event: { preventDefault(): void },
-  open: boolean,
-  onToggle: (open: boolean) => void,
-  onClose?: () => void,
-) {
-  event.preventDefault();
-  const next = !open;
-  onToggle(next);
-  if (!next) onClose?.();
-}
 
 export function ProviderCard({
   provider,
-  controller,
   state,
   t,
-  edit,
-  open,
-  onToggle,
+  onOpen,
 }: {
   provider: Provider;
-  controller: Controller;
   state: State;
   t: Translate;
-  edit: (p: Provider) => void;
-  open: boolean;
-  onToggle: (open: boolean) => void;
+  onOpen: () => void;
 }) {
   const keyLabel = !provider.credential
     ? "unknown"
@@ -41,52 +22,40 @@ export function ProviderCard({
       : "missing";
   return (
     <article className="pm-row">
-      <ProviderIcon id={provider.id} name={provider.name} />
       <div className="pm-identity">
-        <h3>{provider.name}</h3>
-        <p>
-          {t(keyLabel)}
-          {provider.catalogError
-            ? ""
-            : ` · ${provider.models.length} ${t("count")}`}
-        </p>
-        <p>{t("connectionUnverified")}</p>
+        <ProviderIcon id={provider.id} name={provider.name} />
+        <div>
+          <div className="pm-title">
+            <h3>{provider.name}</h3>
+            <RoleBadge role="llm" label={t("llmBadge")} />
+          </div>
+          <p>
+            <span
+              className={
+                provider.credential?.configured ? "pm-dot pm-dot-on" : "pm-dot"
+              }
+            />
+            {t(keyLabel)}
+            {provider.catalogError
+              ? ""
+              : ` · ${provider.models.length} ${t("count")}`}
+          </p>
+        </div>
       </div>
       <QuotaSummary
         view={state.quotas[provider.id]}
         t={t}
         name={provider.name}
-        onRefresh={() => void controller.refreshQuota(provider, true)}
+        variant="headline"
       />
-      <details className="pm-details" open={open}>
-        <summary
-          role="button"
-          aria-expanded={open}
-          aria-label={`${t("details")}: ${provider.name}`}
-          onClick={(event) =>
-            toggleDetails(event, open, onToggle, controller.hide)
-          }
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ")
-              toggleDetails(event, open, onToggle, controller.hide);
-          }}
-        >
-          {t("details")}
-        </summary>
-      </details>
-      {open && (
-        <ProviderDetails
-          provider={provider}
-          controller={controller}
-          state={state}
-          t={t}
-          edit={edit}
-          onClose={() => {
-            controller.hide();
-            onToggle(false);
-          }}
-        />
-      )}
+      <button
+        type="button"
+        className="pm-setup"
+        aria-label={`${t("details")}: ${provider.name}`}
+        onClick={onOpen}
+      >
+        {t("details")}
+      </button>
     </article>
   );
 }
@@ -94,51 +63,35 @@ export function ProviderCard({
 export function MuseCard({
   installed,
   t,
-  open,
-  onToggle,
+  onOpen,
 }: {
   installed: boolean;
   t: Translate;
-  open: boolean;
-  onToggle: (open: boolean) => void;
+  onOpen: () => void;
 }) {
   return (
     <article className="pm-row">
-      <ProviderIcon id="muse" name={t("muse")} />
       <div className="pm-identity">
-        <h3>{t("muse")}</h3>
-        <p>{t(installed ? "installed" : "notInstalled")}</p>
-        <p>{t("museBoundary")}</p>
+        <ProviderIcon id="muse" name={t("muse")} />
+        <div>
+          <div className="pm-title">
+            <h3>{t("muse")}</h3>
+            <RoleBadge role="agent" label={t("agentBadge")} />
+          </div>
+          <p>{t(installed ? "installed" : "notInstalled")}</p>
+        </div>
       </div>
       <div className="pm-quota">
         <p>{t("quotaUnsupported")}</p>
       </div>
-      <details className="pm-details" open={open}>
-        <summary
-          role="button"
-          aria-expanded={open}
-          aria-label={`${t("details")}: ${t("muse")}`}
-          onClick={(event) => toggleDetails(event, open, onToggle)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ")
-              toggleDetails(event, open, onToggle);
-          }}
-        >
-          {t("details")}
-        </summary>
-      </details>
-      {open && (
-        <div className="pm-details-body">
-          <p>{t("museHelp")}</p>
-          <a
-            href="https://dev.meta.ai/docs/muse-code/subscriptions"
-            target="_blank"
-            rel="noreferrer"
-          >
-            {t("docs")}
-          </a>
-        </div>
-      )}
+      <button
+        type="button"
+        className="pm-setup"
+        aria-label={`${t("details")}: ${t("muse")}`}
+        onClick={onOpen}
+      >
+        {t("details")}
+      </button>
     </article>
   );
 }
