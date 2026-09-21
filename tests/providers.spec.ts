@@ -68,6 +68,55 @@ test("editing models retains existing capability and unknown configuration field
   ]);
   expect(profile.headers).toEqual({ "x-test": "keep" });
 });
+test("per-model contextWindow overwrites capacity and keeps unknown fields", async () => {
+  const f = fixture();
+  const m: any = new Manager(f.services);
+  await m.save(draft);
+  const profile = f.sections[2].value.providers["test-api"];
+  profile.models = [{ id: "m", contextWindow: 123, compat: { unknown: true } }];
+  await m.save({
+    ...draft,
+    revision: 2,
+    editing: true,
+    models: [
+      { id: "m", contextWindow: 1_048_576 },
+      { id: "turbo", contextWindow: 200_000 },
+    ],
+  });
+  expect(profile.models).toEqual([
+    { id: "m", contextWindow: 1_048_576, compat: { unknown: true } },
+    { id: "turbo", contextWindow: 200_000 },
+  ]);
+  f.services.llm.listModels = async () => [
+    { id: "m", name: "M" },
+    { id: "turbo", name: "Turbo" },
+  ];
+  const card = await m.card("custom:test-api");
+  expect(card.models).toEqual([
+    { id: "m", name: "M", contextWindow: 1_048_576 },
+    { id: "turbo", name: "Turbo", contextWindow: 200_000 },
+  ]);
+});
+test("duplicate model ids and invalid contextWindow are refused", async () => {
+  const f = fixture();
+  const m: any = new Manager(f.services);
+  await expect(
+    m.save({
+      ...draft,
+      models: [
+        { id: "m", contextWindow: 1_048_576 },
+        { id: "m", contextWindow: 200_000 },
+      ],
+    }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  await expect(
+    m.save({ ...draft, models: [{ id: "m", contextWindow: 0 }] }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  await expect(
+    m.save({ ...draft, models: [{ id: "m", extra: true }] }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  expect(f.writes).toHaveLength(0);
+});
 test("advanced values only mutate when explicitly submitted, reject invalid numbers", async () => {
   const f = fixture();
   const m: any = new Manager(f.services);

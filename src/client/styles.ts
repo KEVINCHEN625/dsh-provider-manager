@@ -61,6 +61,56 @@ export const styles = `
   flex-wrap: wrap;
   margin: 0 0 10px;
 }
+.pm-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--pm-fill);
+}
+.provider-manager .pm-filter {
+  height: 24px;
+  min-height: 24px;
+  padding: 0 10px;
+  margin: 0;
+  border: 0;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  color: inherit;
+}
+.provider-manager .pm-filter[data-on="true"] {
+  background: var(--dsw-alias-accent, #4D6BFE);
+  color: #fff;
+}
+.pm-oauth-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 32px;
+  background: var(--pm-fill);
+  font-size: 13px;
+  font-weight: 600;
+}
+.pm-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+}
+.pm-timeline li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--pm-border);
+  overflow-wrap: anywhere;
+}
+.pm-timeline a { color: inherit; }
 .pm-zone { font-size: 11px; color: var(--pm-faint); }
 .pm-columns, .pm-row {
   display: grid;
@@ -263,9 +313,45 @@ export const styles = `
   margin-left: 6px;
   font-weight: 500;
 }
+.pm-models {
+  border: 0;
+  margin: 12px 0 0;
+  padding: 0;
+  min-width: 0;
+}
+.pm-models legend {
+  font-weight: 500;
+  padding: 0;
+}
+.pm-model-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  margin: 4px 0;
+}
+.provider-manager .pm-model-row input:not([type="checkbox"]) {
+  margin: 0;
+}
+.provider-manager .pm-model-1m {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.provider-manager .pm-model-1m input[type="checkbox"] {
+  display: inline;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+}
 .provider-manager h3, .provider-manager h4 { font-size: 1.05rem; margin: 0 0 12px; }
 .provider-manager label { display: block; margin-top: 12px; font-weight: 500; }
-.provider-manager input:not([type="radio"]),.provider-manager textarea,.provider-manager select {
+.provider-manager input:not([type="radio"]):not([type="checkbox"]),.provider-manager textarea,.provider-manager select {
   display: block;
   width: 100%;
   box-sizing: border-box;

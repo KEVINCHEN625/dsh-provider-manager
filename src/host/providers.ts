@@ -23,7 +23,14 @@ import {
   COMMAND_CREDITS_URL,
 } from "./quota.js";
 import type { QuotaSnapshot } from "../shared/protocol.js";
-type Services = Pick<Context, "settings" | "credentials" | "llm">;
+import {
+  LoginSessionManager,
+  authorizationOf,
+  oauthEntries,
+} from "./login.js";
+type Services = Pick<Context, "settings" | "credentials" | "llm"> & {
+  get?(name: string): unknown;
+};
 export interface Config {
   authorizedExistingRefs?: Record<string, string>;
   revealTimeoutMs?: number;
@@ -50,6 +57,26 @@ const reserved = new Set([
   "prototype",
   "__proto__",
 ]);
+function parseSavedModel(value: unknown): {
+  id: string;
+  contextWindow?: number;
+} {
+  if (typeof value === "string") return { id: text(value) };
+  const entry = object(value);
+  if (Object.keys(entry).some((key) => key !== "id" && key !== "contextWindow"))
+    throw new SafeError("INVALID_INPUT");
+  const parsed: { id: string; contextWindow?: number } = { id: text(entry.id) };
+  if (entry.contextWindow !== undefined) {
+    if (
+      !Number.isSafeInteger(entry.contextWindow) ||
+      (entry.contextWindow as number) < 1 ||
+      (entry.contextWindow as number) > 16_777_216
+    )
+      throw new SafeError("INVALID_INPUT");
+    parsed.contextWindow = entry.contextWindow as number;
+  }
+  return parsed;
+}
 export function canonicalRef(route: string) {
   return (
     "DSH_PROVIDER_MANAGER_" + Buffer.from(route).toString("hex") + "_API_KEY"
@@ -57,13 +84,23 @@ export function canonicalRef(route: string) {
 }
 export class Manager {
   private salt = randomBytes(32);
+  readonly logins: LoginSessionManager;
   constructor(
     private services: Services,
     private config: Config = {},
     private quotaReader: QuotaReader = new QuotaReader(),
-  ) {}
+  ) {
+    this.logins = new LoginSessionManager(() => this.authorization());
+  }
+  private authorization() {
+    return authorizationOf(this.services.get?.("authorization"));
+  }
   disposeQuota() {
     this.quotaReader.dispose();
+  }
+  dispose() {
+    this.disposeQuota();
+    this.logins.dispose();
   }
   private customExists(route: string) {
     const d = this.descriptors().find((item) => item.ns === "llm-pi-ai");
@@ -361,6 +398,7 @@ export class Manager {
       revision: d?.revision ?? 0,
       models: [],
     };
+    const savedWindows = new Map<string, number>();
     try {
       const b = this.binding(id);
       const info = await this.services.credentials.describe(
@@ -382,16 +420,34 @@ export class Manager {
             : route;
         for (const k of ["defaultContextWindow", "defaultMaxTokens"] as const)
           if (typeof b.profile[k] === "number") card[k] = b.profile[k];
+        const listed = b.profile.models;
+        if (Array.isArray(listed))
+          for (const item of listed) {
+            if (!item || typeof item !== "object" || Array.isArray(item))
+              continue;
+            const entry = item as Record<string, unknown>;
+            if (
+              typeof entry.id === "string" &&
+              typeof entry.contextWindow === "number" &&
+              Number.isSafeInteger(entry.contextWindow) &&
+              entry.contextWindow >= 1
+            )
+              savedWindows.set(entry.id, entry.contextWindow);
+          }
       }
     } catch {
       card.error = "REF_NOT_ALLOWED";
     }
     try {
-      card.models = (await this.services.llm.listModels(route)).map((m) => ({
-        id: m.id,
-        name: m.name,
-        ...("api" in m && typeof m.api === "string" ? { api: m.api } : {}),
-      }));
+      card.models = (await this.services.llm.listModels(route)).map((m) => {
+        const contextWindow = savedWindows.get(m.id);
+        return {
+          id: m.id,
+          name: m.name,
+          ...("api" in m && typeof m.api === "string" ? { api: m.api } : {}),
+          ...(contextWindow !== undefined ? { contextWindow } : {}),
+        };
+      });
     } catch {
       card.catalogError = "UNAVAILABLE";
     }
@@ -430,6 +486,18 @@ export class Manager {
         status: "CLI_ONLY",
         docs: "https://dev.meta.ai/docs/muse-code/subscriptions",
       },
+      ...(await oauthEntries(this.authorization(), async (key) => {
+        const describe = (
+          this.services.credentials as {
+            describeRecord?: (record: typeof key) => Promise<{
+              configured: boolean;
+              kind?: string;
+            }>;
+          }
+        ).describeRecord;
+        if (!describe) return { configured: false };
+        return describe.call(this.services.credentials, key);
+      })),
     };
   }
   async save(input: unknown) {
@@ -484,10 +552,22 @@ export class Manager {
         ? (object(providers[route]).models as unknown[])
         : [];
     const models = p.models.map((m) => {
-      const id = text(m);
-      const old = existingModels.find((model) => object(model).id === id);
-      return old ?? { id };
+      const parsed = parseSavedModel(m);
+      const old = existingModels.find(
+        (model) => object(model).id === parsed.id,
+      );
+      const next: Record<string, unknown> = {
+        ...(old && typeof old === "object" && !Array.isArray(old)
+          ? (old as Record<string, unknown>)
+          : {}),
+        id: parsed.id,
+      };
+      if (parsed.contextWindow !== undefined)
+        next.contextWindow = parsed.contextWindow;
+      return next;
     });
+    if (new Set(models.map((model) => model.id)).size !== models.length)
+      throw new SafeError("INVALID_INPUT");
     const advanced: Record<string, number> = {};
     for (const key of ["defaultContextWindow", "defaultMaxTokens"])
       if (p[key] !== undefined) {

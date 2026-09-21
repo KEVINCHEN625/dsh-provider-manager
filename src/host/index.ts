@@ -11,7 +11,7 @@ export function apply(ctx: Context, config: Config = {}) {
     const lifetime = new AbortController();
     scope.effect(() => () => {
       lifetime.abort();
-      manager.disposeQuota();
+      manager.dispose();
     });
     // Cordis 4 scopes getter-returned RPC closures through a shadow Context.
     // Expose the already injected carrier on this same-fiber Context so the
@@ -49,6 +49,18 @@ export function apply(ctx: Context, config: Config = {}) {
                   payload,
                   AbortSignal.any([signal, lifetime.signal]),
                 );
+                break;
+              case "login/start":
+                value = manager.logins.start(payload);
+                break;
+              case "login/events":
+                value = manager.logins.events(payload);
+                break;
+              case "login/answer":
+                value = manager.logins.answer(payload);
+                break;
+              case "login/cancel":
+                value = manager.logins.cancel(payload);
                 break;
               default:
                 throw new SafeError("UNSUPPORTED");

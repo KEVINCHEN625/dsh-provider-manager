@@ -3,8 +3,17 @@ import {
   validateProvider,
   validateCredential,
   validateQuota,
+  validateLoginStart,
+  validateLoginEvents,
 } from "./validation.js";
-import type { Provider, Snapshot, QuotaSnapshot } from "../shared/protocol.js";
+import type {
+  IndexedLoginEvent,
+  LoginPromptEvent,
+  LoginResult,
+  Provider,
+  QuotaSnapshot,
+  Snapshot,
+} from "../shared/protocol.js";
 
 export interface Transport {
   rpc(
@@ -26,6 +35,22 @@ export type QuotaView = {
   snapshot?: QuotaSnapshot;
   error?: string;
 };
+export type LoginPhase =
+  | "idle"
+  | "starting"
+  | "running"
+  | "awaiting-prompt"
+  | "done";
+export type LoginState = {
+  providerId: string;
+  sessionId?: string;
+  phase: LoginPhase;
+  events: IndexedLoginEvent[];
+  nextIndex: number;
+  pendingPrompt?: LoginPromptEvent;
+  result?: LoginResult;
+  error?: string;
+};
 export interface State {
   status: "idle" | "loading" | "ready" | "error";
   snapshot?: Snapshot;
@@ -34,6 +59,7 @@ export interface State {
   quotas: Record<string, QuotaView>;
   revealed?: { providerId: string; value: string; source?: string };
   clearEpoch: number;
+  login?: LoginState;
 }
 const codes = new Set([
   "INVALID_INPUT",
@@ -46,6 +72,14 @@ const codes = new Set([
   "UNAVAILABLE",
   "TIMEOUT",
   "INVALID_RESPONSE",
+  "NO_FLOW",
+  "UNKNOWN_METHOD",
+  "BUSY",
+  "NOT_FOUND",
+  "STALE",
+  "RESET",
+  "NOT_COMMITTED",
+  "ALREADY_IN_FLIGHT",
 ]);
 export function errorCode(error: unknown): string {
   const code = (error as { code?: string })?.code;
@@ -66,6 +100,8 @@ export class Controller {
   private quotaGeneration: Record<string, number> = {};
   private quotaAbort = new Map<string, AbortController>();
   private quotaPoll?: ReturnType<typeof setInterval>;
+  private loginPoll?: ReturnType<typeof setInterval>;
+  private loginGeneration = 0;
   private visible = true;
   private disposed = false;
   private timer?: ReturnType<typeof setTimeout>;
@@ -74,6 +110,7 @@ export class Controller {
     private transport: Transport,
     private timeout = 15000,
     private quotaPollMs = 300000,
+    private loginPollMs = 1000,
   ) {}
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -268,9 +305,13 @@ export class Controller {
     ++this.loadGeneration;
     this.abortQuotas();
     this.stopPoll();
+    this.stopLoginPoll();
+    ++this.loginGeneration;
     for (const request of this.requests) request.abort();
-    if (connected) void this.load();
-    else this.update({ status: "error", error: "UNAVAILABLE" });
+    if (connected) {
+      void this.load();
+      this.resumeLoginPoll();
+    } else this.update({ status: "error", error: "UNAVAILABLE" });
   }
   visibilityChanged(visible: boolean) {
     this.visible = visible;
@@ -372,8 +413,218 @@ export class Controller {
     ++this.loadGeneration;
     this.abortQuotas();
     this.stopPoll();
+    this.stopLoginPoll();
+    ++this.loginGeneration;
     for (const request of this.requests) request.abort();
     this.disposed = true;
     this.listeners.clear();
+  }
+  async loginStart(providerId: string, method?: string) {
+    if (this.disposed) return;
+    this.stopLoginPoll();
+    const generation = ++this.loginGeneration;
+    this.update({
+      login: {
+        providerId,
+        phase: "starting",
+        events: [],
+        nextIndex: 0,
+      },
+    });
+    this.operation("login", { status: "loading" });
+    try {
+      const started = validateLoginStart(
+        await this.request((signal) =>
+          this.transport.rpc(
+            "login/start",
+            method ? { providerId, method } : { providerId },
+            signal,
+          ),
+        ),
+      );
+      if (this.disposed || generation !== this.loginGeneration) {
+        await this.cancelSession(started.sessionId);
+        return;
+      }
+      this.update({
+        login: {
+          providerId,
+          sessionId: started.sessionId,
+          phase: "running",
+          events: [],
+          nextIndex: 0,
+        },
+      });
+      this.operation("login", { status: "idle" });
+      await this.ensureLoginPoll();
+    } catch (error) {
+      if (this.disposed || generation !== this.loginGeneration) return;
+      this.operation("login", { status: "error", error: errorCode(error) });
+      const login = this.state.login;
+      if (login?.providerId === providerId && login.phase === "starting")
+        this.update({
+          login: {
+            ...login,
+            phase: "done",
+            result: "failed",
+            error: errorCode(error),
+          },
+        });
+    }
+  }
+  private async cancelSession(sessionId: string) {
+    try {
+      await this.request((signal) =>
+        this.transport.rpc("login/cancel", { sessionId }, signal),
+      );
+    } catch {
+      /* discarded attempt must not overwrite the live login */
+    }
+  }
+  async loginAnswer(seq: number, value: string) {
+    const login = this.state.login;
+    if (!login?.sessionId) return;
+    this.operation("login", { status: "loading" });
+    try {
+      await this.request((signal) =>
+        this.transport.rpc(
+          "login/answer",
+          { sessionId: login.sessionId, seq, value },
+          signal,
+        ),
+      );
+      this.operation("login", { status: "idle" });
+      await this.pollLogin();
+    } catch (error) {
+      this.operation("login", { status: "error", error: errorCode(error) });
+    }
+  }
+  async loginDecline(seq: number) {
+    const login = this.state.login;
+    if (!login?.sessionId) return;
+    this.operation("login", { status: "loading" });
+    try {
+      await this.request((signal) =>
+        this.transport.rpc(
+          "login/answer",
+          { sessionId: login.sessionId, seq, decline: true },
+          signal,
+        ),
+      );
+      this.operation("login", { status: "idle" });
+      await this.pollLogin();
+    } catch (error) {
+      this.operation("login", { status: "error", error: errorCode(error) });
+    }
+  }
+  async loginCancel() {
+    const login = this.state.login;
+    if (!login?.sessionId) return;
+    try {
+      await this.request((signal) =>
+        this.transport.rpc(
+          "login/cancel",
+          { sessionId: login.sessionId },
+          signal,
+        ),
+      );
+      await this.pollLogin();
+    } catch (error) {
+      this.operation("login", { status: "error", error: errorCode(error) });
+    }
+  }
+  private resumeLoginPoll() {
+    const login = this.state.login;
+    if (
+      login?.sessionId &&
+      (login.phase === "running" || login.phase === "awaiting-prompt")
+    )
+      void this.ensureLoginPoll();
+  }
+  private async ensureLoginPoll() {
+    this.stopLoginPoll();
+    if (this.disposed) return;
+    await this.pollLogin();
+    const login = this.state.login;
+    if (
+      this.disposed ||
+      !login?.sessionId ||
+      (login.phase !== "running" && login.phase !== "awaiting-prompt")
+    )
+      return;
+    this.loginPoll = setInterval(() => void this.pollLogin(), this.loginPollMs);
+  }
+  private stopLoginPoll() {
+    clearInterval(this.loginPoll);
+    this.loginPoll = undefined;
+  }
+  private async pollLogin() {
+    const login = this.state.login;
+    if (
+      !login?.sessionId ||
+      login.phase === "done" ||
+      login.phase === "starting" ||
+      login.phase === "idle"
+    )
+      return;
+    const sessionId = login.sessionId;
+    const generation = this.loginGeneration;
+    try {
+      const result = validateLoginEvents(
+        await this.request((signal) =>
+          this.transport.rpc(
+            "login/events",
+            { sessionId, sinceIndex: login.nextIndex },
+            signal,
+          ),
+        ),
+      );
+      if (generation !== this.loginGeneration || this.disposed) return;
+      const current = this.state.login;
+      if (current?.sessionId !== sessionId) return;
+      const events = result.reset
+        ? result.events
+        : [
+            ...current.events,
+            ...result.events.filter((item) => item.index >= current.nextIndex),
+          ];
+      const phase: LoginPhase =
+        result.status === "done"
+          ? "done"
+          : result.status === "awaiting-prompt"
+            ? "awaiting-prompt"
+            : "running";
+      this.update({
+        login: {
+          ...current,
+          events,
+          nextIndex: result.nextIndex,
+          phase,
+          pendingPrompt: result.pendingPrompt,
+          result: result.result,
+          error: result.error,
+        },
+      });
+      if (result.status === "done") {
+        this.stopLoginPoll();
+        if (result.result === "ok") void this.load();
+      }
+    } catch (error) {
+      if (generation !== this.loginGeneration || this.disposed) return;
+      if (errorCode(error) === "NOT_FOUND") {
+        this.stopLoginPoll();
+        const current = this.state.login;
+        if (current?.sessionId === sessionId)
+          this.update({
+            login: {
+              ...current,
+              phase: "done",
+              result: "failed",
+              error: "NOT_FOUND",
+            },
+          });
+        void this.load();
+      }
+    }
   }
 }

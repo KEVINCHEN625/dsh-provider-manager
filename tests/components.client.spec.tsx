@@ -122,7 +122,7 @@ test("Chinese labels readable and failure does not claim zero models", async () 
   }));
   await screen.findByText("OpenCode Go");
   await openAdd(zh);
-  expect(screen.getByLabelText("模型 ID（每行一个）")).toBeTruthy();
+  expect(screen.getByRole("group", { name: "模型" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: zh.closeForm }));
   await openDetails("OpenCode Go", zh);
   expect(screen.getByText("模型目录暂不可用")).toBeTruthy();
@@ -148,17 +148,23 @@ test("config conflict and key success remain independent; inputs are labeled", a
     ["Name", "Demo"],
     ["Route", "demo"],
     ["Base URL", "https://example.test/v1"],
-    ["Model IDs (one per line)", "alpha\nbeta"],
   ])
     fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  fireEvent.change(screen.getByLabelText("Model ID 1"), {
+    target: { value: "alpha" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: en.addModel }));
+  fireEvent.change(screen.getByLabelText("Model ID 2"), {
+    target: { value: "beta" },
+  });
   fireEvent.click(screen.getByRole("button", { name: "Save configuration" }));
   await screen.findByText(en.CONFLICT);
   expect((screen.getByLabelText("Route") as HTMLInputElement).value).toBe(
     "demo",
   );
   expect(calls.find((x) => x[0] === "provider/save")[1].models).toEqual([
-    "alpha",
-    "beta",
+    { id: "alpha", contextWindow: 262144 },
+    { id: "beta", contextWindow: 262144 },
   ]);
 });
 test("credential permission failure does not hide a successfully read model count", async () => {
@@ -247,9 +253,11 @@ test("new dirty draft retains first change revision on reconnect", async () => {
     ["Name", "Demo"],
     ["Route", "demo"],
     ["Base URL", "https://example.test/v1"],
-    ["Model IDs (one per line)", "alpha"],
   ])
     fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  fireEvent.change(screen.getByLabelText("Model ID 1"), {
+    target: { value: "alpha" },
+  });
   revision = 2;
   c.connectionChanged(true);
   await waitFor(() => expect(c.state.snapshot?.customRevision).toBe(2));
@@ -291,10 +299,16 @@ test("OpenCode mark and Meta Model API draft from Muse details", async () => {
   expect((screen.getByLabelText("Protocol") as HTMLSelectElement).value).toBe(
     "openai-responses",
   );
+  expect((screen.getByLabelText("Model ID 1") as HTMLInputElement).value).toBe(
+    "muse-spark-1.3",
+  );
   expect(
-    (screen.getByLabelText("Model IDs (one per line)") as HTMLTextAreaElement)
-      .value,
-  ).toContain("muse-spark-1.3");
+    (
+      screen.getByRole("checkbox", {
+        name: /muse-spark-1.3$/,
+      }) as HTMLInputElement
+    ).checked,
+  ).toBe(true);
 });
 test("ZCode preset keeps one route and switches China / Overseas URLs", async () => {
   setup();
@@ -308,10 +322,20 @@ test("ZCode preset keeps one route and switches China / Overseas URLs", async ()
   expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe(
     "https://open.bigmodel.cn/api/coding/paas/v4",
   );
+  expect((screen.getByLabelText("Model ID 1") as HTMLInputElement).value).toBe(
+    "glm-5.3-flash",
+  );
   expect(
-    (screen.getByLabelText("Model IDs (one per line)") as HTMLTextAreaElement)
-      .value,
-  ).toContain("glm-5.3-flash");
+    (
+      screen.getByRole("checkbox", {
+        name: /glm-5.3-flash/,
+      }) as HTMLInputElement
+    ).checked,
+  ).toBe(true);
+  expect(
+    (screen.getByRole("checkbox", { name: /glm-5-turbo/ }) as HTMLInputElement)
+      .checked,
+  ).toBe(false);
   expect(
     (
       screen.getByRole("radio", {
@@ -401,4 +425,227 @@ test("MiMo and MiniMax presets keep one route and switch China / Overseas URLs",
   expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe(
     "https://api.minimax.io/v1",
   );
+  expect(
+    (screen.getByRole("checkbox", { name: /MiniMax-M3$/ }) as HTMLInputElement)
+      .checked,
+  ).toBe(true);
+  expect(
+    (
+      screen.getByRole("checkbox", {
+        name: /MiniMax-M2\.7$/,
+      }) as HTMLInputElement
+    ).checked,
+  ).toBe(false);
+});
+
+test("ZCode save writes per-model context windows and honors the 1M tick", async () => {
+  const writes: any[] = [];
+  setup(en, async (endpoint: any, payload: any) => {
+    if (endpoint === "provider/save") {
+      writes.push(payload);
+      return { saved: true };
+    }
+    return snapshot;
+  });
+  fireEvent.click(await screen.findByRole("button", { name: en.addProvider }));
+  fireEvent.change(screen.getByLabelText(en.apiPreset), {
+    target: { value: "zcode" },
+  });
+  fireEvent.click(screen.getByRole("checkbox", { name: /glm-5-turbo/ }));
+  fireEvent.click(screen.getByRole("button", { name: en.save }));
+  await waitFor(() => expect(writes.length).toBe(1));
+  expect(writes[0].models).toEqual([
+    { id: "glm-5.3-flash", contextWindow: 1_048_576 },
+    { id: "glm-5.3", contextWindow: 1_048_576 },
+    { id: "glm-5.2", contextWindow: 1_048_576 },
+    { id: "glm-5-turbo", contextWindow: 1_048_576 },
+  ]);
+});
+
+const oauthEntry = {
+  providerId: "openai-codex",
+  label: "ChatGPT Codex",
+  methods: [
+    { id: "oauth", label: "OAuth" },
+    { id: "api-key", label: "API key" },
+  ],
+  configured: false,
+  inFlight: false,
+};
+
+test("FilterTabs show ALL LLM OAuth and hide the other groups", async () => {
+  setup(en, async () => ({ ...snapshot, oauth: [oauthEntry] }));
+  await screen.findByRole("tab", { name: "ALL" });
+  expect(screen.getByRole("tab", { name: "LLM" }).getAttribute("aria-selected")).toBe(
+    "false",
+  );
+  expect(screen.getByText("OpenCode Go")).toBeTruthy();
+  expect(screen.getByText("ChatGPT Codex")).toBeTruthy();
+  expect(screen.getByText("Muse Code")).toBeTruthy();
+  fireEvent.click(screen.getByRole("tab", { name: "LLM" }));
+  expect(screen.getByText("OpenCode Go")).toBeTruthy();
+  expect(screen.getByText("Muse Code")).toBeTruthy();
+  expect(screen.queryByText("ChatGPT Codex")).toBeNull();
+  fireEvent.click(screen.getByRole("tab", { name: "OAuth" }));
+  expect(screen.queryByText("OpenCode Go")).toBeNull();
+  expect(screen.queryByText("Muse Code")).toBeNull();
+  expect(screen.getByText("ChatGPT Codex")).toBeTruthy();
+  expect(screen.getByText(en.oauthSignedOut)).toBeTruthy();
+  expect(
+    screen.queryByRole("button", { name: en.addProvider }),
+  ).toBeNull();
+});
+
+test("oauthUnavailable empty state does not crash", async () => {
+  setup(en, async () => ({
+    ...snapshot,
+    oauth: [],
+    oauthUnavailable: true,
+  }));
+  fireEvent.click(await screen.findByRole("tab", { name: "OAuth" }));
+  expect(screen.getByText(en.oauthUnavailable)).toBeTruthy();
+  expect(screen.queryByText("OpenCode Go")).toBeNull();
+});
+
+test("OAuth details render notice, text, secret, select, decline, withdraw and success", async () => {
+  let events: any = {
+    events: [
+      {
+        kind: "notice",
+        index: 0,
+        message: "Open this page",
+        url: "https://example.test/device",
+        code: "WXYZ",
+      },
+      {
+        kind: "prompt",
+        index: 1,
+        seq: 1,
+        promptKind: "text",
+        message: "Paste the code",
+      },
+    ],
+    nextIndex: 2,
+    status: "awaiting-prompt",
+    pendingPrompt: {
+      kind: "prompt",
+      seq: 1,
+      promptKind: "text",
+      message: "Paste the code",
+    },
+  };
+  const answers: any[] = [];
+  setup(en, async (endpoint: any, payload: any) => {
+    if (endpoint === "login/start") return { sessionId: "s1" };
+    if (endpoint === "login/events") return events;
+    if (endpoint === "login/answer") {
+      answers.push(payload);
+      return { answered: true };
+    }
+    return { ...snapshot, oauth: [oauthEntry] };
+  });
+  await screen.findByText("ChatGPT Codex");
+  fireEvent.click(screen.getByRole("tab", { name: "OAuth" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: `${en.details}: ChatGPT Codex` }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: en.loginStart }));
+  expect(await screen.findByText("Open this page")).toBeTruthy();
+  expect(
+    screen
+      .getByRole("link", { name: "https://example.test/device" })
+      .getAttribute("rel"),
+  ).toBe("noopener noreferrer");
+  expect(screen.getByText("WXYZ")).toBeTruthy();
+  const text = screen.getByLabelText("Paste the code") as HTMLInputElement;
+  expect(text.type).toBe("text");
+  fireEvent.change(text, { target: { value: "user-code" } });
+  events = {
+    events: [
+      {
+        kind: "prompt",
+        index: 2,
+        seq: 2,
+        promptKind: "secret",
+        message: "API key",
+      },
+    ],
+    nextIndex: 3,
+    status: "awaiting-prompt",
+    pendingPrompt: {
+      kind: "prompt",
+      seq: 2,
+      promptKind: "secret",
+      message: "API key",
+    },
+  };
+  fireEvent.click(screen.getByRole("button", { name: en.loginSubmit }));
+  await waitFor(() =>
+    expect(answers.at(-1)).toMatchObject({ seq: 1, value: "user-code" }),
+  );
+  const secret = (await screen.findByLabelText("API key")) as HTMLInputElement;
+  expect(secret.type).toBe("password");
+  events = {
+    events: [
+      {
+        kind: "prompt",
+        index: 3,
+        seq: 3,
+        promptKind: "select",
+        message: "Choose",
+        options: [
+          { id: "oauth", label: "OAuth" },
+          { id: "api-key", label: "API key" },
+        ],
+      },
+    ],
+    nextIndex: 4,
+    status: "awaiting-prompt",
+    pendingPrompt: {
+      kind: "prompt",
+      seq: 3,
+      promptKind: "select",
+      message: "Choose",
+      options: [
+        { id: "oauth", label: "OAuth" },
+        { id: "api-key", label: "API key" },
+      ],
+    },
+  };
+  fireEvent.change(secret, { target: { value: "SYNTHETIC-SECRET" } });
+  fireEvent.click(screen.getByRole("button", { name: en.loginSubmit }));
+  fireEvent.click(await screen.findByRole("button", { name: "OAuth" }));
+  await waitFor(() =>
+    expect(answers.at(-1)).toMatchObject({ seq: 3, value: "oauth" }),
+  );
+  events = {
+    events: [{ kind: "notice", index: 4, message: "Prompt withdrawn" }],
+    nextIndex: 5,
+    status: "running",
+  };
+  fireEvent.click(screen.getByRole("button", { name: en.loginDecline }));
+  expect(await screen.findByText(en.promptWithdrawn)).toBeTruthy();
+  events = {
+    events: [{ kind: "notice", index: 4, message: "Prompt withdrawn" }],
+    nextIndex: 5,
+    status: "done",
+    result: "ok",
+  };
+  fireEvent.click(screen.getByRole("button", { name: en.loginCancel }));
+  expect(await screen.findByText(en.loginSuccess)).toBeTruthy();
+});
+
+test("list card shows Signing in from local login before snapshot inFlight", async () => {
+  const { c } = setup(en, async (endpoint: any) => {
+    if (endpoint === "login/start") return { sessionId: "s-local" };
+    if (endpoint === "login/events")
+      return { events: [], nextIndex: 0, status: "running" };
+    return { ...snapshot, oauth: [oauthEntry] };
+  });
+  fireEvent.click(await screen.findByRole("tab", { name: "OAuth" }));
+  expect(await screen.findByText(en.oauthSignedOut)).toBeTruthy();
+  await c.loginStart("openai-codex");
+  expect(c.state.snapshot?.oauth[0]?.inFlight).toBe(false);
+  expect(await screen.findByText(en.oauthInFlight)).toBeTruthy();
+  expect(screen.queryByText(en.oauthSignedOut)).toBeNull();
 });

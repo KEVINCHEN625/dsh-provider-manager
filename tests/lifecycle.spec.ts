@@ -51,6 +51,14 @@ test("real Cordis delayed DI and repeated mount dispose own one RPC and HTTP reg
     ok: true,
     value: { status: "missing-credential", windows: [], stale: false },
   });
+  expect(
+    await handler(
+      "login/start",
+      { providerId: "openai-codex" },
+      new AbortController().signal,
+    ),
+  ).toMatchObject({ ok: false, error: { code: "UNAVAILABLE" } });
+  expect(plugin.inject).not.toContain("authorization");
   await first.dispose();
   expect(channels.size).toBe(0);
   expect(routes.size).toBe(0);

@@ -1,9 +1,19 @@
 import {
   protocols,
+  httpUrl,
   type Provider,
   type Snapshot,
   type QuotaSnapshot,
   type QuotaWindow,
+  type OAuthEntry,
+  type OAuthKind,
+  type LoginStartResult,
+  type LoginEventsResult,
+  type IndexedLoginEvent,
+  type LoginPromptEvent,
+  type LoginPromptKind,
+  type LoginStatus,
+  type LoginResult,
 } from "../shared/protocol.js";
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -43,11 +53,21 @@ export function validateProvider(value: unknown): Provider {
     revision: revision(data.revision),
     models: data.models.map((value) => {
       const model = record(value);
-      return {
+      const next: Provider["models"][number] = {
         id: string(model.id),
         ...(model.name === undefined ? {} : { name: string(model.name) }),
         ...(model.api === undefined ? {} : { api: string(model.api) }),
       };
+      if (model.contextWindow !== undefined) {
+        if (
+          typeof model.contextWindow !== "number" ||
+          !Number.isSafeInteger(model.contextWindow) ||
+          model.contextWindow < 1
+        )
+          throw { code: "UNAVAILABLE" };
+        next.contextWindow = model.contextWindow;
+      }
+      return next;
     }),
   };
   for (const key of [
@@ -83,7 +103,120 @@ export function validateSnapshot(value: unknown): Snapshot {
       status: "CLI_ONLY",
       docs: string(muse.docs),
     },
+    oauth:
+      data.oauth === undefined
+        ? []
+        : Array.isArray(data.oauth)
+          ? data.oauth.map(validateOAuthEntry)
+          : (() => {
+              throw { code: "UNAVAILABLE" };
+            })(),
+    oauthUnavailable:
+      data.oauthUnavailable === undefined
+        ? false
+        : boolean(data.oauthUnavailable),
   };
+}
+function validateOAuthEntry(value: unknown): OAuthEntry {
+  const data = record(value);
+  if (!Array.isArray(data.methods) || data.methods.length < 1)
+    throw { code: "UNAVAILABLE" };
+  const kinds: OAuthKind[] = ["api-key", "grant"];
+  const entry: OAuthEntry = {
+    providerId: string(data.providerId),
+    label: string(data.label),
+    methods: data.methods.map((item) => {
+      const method = record(item);
+      return { id: string(method.id), label: string(method.label) };
+    }),
+    configured: boolean(data.configured),
+    inFlight: boolean(data.inFlight),
+  };
+  if (data.kind !== undefined) {
+    if (!kinds.includes(data.kind as OAuthKind)) throw { code: "UNAVAILABLE" };
+    entry.kind = data.kind as OAuthKind;
+  }
+  return entry;
+}
+export function validateLoginStart(value: unknown): LoginStartResult {
+  const data = record(value);
+  const result: LoginStartResult = { sessionId: string(data.sessionId) };
+  if (data.busy === true) result.busy = true;
+  else if (data.busy !== undefined) throw { code: "UNAVAILABLE" };
+  return result;
+}
+const promptKinds: LoginPromptKind[] = ["text", "secret", "select"];
+const loginStatuses: LoginStatus[] = ["running", "awaiting-prompt", "done"];
+const loginResults: LoginResult[] = ["ok", "declined", "failed", "cancelled"];
+function validatePrompt(value: unknown): LoginPromptEvent {
+  const data = record(value);
+  if (!promptKinds.includes(data.promptKind as LoginPromptKind))
+    throw { code: "UNAVAILABLE" };
+  if (
+    typeof data.seq !== "number" ||
+    !Number.isSafeInteger(data.seq) ||
+    data.seq < 1
+  )
+    throw { code: "UNAVAILABLE" };
+  const event: LoginPromptEvent = {
+    kind: "prompt",
+    seq: data.seq,
+    promptKind: data.promptKind as LoginPromptKind,
+  };
+  if (data.message !== undefined) event.message = string(data.message);
+  if (data.options !== undefined) {
+    if (!Array.isArray(data.options)) throw { code: "UNAVAILABLE" };
+    event.options = data.options.map((item) => {
+      const option = record(item);
+      return { id: string(option.id), label: string(option.label) };
+    });
+  }
+  return event;
+}
+function validateIndexedEvent(value: unknown): IndexedLoginEvent {
+  const data = record(value);
+  if (typeof data.index !== "number" || !Number.isSafeInteger(data.index) || data.index < 0)
+    throw { code: "UNAVAILABLE" };
+  if (data.kind === "notice") {
+    const event: IndexedLoginEvent = {
+      kind: "notice",
+      index: data.index,
+      message: string(data.message),
+    };
+    if (data.url !== undefined) {
+      const url = httpUrl(string(data.url));
+      if (!url) throw { code: "UNAVAILABLE" };
+      event.url = url;
+    }
+    if (data.code !== undefined) event.code = string(data.code);
+    return event;
+  }
+  if (data.kind === "prompt")
+    return { ...validatePrompt(data), index: data.index };
+  throw { code: "UNAVAILABLE" };
+}
+export function validateLoginEvents(value: unknown): LoginEventsResult {
+  const data = record(value);
+  if (!Array.isArray(data.events) || !loginStatuses.includes(data.status as LoginStatus))
+    throw { code: "UNAVAILABLE" };
+  if (typeof data.nextIndex !== "number" || !Number.isSafeInteger(data.nextIndex) || data.nextIndex < 0)
+    throw { code: "UNAVAILABLE" };
+  const result: LoginEventsResult = {
+    events: data.events.map(validateIndexedEvent),
+    nextIndex: data.nextIndex,
+    status: data.status as LoginStatus,
+  };
+  if (data.reset === true) result.reset = true;
+  else if (data.reset !== undefined) throw { code: "UNAVAILABLE" };
+  if (data.result !== undefined) {
+    if (!loginResults.includes(data.result as LoginResult))
+      throw { code: "UNAVAILABLE" };
+    result.result = data.result as LoginResult;
+  }
+  if (data.error !== undefined) result.error = string(data.error);
+  if (data.pendingPrompt !== undefined)
+    result.pendingPrompt = validatePrompt(data.pendingPrompt);
+  return result;
 }
 const quotaStatuses = [
   "ready",

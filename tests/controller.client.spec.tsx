@@ -449,3 +449,214 @@ test("providerId mismatch or remaining overflow does not keep previous windows",
   expect(c.state.quotas["opencode-go"]?.status).toBe("error");
   c.dispose();
 });
+
+test("snapshot without oauth stays ready with an empty oauth list", async () => {
+  const c = new Controller({
+    rpc: async () => fixtureSnapshot(),
+    reveal: async () => ({ value: "", revealTTL: 1 }),
+  });
+  await c.load();
+  expect(c.state.status).toBe("ready");
+  expect(c.state.snapshot?.oauth).toEqual([]);
+  expect(c.state.snapshot?.oauthUnavailable).toBe(false);
+  c.dispose();
+});
+
+test("loginStart returns a session immediately and polls running events", async () => {
+  const calls: string[] = [];
+  const c = new Controller(
+    {
+      rpc: async (endpoint) => {
+        calls.push(endpoint);
+        if (endpoint === "login/start") return { sessionId: "sess-live" };
+        if (endpoint === "login/events")
+          return {
+            events: [
+              {
+                kind: "notice",
+                index: 0,
+                message: "Open",
+                url: "https://example.test/login",
+              },
+            ],
+            nextIndex: 1,
+            status: "running",
+          };
+        return fixtureSnapshot();
+      },
+      reveal: async () => ({ value: "", revealTTL: 1 }),
+    },
+    15000,
+    300000,
+    60_000,
+  );
+  await c.load();
+  await c.loginStart("openai-codex", "oauth");
+  expect(c.state.login?.sessionId).toBe("sess-live");
+  expect(c.state.login?.phase).toBe("running");
+  expect(c.state.login?.events[0]).toMatchObject({
+    url: "https://example.test/login",
+  });
+  expect(calls.filter((item) => item === "login/start")).toEqual(["login/start"]);
+  expect(calls).toContain("login/events");
+  c.dispose();
+});
+
+test("BUSY loginStart takes over the existing sessionId", async () => {
+  const c = new Controller(
+    {
+      rpc: async (endpoint) => {
+        if (endpoint === "login/start")
+          return { sessionId: "already", busy: true };
+        if (endpoint === "login/events")
+          return {
+            events: [],
+            nextIndex: 0,
+            status: "awaiting-prompt",
+            pendingPrompt: {
+              kind: "prompt",
+              seq: 1,
+              promptKind: "text",
+              message: "Paste code",
+            },
+          };
+        return fixtureSnapshot();
+      },
+      reveal: async () => ({ value: "", revealTTL: 1 }),
+    },
+    15000,
+    300000,
+    60_000,
+  );
+  await c.load();
+  await c.loginStart("openai-codex");
+  expect(c.state.login?.sessionId).toBe("already");
+  expect(c.state.login?.phase).toBe("awaiting-prompt");
+  expect(c.state.operations.login?.status).not.toBe("error");
+  c.dispose();
+});
+
+test("loginAnswer does not keep a secret on client state; NOT_FOUND stops polling", async () => {
+  let gone = false;
+  let events: unknown = {
+    events: [],
+    nextIndex: 0,
+    status: "awaiting-prompt",
+    pendingPrompt: {
+      kind: "prompt",
+      seq: 1,
+      promptKind: "secret",
+      message: "API key",
+    },
+  };
+  const answers: unknown[] = [];
+  const c = new Controller(
+    {
+      rpc: async (endpoint, payload) => {
+        if (endpoint === "login/start") return { sessionId: "s" };
+        if (endpoint === "login/events") {
+          if (gone) throw { code: "NOT_FOUND" };
+          return events;
+        }
+        if (endpoint === "login/answer") {
+          answers.push(payload);
+          events = { events: [], nextIndex: 0, status: "running" };
+          return { answered: true };
+        }
+        if (endpoint === "login/cancel") return { cancelled: true };
+        return fixtureSnapshot();
+      },
+      reveal: async () => ({ value: "", revealTTL: 1 }),
+    },
+    15000,
+    300000,
+    60_000,
+  );
+  await c.load();
+  await c.loginStart("openai-codex");
+  await c.loginAnswer(1, "SUPER-SECRET-VALUE");
+  expect(answers[0]).toMatchObject({ seq: 1, value: "SUPER-SECRET-VALUE" });
+  expect(JSON.stringify(c.state)).not.toContain("SUPER-SECRET-VALUE");
+  gone = true;
+  await c.loginCancel();
+  expect(c.state.login?.error).toBe("NOT_FOUND");
+  expect(c.state.login?.phase).toBe("done");
+  c.dispose();
+});
+
+test("stale loginStart is discarded and its session is cancelled", async () => {
+  let releaseA!: (value: { sessionId: string }) => void;
+  const cancelled: string[] = [];
+  const started: string[] = [];
+  const c = new Controller(
+    {
+      rpc: async (endpoint, payload) => {
+        if (endpoint === "login/start") {
+          const id = (payload as { providerId: string }).providerId;
+          started.push(id);
+          if (id === "openai-codex")
+            return await new Promise<{ sessionId: string }>((resolve) => {
+              releaseA = resolve;
+            });
+          return { sessionId: "sess-b" };
+        }
+        if (endpoint === "login/events")
+          return { events: [], nextIndex: 0, status: "running" };
+        if (endpoint === "login/cancel") {
+          cancelled.push((payload as { sessionId: string }).sessionId);
+          return { cancelled: true };
+        }
+        return fixtureSnapshot();
+      },
+      reveal: async () => ({ value: "", revealTTL: 1 }),
+    },
+    15000,
+    300000,
+    60_000,
+  );
+  await c.load();
+  const first = c.loginStart("openai-codex");
+  await vi.waitFor(() => expect(started).toEqual(["openai-codex"]));
+  const second = c.loginStart("github-copilot");
+  await second;
+  releaseA({ sessionId: "sess-a" });
+  await first;
+  expect(c.state.login?.providerId).toBe("github-copilot");
+  expect(c.state.login?.sessionId).toBe("sess-b");
+  expect(cancelled).toEqual(["sess-a"]);
+  c.dispose();
+});
+
+test("login error codes stay uncollapsed", async () => {
+  const c = new Controller({
+    rpc: async (endpoint) => {
+      if (endpoint === "login/start") throw { code: "NO_FLOW" };
+      return fixtureSnapshot();
+    },
+    reveal: async () => ({ value: "", revealTTL: 1 }),
+  });
+  await c.load();
+  await c.loginStart("openai-codex");
+  expect(c.state.operations.login).toEqual({
+    status: "error",
+    error: "NO_FLOW",
+  });
+  c.dispose();
+});
+
+test("ALREADY_IN_FLIGHT stays uncollapsed", async () => {
+  const c = new Controller({
+    rpc: async (endpoint) => {
+      if (endpoint === "login/start") throw { code: "ALREADY_IN_FLIGHT" };
+      return fixtureSnapshot();
+    },
+    reveal: async () => ({ value: "", revealTTL: 1 }),
+  });
+  await c.load();
+  await c.loginStart("openai-codex");
+  expect(c.state.operations.login).toEqual({
+    status: "error",
+    error: "ALREADY_IN_FLIGHT",
+  });
+  c.dispose();
+});

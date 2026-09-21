@@ -1,108 +1,134 @@
 # dsh-provider-manager
 
+**所有 Provider，一页管理。**
+
 [English](README.md) | 中文
 
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-plugin-4D6BFE?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
-[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的 **Provider** 设置插件：一张紧凑台账，同时看 OpenCode Go 配额、Command Code 配额、自定义 API，以及如实说明的 Muse Code。
+DeepSeek Harness 的理念是*万物皆插件*。这个插件把它再往前推一步：**你在 DSH 里能用到的每一个 provider —— 编程订阅、公有 API、私有网关 —— 都在同一个设置页里管理。**
 
-它 **不替代** [LLM Providers](https://github.com/NOirBRight/dsh-llm-providers-ui)、[OpenCode Go](https://github.com/NOirBRight/dsh-llm-opencode-go) 或 Command Code。聊天仍走那些适配器。这个页面用来 **看剩余配额、写默认 key、加自定义 API**，不用离开设置。
+无论你带来的是什么 —— OpenCode Go 订阅、Command Code GOAT 套餐、ZCode GLM 编程套餐的 key、一个 OpenRouter 账号，还是你自己跑在 `127.0.0.1` 的网关 —— 流程完全一样：**一张卡片，粘贴 key，看到真实剩余额度，保存路由。** 不用编辑 YAML，不用来回敲命令行，不用猜模型选择器到底读的是哪份凭据。
 
 已验证宿主：**DSH `0.1.5-rc.2`**。
 
-## 为什么用这个插件
+## 理念：Provider 才是稀缺资源，所以要像资源一样管理它
 
-- **长得像 LLM Providers。** 商标风格图标、LLM / Agent 标记、三列台账（连接 · 剩余窗口 · 详情）。配额留在列表，key 和目录在独立详情页。
-- **配额只在 Host 查官方接口。** OpenCode Go：`GET https://opencode.ai/zen/go/v1/usage`。Command Code：仅在默认凭据可确认时请求 `GET https://api.commandcode.ai/alpha/billing/credits`。自定义接口显示 **不支持**，绝不编造 100% 进度条。账户之间不合并。
-- **不抢原生编辑器。** 套餐过滤、模型目录、GOAT 资格仍在 **设置 → LLM Providers** 和 **设置 → Models / Command Code**。
-- **自定义 API 预填。** **ZCode、MiMo、MiniMax** 各一张卡片，可选 **中国 / 海外** URL。另有 OpenRouter、SiliconFlow、Moonshot、DeepSeek、OpenAI、Anthropic、Groq、Together、Fireworks、DashScope、Gemini、Mistral，以及一键 **Meta Model API**。Meta 是 **按量计费**，不是 Muse Code CLI 套餐。
-- **Muse Code 说清楚。** Everyday / High / Power **接不进 DSH**。这一行只报告 CLI 是否在 `PATH` 上。要在 DSH 里跑 Spark，用 OpenCode Go（或另购 Meta Model API）。
-- **Key 不离开 Host。** 快照不含密钥。显示 key 仅限 loopback 的 `POST /provider-manager/reveal`。
+今天模型质量只是及格线；真正决定你每天体验的，是**你能连上哪些 provider、用哪份凭据、还剩多少额度**。dsh-provider-manager 把这件事做成一等公民：
+
+| 你带来什么 | 这一页给你什么 |
+| --- | --- |
+| **编程订阅** —— OpenCode Go、Command Code GOAT | 默认 key 编辑、官方实时额度（5 小时 / 周 / 月）、凭据来源核对 |
+| **公有 API key** —— 从 ZCode 到 OpenRouter 到 Meta 共 16 家预填 | 官方端点预填、中国/海外线路选择、按模型勾选 1M 上下文 |
+| **你自己的网关** —— 本地代理、公司网关、中转 | 一个干净的自定义路由，选对协议，像内置 provider 一样命名管理 |
+| **只有 CLI 的套餐** —— Muse Code | 一行如实的说明，而不是假装能接 |
+
+它**刻意不做推理**。聊天仍然跑在你已经信任的适配器上 —— [`dsh-llm-opencode-go`](https://github.com/NOirBRight/dsh-llm-opencode-go)、[Command Code provider](https://github.com/Mars-Sea/dsh-commandcode-provider) 等。这一页负责的是它们各自散落的那部分：**凭据、额度、路由，一本台账。** 这个边界划分就是设计本身 —— 你的 provider 只有一个管理入口，而每个推理适配器保持可替换。
+
+## 页面上有什么
+
+- **长得像 LLM Providers 的台账。** 商标风格图标、LLM / Agent 标记、三列列表（连接 · 剩余窗口 · 详情）。配额留在列表上，key 和目录点一下进详情。
+- **真实额度：只在 Host 查、只查官方接口。** OpenCode Go 请求 `GET https://opencode.ai/zen/go/v1/usage`；Command Code 请求 `GET https://api.commandcode.ai/alpha/billing/credits` —— 且仅当默认凭据可确认时。自定义端点显示**不支持**，绝不编造 100% 进度条。账户之间不合并。
+- **16 家 API 预设，一卡一家。** **ZCode**（GLM 编程套餐，中国 / 海外，Anthropic 同卡切换）、**MiMo**（小米 Token Plan `tp-` key，中国 / 新加坡 / 欧洲）、**MiniMax**（中国 / 海外，Anthropic 同卡切换），另有 **OpenRouter、SiliconFlow、Moonshot、DeepSeek、OpenAI、Anthropic、Groq、Together、Fireworks、DashScope、Google Gemini、Mistral** —— 以及一键 **Meta Model API**（按量计费，不是 Muse Code 订阅）。
+- **其余一切走自定义路由。** 任何 OpenAI-Completions、OpenAI-Responses 或 Anthropic-Messages 端点都能成为一等路由（`^[a-z][a-z0-9-]*$`），带保留名保护 —— 永远不会遮蔽 `opencode-go`、`commandcode`、`deepseek-official`、`cliproxy`。
+- **按模型勾选 1M 上下文。** 每个可添加的模型带一个 **1M 上下文** 复选框，按官方容量预填（GLM-5.3 / Flash / 5.2、MiMo V2.5、MiniMax-M3、Gemini 2.5 Flash、GPT-4.1 mini、Muse Spark 为 1M；GLM-5-Turbo 为 200K；MiniMax-M2.7 为 204,800）。保存前自行勾选或取消；写入的是 `llm-pi-ai` 的 `models[].contextWindow`。
+- **登录型 provider。** 经官方授权服务接入 Claude、Codex、Kimi、xAI、Copilot、OpenRouter 等带登录方式的 catalog provider。筛选 **ALL | LLM | OAuth**；凭据写入官方凭据库，本页不回显 token。
+- **Muse Code 说清楚。** Everyday / High / Power **接不进 DSH**。这一行只报告 CLI 是否在 `PATH` 上，并给出 Meta Model API 的入口。要在 DSH 里跑 Spark，用 OpenCode Go —— 或另购 Meta Model API。
+- **Key 不离开 Host。** 快照永不含密钥。显示 key 是仅限 loopback 的 `POST /provider-manager/reveal`，带真实 socket 校验；数值在隐藏、失焦、连接变化或 30 秒 TTL 后清空。见[安全](#安全)。
 
 ## 截图
 
-设置 → **Provider 管理** — 列表上就能看到剩余配额，点一下进详情：
+设置 → **Provider 管理** —— 列表上就能看到剩余额度，点一下进详情：
 
-![Provider 管理列表：OpenCode Go 剩余配额、Command Code、自定义 API、Muse Code](docs/images/provider-manager-list.png)
+![Provider 管理列表：OpenCode Go 剩余额度、Command Code、自定义 API、Muse Code](docs/images/provider-manager-list.png)
 
-OpenCode Go 详情 — 写默认 key；Host 读取 5 小时 / 周 / 月剩余：
+OpenCode Go 详情 —— 写默认 key；Host 读取 5 小时 / 周 / 月剩余：
 
 ![OpenCode Go 账户卡片](docs/images/provider-manager-opencode.png)
 
-![OpenCode Go 剩余配额窗口](docs/images/provider-manager-quota.png)
+![OpenCode Go 剩余额度窗口](docs/images/provider-manager-quota.png)
 
-Muse Code — 仅 CLI，可一键添加 Meta Model API：
+Muse Code —— 仅 CLI，附一键添加 Meta Model API：
 
-![Muse Code 详情：DSH 没有把 Muse Code CLI 做成原生适配器](docs/images/provider-manager-muse.png)
+![Muse Code 详情：DSH 不把 Muse Code CLI 当原生适配器运行](docs/images/provider-manager-muse.png)
 
-一键预填 Meta Model API（`openai-responses`，`https://api.meta.ai/v1`）：
+一键 Meta Model API 预填草稿（`openai-responses`，`https://api.meta.ai/v1`）：
 
-![添加 provider 表单，已预填 Meta Model API](docs/images/provider-manager-meta.png)
+![为 Meta Model API 预填的新增 provider 表单](docs/images/provider-manager-meta.png)
 
 ## 安装
 
-本包声明了 `dsh.bundle`，`dsh plugin add` 会激活一层配置。官方说明：[打包与安装插件](https://deepseek-harness.github.io/deepseek-harness/develop/basic/publish)。
+本包声明 `dsh.bundle`，`dsh plugin add` 即激活一个设置层。官方说明：[Package and install a plugin](https://deepseek-harness.github.io/deepseek-harness/en/develop/basic/publish)。
 
-请安装 **已经包含 `lib/` 的 release tarball**。我们不提供 `prepare` 脚本，因此 `github:KEVINCHEN625/dsh-provider-manager` 在安装时不会编译——本插件处理凭据，不应要求用户 `allowBuilds`。
+请安装 **release tarball**（已含 `lib/`）。本包不携带 `prepare` 脚本，`github:KEVINCHEN625/dsh-provider-manager` 安装时不会编译 —— 这个插件经手凭据，不应要求 `allowBuilds`。
 
 ```sh
 dsh plugin --profile web add --ignore-scripts --force \
   https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.2.3/dsh-provider-manager-0.2.3.tgz
-dsh --profile web --dump-config   # 寻找 "# == dsh-provider-manager"
+dsh --profile web --dump-config   # 应出现 "# == dsh-provider-manager"
 dsh web
 ```
 
-然后打开 **设置 → Provider 管理**。
+然后打开 **设置 → Provider 管理**。最新 tarball 见 [Releases](https://github.com/KEVINCHEN625/dsh-provider-manager/releases)，替换 URL 即可。
 
-若 web profile **本身**是 pnpm workspace（该目录有 `packages: [.]`），在 tarball 前加上布尔标志 `--workspace-root`：
+如果 web profile 本身是 pnpm workspace（`packages: [.]`），把 pnpm 的布尔参数 `--workspace-root` 放在 tarball **之前**：
 
 ```sh
 dsh plugin --profile web add --workspace-root --ignore-scripts --force \
   ./dsh-provider-manager-0.2.3.tgz
 ```
 
-CLI 显示安装成功，和正在运行的进程已经加载新入口，是两件事情。加完请重启 Web。
+命令成功和页面真实可用是两回事。装完请重启 Web。
 
-### 聊天仍要装对应的适配器
+### 聊天用的适配器仍需另外安装
 
-| 你想…                                | 还需要                                                                                                                                                    |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 你想…… | 另需安装 |
+| --- | --- |
 | 在 DSH 里用 OpenCode Go / Spark 聊天 | [`dsh-llm-opencode-go`](https://github.com/NOirBRight/dsh-llm-opencode-go) + [`dsh-llm-providers-ui`](https://github.com/NOirBRight/dsh-llm-providers-ui) |
-| 用 Command Code GOAT 聊天            | Command Code 插件                                                                                                                                         |
-| 使用 Muse Code CLI 套餐              | 只用官方 Muse CLI — **不是本插件，也不是 DSH**                                                                                                            |
+| 用 Command Code GOAT 聊天 | [Command Code provider 插件](https://github.com/Mars-Sea/dsh-commandcode-provider) |
+| Muse Code CLI 套餐 | 仅官方 Muse CLI —— **不是本插件，也不是 DSH** |
 
 ## 使用
 
-列表显示图标、名称、LLM/Agent 标记、key 状态、主窗口剩余、详情。
+列表显示图标、名称、LLM/Agent 标记、key 状态、主剩余窗口、详情。
 
-**OpenCode Go** — 默认引用 `OPENCODE_API_KEY`。配额来自官方 usage 接口。非官方 base URL：不查询配额。
+**OpenCode Go** —— 默认引用 `OPENCODE_API_KEY`。额度来自官方 usage 端点。非官方 baseURL：额度不支持。
 
-**Command Code GOAT** — 只管理默认引用 `COMMANDCODE_API_KEY`。字面 key、多账户和 `auth.json` 可能优先；本页不读登录文件。来源不明确时显示 **source-unverified**，而不是假进度条。
+**Command Code GOAT** —— 仅默认引用 `COMMANDCODE_API_KEY`。字面 key、额外账户、`auth.json` 可能优先生效；本页面不读登录文件。来源不明确时显示 **source-unverified**，而不是假进度条。
 
-**自定义 API** — `llm-pi-ai` 路由 `^[a-z][a-z0-9-]*$`。**添加 provider** 可以从常用 API 开始。ZCode、MiMo、MiniMax、SiliconFlow、Moonshot 都是 **一张卡片**：选 **中国** 或 **海外** 再保存。key 必须和签发它的控制台一致。
+**自定义 API** —— `llm-pi-ai` 路由。**添加 provider** 时若有匹配的已知 API 会预填。ZCode、MiMo、MiniMax、SiliconFlow、Moonshot 保持在**同一张卡**上：选**中国**或**海外**再保存。key 必须与签发它的控制台对应。
 
-| 预填                                                                                                      | 说明                                                                                                                                                                                                                     |
-| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **ZCode**                                                                                                 | GLM 编程套餐（`glm-5.3-flash`、`glm-5.3`）。中国 `https://open.bigmodel.cn/api/coding/paas/v4`，海外 `https://api.z.ai/api/coding/paas/v4`。同一张卡片上 Anthropic Messages 用 `/api/anthropic`。不要用 `/api/paas/v4`。 |
-| **MiMo**                                                                                                  | 小米 Token Plan（`tp-` key，不要用按量 `sk-`）。中国 `https://token-plan-cn.xiaomimimo.com/v1`，海外新加坡 `https://token-plan-sgp.xiaomimimo.com/v1`。欧洲集群是 `token-plan-ams`，若控制台显示这个地址请自行粘贴。     |
-| **MiniMax**                                                                                               | 中国 `https://api.minimax.cn/v1`，海外 `https://api.minimax.io/v1`。同一张卡片上 Anthropic 用 `/anthropic`。                                                                                                             |
-| **OpenRouter**                                                                                            | `https://openrouter.ai/api/v1`                                                                                                                                                                                           |
-| SiliconFlow / Moonshot                                                                                    | 同一张卡片上切换中国 / 海外 URL                                                                                                                                                                                          |
-| DeepSeek、OpenAI、Anthropic、Groq、Together、Fireworks、DashScope、Google Gemini、Mistral、Meta Model API | 预填官方 Base URL                                                                                                                                                                                                        |
+| 预设 | 说明 |
+| --- | --- |
+| **ZCode** | GLM 编程套餐（`glm-5.3-flash`、`glm-5.3`）。中国 `https://open.bigmodel.cn/api/coding/paas/v4`，海外 `https://api.z.ai/api/coding/paas/v4`。Anthropic Messages 用 `/api/anthropic`。**不要**用 `/api/paas/v4`。 |
+| **MiMo** | 小米 Token Plan（`tp-` key，不是按量 `sk-`）。中国 `https://token-plan-cn.xiaomimimo.com/v1`，海外新加坡 `https://token-plan-sgp.xiaomimimo.com/v1`。欧洲集群是 `token-plan-ams` —— 以 Token Plan 页面显示为准。 |
+| **MiniMax** | 中国 `https://api.minimax.cn/v1`，海外 `https://api.minimax.io/v1`。Anthropic 在同一张卡上用 `/anthropic`。 |
+| **OpenRouter** | `https://openrouter.ai/api/v1` |
+| SiliconFlow / Moonshot | 中国与海外 URL 同卡切换 |
+| DeepSeek、OpenAI、Anthropic、Groq、Together、Fireworks、DashScope、Google Gemini、Mistral、Meta Model API | 官方 baseURL 预填 |
 
-先保存配置，再保存 key。环境变量由路由派生（`DSH_PROVIDER_MANAGER_<hex(route)>_API_KEY`）。这些接口 **不支持** 配额查询。保留名：`opencode-go`、`commandcode`、`deepseek-official`、`cliproxy`、`muse-code`。
+先保存配置，再保存 key。每个模型行可勾选 **1M 上下文**；写入 `llm-pi-ai` 的 `models[].contextWindow`（勾选为 1,048,576，不勾为该模型标注容量）。可选的兜底 context 字段只对未标注容量的 id 生效。环境变量名由路由派生（`DSH_PROVIDER_MANAGER_<hex(route)>_API_KEY`）。这些端点的额度查询**不支持**。保留路由：`opencode-go`、`commandcode`、`deepseek-official`、`cliproxy`、`muse-code`。
 
-**Muse Code** — 始终 `CLI_ONLY`。文档：[套餐](https://dev.meta.ai/docs/muse-code/subscriptions)、[Meta Model API](https://dev.meta.ai/docs/guides/coding-agents)。
+**Muse Code** —— 永远 `CLI_ONLY`。文档：[订阅说明](https://dev.meta.ai/docs/muse-code/subscriptions)、[Meta Model API for coding agents](https://dev.meta.ai/docs/guides/coding-agents)。
 
 ## 安全
 
-- RPC 和快照从不回显 key
-- 显示 key 必须是已认证、同源、来自 **真实 loopback socket** 的 POST（反向代理、隧道、`Origin: null` 会被拒绝）
-- 显示后的 key 会在隐藏、返回、失焦、连接变化和 TTL（最长 30 秒）时清除
-- 查询配额时，只对上文官方 OpenCode / Command URL 发送 `Authorization: Bearer`
+- RPC 与快照永不回显 key 内容。
+- 显示 key 需要来自**真实 loopback socket** 的已鉴权同源 POST —— 代理、隧道、`Origin: null` 一律拒绝。
+- 显示出的数值在隐藏、返回、失焦、连接变化和 TTL（最长 30 秒）后清空。
+- 额度请求只向上述 OpenCode / Command 官方 URL 携带 `Authorization: Bearer`。
 
-远程浏览器若要写入设置或显示 key，请 SSH 转发到 `127.0.0.1`。
+远程浏览器需要 SSH 转发到 `127.0.0.1` 才能保存设置或显示 key。
+
+## 路线图 —— 补全"everything"的最后几步
+
+目标是每一个 provider 都能在 DSH 里用。按优先级：
+
+1. **更多订阅额度适配器** —— Kimi for Coding、GLM 编程套餐、MiniMax Coding、Codex / ChatGPT、Claude Pro/Max、Grok Build：给它们与 OpenCode Go、Command Code 同等的官方端点台账待遇（含 OAuth 账户的额度读取）。
+2. **保存即验 key** —— 粘贴新 key 时先向 provider 验证有效性，再让你信任这张卡。
+3. **模型发现** —— 在手动录入之外，一键拉取 provider 的实时模型目录。
+4. **多账户** —— 对允许的套餐做每 provider 的 key 池与轮换。
 
 ## 卸载
 
@@ -111,22 +137,18 @@ dsh plugin --profile web remove dsh-provider-manager
 dsh web
 ```
 
-只移除本插件。凭据、自定义 `llm-pi-ai` 路由、OpenCode Go、Command Code 都保留。
+只移除本 bundle。凭据、自定义 `llm-pi-ai` 路由、OpenCode Go、Command Code 全部保留。
 
 ## 开发
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm run typecheck
-pnpm run build
-pnpm test
-pnpm run test:client
-pnpm run format:check
-pnpm run check:pack
+pnpm typecheck && pnpm test && pnpm test:client
+pnpm build && pnpm check:pack
 ```
 
-Host、client 和 Cordis patch 都只在本仓库。不要为了「让 Muse 变成本地适配器」去改 DSH 核心。发到 GitHub 时请加上 `dsh-plugin` topic。
+设计、部署证据与评审记录在 [`docs/`](docs/)。插件只调用 dsh 公开服务 —— `settings`、`credentials`、`llm` —— 不 patch 宿主，也不 patch 其他插件。
 
-## 许可证
+## 许可
 
 [MIT](LICENSE)

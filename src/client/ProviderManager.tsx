@@ -1,10 +1,14 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import type { Provider } from "../shared/protocol.js";
+import type { OAuthEntry, Provider } from "../shared/protocol.js";
 import type { Controller } from "./controller.js";
 import type { Translate, LocaleKey } from "./locales.js";
+import { modelHas1m, serializeModelDraft } from "../shared/api-presets.js";
 import { CustomProviderForm, applyPresetId } from "./CustomProviderForm.js";
+import { FilterTabs, type FilterId } from "./FilterTabs.js";
 import { MuseCard, ProviderCard } from "./ProviderCard.js";
 import { MuseDetails, ProviderDetails } from "./ProviderDetails.js";
+import { OAuthCard } from "./OAuthCard.js";
+import { OAuthDetails } from "./OAuthDetails.js";
 
 export interface ManagerProps {
   createController: () => Controller;
@@ -12,7 +16,11 @@ export interface ManagerProps {
   subscribeConnection?: (listener: (connected: boolean) => void) => () => void;
 }
 
-type View = { kind: "list" } | { kind: "add" } | { kind: "detail"; id: string };
+type View =
+  | { kind: "list" }
+  | { kind: "add" }
+  | { kind: "detail"; id: string }
+  | { kind: "oauth"; id: string };
 
 export function ProviderManager({
   createController,
@@ -21,6 +29,7 @@ export function ProviderManager({
 }: ManagerProps) {
   const [controller] = useState(createController);
   const [view, setView] = useState<View>({ kind: "list" });
+  const [filter, setFilter] = useState<FilterId>("all");
   const state = useSyncExternalStore(
     controller.subscribe,
     controller.getSnapshot,
@@ -51,7 +60,12 @@ export function ProviderManager({
       name: provider.name,
       baseURL: provider.baseURL || "",
       api: provider.api || "",
-      models: provider.models.map((m) => m.id).join("\n"),
+      ...serializeModelDraft(
+        provider.models.map((m) => ({
+          id: m.id,
+          context1m: modelHas1m(m, provider.defaultContextWindow),
+        })),
+      ),
       defaultContextWindow: provider.defaultContextWindow?.toString() || "",
       defaultMaxTokens: provider.defaultMaxTokens?.toString() || "",
     };
@@ -91,6 +105,15 @@ export function ProviderManager({
     view.kind === "detail"
       ? state.snapshot?.providers.find((item) => item.id === view.id)
       : undefined;
+  const oauthEntry: OAuthEntry | undefined =
+    view.kind === "oauth"
+      ? state.snapshot?.oauth.find((item) => item.providerId === view.id)
+      : undefined;
+  const providers =
+    filter === "oauth" ? [] : (state.snapshot?.providers ?? []);
+  const oauthCards = filter === "llm" ? [] : (state.snapshot?.oauth ?? []);
+  const showMuse = filter !== "oauth";
+  const showAdd = filter !== "oauth";
   return (
     <section className="provider-manager">
       {view.kind === "list" && (
@@ -100,10 +123,13 @@ export function ProviderManager({
               <h2>{t("nav")}</h2>
               <p>{t("intro")}</p>
             </div>
-            <button type="button" onClick={() => edit()}>
-              {t("addProvider")}
-            </button>
+            {showAdd && (
+              <button type="button" onClick={() => edit()}>
+                {t("addProvider")}
+              </button>
+            )}
           </div>
+          <FilterTabs value={filter} onChange={setFilter} t={t} />
           <div className="pm-banner">
             <strong className="pm-count">{connected}</strong>
             <div className="pm-copy">
@@ -130,11 +156,13 @@ export function ProviderManager({
           </div>
           <div className="pm-columns" aria-hidden="true">
             <span>{t("columnProvider")}</span>
-            <span>{t("columnQuota")}</span>
+            <span>
+              {filter === "oauth" ? t("loginMethod") : t("columnQuota")}
+            </span>
             <span>{t("columnSetup")}</span>
           </div>
           <div className="pm-list">
-            {state.snapshot?.providers.map((provider) => (
+            {providers.map((provider) => (
               <ProviderCard
                 key={provider.id}
                 provider={provider}
@@ -143,14 +171,35 @@ export function ProviderManager({
                 onOpen={() => selectDetail(provider.id)}
               />
             ))}
-            {state.snapshot && (
+            {showMuse && state.snapshot && (
               <MuseCard
                 installed={state.snapshot.muse.installed}
                 t={t}
                 onOpen={() => selectDetail("muse")}
               />
             )}
+            {oauthCards.map((entry) => (
+              <OAuthCard
+                key={entry.providerId}
+                entry={entry}
+                login={state.login}
+                t={t}
+                onOpen={() => {
+                  controller.hide();
+                  setView({ kind: "oauth", id: entry.providerId });
+                }}
+              />
+            ))}
           </div>
+          {filter === "oauth" && state.snapshot && (
+            <p>
+              {state.snapshot.oauthUnavailable
+                ? t("oauthUnavailable")
+                : state.snapshot.oauth.length === 0
+                  ? t("oauthEmpty")
+                  : null}
+            </p>
+          )}
         </>
       )}
       {view.kind === "add" && (
@@ -191,6 +240,23 @@ export function ProviderManager({
           edit={edit}
           onClose={() => selectDetail()}
         />
+      )}
+      {view.kind === "oauth" && oauthEntry && (
+        <OAuthDetails
+          entry={oauthEntry}
+          controller={controller}
+          state={state}
+          t={t}
+          onClose={() => selectDetail()}
+        />
+      )}
+      {view.kind === "oauth" && !oauthEntry && (
+        <div className="pm-page">
+          <button type="button" className="pm-back" onClick={() => selectDetail()}>
+            {t("back")}
+          </button>
+          <p>{t("oauthEmpty")}</p>
+        </div>
       )}
     </section>
   );
