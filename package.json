@@ -1,7 +1,7 @@
 {
   "name": "dsh-provider-manager",
-  "version": "0.2.3",
-  "description": "DeepSeek Harness settings page for provider credentials, OpenCode Go / Command Code quota, custom APIs, and Muse Code guidance.",
+  "version": "0.2.4",
+  "description": "DeepSeek Harness settings page for provider credentials, OpenCode Go / Command Code quota, ZCode China/Overseas, OpenRouter and other custom APIs, and Muse Code guidance.",
   "license": "MIT",
   "repository": {
     "type": "git",

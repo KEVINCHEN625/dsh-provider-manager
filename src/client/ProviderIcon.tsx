@@ -45,13 +45,20 @@ export function RoleBadge({
 }
 
 export function ProviderIcon({ id, name }: { id: string; name: string }) {
+  const key = `${id} ${name}`.toLowerCase();
   const kind = id.startsWith("opencode")
     ? "opencode"
     : id.startsWith("command")
       ? "command"
       : id.startsWith("muse")
         ? "muse"
-        : "generic";
+        : key.includes("zcode") ||
+            key.includes("bigmodel") ||
+            key.includes("z.ai")
+          ? "zcode"
+          : key.includes("openrouter")
+            ? "openrouter"
+            : "generic";
   return (
     <span className="pm-icon" data-mark={kind} aria-hidden="true" title={name}>
       {kind === "opencode" && (
@@ -77,6 +84,35 @@ export function ProviderIcon({ id, name }: { id: string; name: string }) {
           <path
             fill="var(--dsw-alias-bg-layer-1, #fff)"
             d="m93.6604 26.1784c-8.982 0-16.2887 7.3067-16.2887 16.2888v6.9809h-18.6158v-6.9809c0-8.9821-7.3067-16.2888-16.2887-16.2888-8.9821 0-16.2888 7.3067-16.2888 16.2888s7.3067 16.2887 16.2888 16.2887h6.9809v18.6158h-6.9809c-8.9821 0-16.2888 7.3067-16.2888 16.2888 0 8.9825 7.3067 16.2885 16.2888 16.2885 8.982 0 16.2887-7.306 16.2887-16.2885v-6.981h18.6158v6.981c0 8.9825 7.3067 16.2885 16.2887 16.2885 8.9826 0 16.2886-7.306 16.2886-16.2885 0-8.9821-7.306-16.2888-16.2886-16.2888h-6.9809v-18.6158h6.9809c8.9826 0 16.2886-7.3066 16.2886-16.2887s-7.306-16.2888-16.2886-16.2888zm-6.9809 23.2697v-6.9809c0-3.8628 3.1182-6.9809 6.9809-6.9809 3.8628 0 6.9806 3.1181 6.9806 6.9809 0 3.8627-3.1178 6.9809-6.9806 6.9809zm-44.2123 0c-3.8628 0-6.9809-3.1182-6.9809-6.9809 0-3.8628 3.1181-6.9809 6.9809-6.9809 3.8627 0 6.9809 3.1181 6.9809 6.9809v6.9809zm16.2887 27.9236v-18.6158h18.6158v18.6158zm34.9045 23.2693c-3.8627 0-6.9809-3.1178-6.9809-6.9805v-6.981h6.9809c3.8628 0 6.9806 3.1182 6.9806 6.981 0 3.8627-3.1178 6.9805-6.9806 6.9805zm-51.1932 0c-3.8628 0-6.9809-3.1178-6.9809-6.9805 0-3.8628 3.1181-6.981 6.9809-6.981h6.9809v6.981c0 3.8627-3.1182 6.9805-6.9809 6.9805z"
+          />
+        </Svg>
+      )}
+      {kind === "zcode" && (
+        <Svg viewBox="0 0 24 24">
+          <rect
+            x="3"
+            y="3"
+            width="18"
+            height="18"
+            rx="4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          />
+          <path
+            d="M8 8h8L8 16h8"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+        </Svg>
+      )}
+      {kind === "openrouter" && (
+        <Svg viewBox="0 0 24 24">
+          <path
+            fill="currentColor"
+            d="M12 3 20 8v8l-8 5-8-5V8l8-5Zm0 2.2L6 8.6v6.8l6 3.8 6-3.8V8.6l-6-3.4Z"
           />
         </Svg>
       )}

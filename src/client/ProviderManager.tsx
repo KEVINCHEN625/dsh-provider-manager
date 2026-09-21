@@ -2,9 +2,8 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { Provider } from "../shared/protocol.js";
 import type { Controller } from "./controller.js";
 import type { Translate, LocaleKey } from "./locales.js";
-import { META_MODEL_API } from "../shared/meta-api.js";
+import { CustomProviderForm, applyPresetId } from "./CustomProviderForm.js";
 import { MuseCard, ProviderCard } from "./ProviderCard.js";
-import { CustomProviderForm } from "./CustomProviderForm.js";
 import { MuseDetails, ProviderDetails } from "./ProviderDetails.js";
 
 export interface ManagerProps {
@@ -71,15 +70,7 @@ export function ProviderManager({
   const addMetaApi = () => {
     controller.hide();
     controller.draftRevision = state.snapshot?.customRevision;
-    controller.drafts = {
-      name: META_MODEL_API.name,
-      route: META_MODEL_API.route,
-      baseURL: META_MODEL_API.baseURL,
-      api: META_MODEL_API.api,
-      models: META_MODEL_API.models,
-      defaultContextWindow: META_MODEL_API.defaultContextWindow,
-      defaultMaxTokens: META_MODEL_API.defaultMaxTokens,
-    };
+    controller.drafts = applyPresetId("meta");
     setView({ kind: "add" });
   };
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";

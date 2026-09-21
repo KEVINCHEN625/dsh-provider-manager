@@ -16,7 +16,7 @@
 - **长得像 LLM Providers。** 商标风格图标、LLM / Agent 标记、三列台账（连接 · 剩余窗口 · 详情）。配额留在列表，key 和目录在独立详情页。
 - **配额只在 Host 查官方接口。** OpenCode Go：`GET https://opencode.ai/zen/go/v1/usage`。Command Code：仅在默认凭据可确认时请求 `GET https://api.commandcode.ai/alpha/billing/credits`。自定义接口显示 **不支持**，绝不编造 100% 进度条。账户之间不合并。
 - **不抢原生编辑器。** 套餐过滤、模型目录、GOAT 资格仍在 **设置 → LLM Providers** 和 **设置 → Models / Command Code**。
-- **自定义 API + 一键 Meta Model API。** 预填 `https://api.meta.ai/v1`、`openai-responses` 和 Spark 模型 id。这是 Meta **按量计费**，不是 Muse Code CLI 套餐。
+- **自定义 API 预填。** **ZCode** 一张卡片，可选 **中国 / 海外** URL（编程套餐，不是 `/api/paas/v4`）。另有 OpenRouter、SiliconFlow、Moonshot、DeepSeek、OpenAI、Anthropic、Groq、Together、Fireworks、DashScope、Gemini、Mistral，以及一键 **Meta Model API**。Meta 是 **按量计费**，不是 Muse Code CLI 套餐。
 - **Muse Code 说清楚。** Everyday / High / Power **接不进 DSH**。这一行只报告 CLI 是否在 `PATH` 上。要在 DSH 里跑 Spark，用 OpenCode Go（或另购 Meta Model API）。
 - **Key 不离开 Host。** 快照不含密钥。显示 key 仅限 loopback 的 `POST /provider-manager/reveal`。
 
@@ -66,11 +66,11 @@ CLI 显示安装成功，和正在运行的进程已经加载新入口，是两�
 
 ### 聊天仍要装对应的适配器
 
-| 你想… | 还需要 |
-| --- | --- |
+| 你想…                                | 还需要                                                                                                                                                    |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 在 DSH 里用 OpenCode Go / Spark 聊天 | [`dsh-llm-opencode-go`](https://github.com/NOirBRight/dsh-llm-opencode-go) + [`dsh-llm-providers-ui`](https://github.com/NOirBRight/dsh-llm-providers-ui) |
-| 用 Command Code GOAT 聊天 | Command Code 插件 |
-| 使用 Muse Code CLI 套餐 | 只用官方 Muse CLI — **不是本插件，也不是 DSH** |
+| 用 Command Code GOAT 聊天            | Command Code 插件                                                                                                                                         |
+| 使用 Muse Code CLI 套餐              | 只用官方 Muse CLI — **不是本插件，也不是 DSH**                                                                                                            |
 
 ## 使用
 
@@ -80,7 +80,16 @@ CLI 显示安装成功，和正在运行的进程已经加载新入口，是两�
 
 **Command Code GOAT** — 只管理默认引用 `COMMANDCODE_API_KEY`。字面 key、多账户和 `auth.json` 可能优先；本页不读登录文件。来源不明确时显示 **source-unverified**，而不是假进度条。
 
-**自定义 API** — `llm-pi-ai` 路由 `^[a-z][a-z0-9-]*$`。先保存配置，再保存 key。环境变量由路由派生（`DSH_PROVIDER_MANAGER_<hex(route)>_API_KEY`）。保留名：`opencode-go`、`commandcode`、`deepseek-official`、`cliproxy`、`muse-code`。
+**自定义 API** — `llm-pi-ai` 路由 `^[a-z][a-z0-9-]*$`。**添加 provider** 可以从常用 API 开始。ZCode、SiliconFlow、Moonshot 都是 **一张卡片**：选 **中国** 或 **海外** 再保存。key 必须和签发它的控制台一致。
+
+| 预填                                                                                                      | 说明                                                                                                                                                                                           |
+| --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ZCode**                                                                                                 | GLM 编程套餐。中国 `https://open.bigmodel.cn/api/coding/paas/v4`，海外 `https://api.z.ai/api/coding/paas/v4`。同一张卡片上 Anthropic Messages 用 `/api/anthropic`。不要用通用 `/api/paas/v4`。 |
+| **OpenRouter**                                                                                            | `https://openrouter.ai/api/v1`                                                                                                                                                                 |
+| SiliconFlow / Moonshot                                                                                    | 同一张卡片上切换中国 / 海外 URL                                                                                                                                                                |
+| DeepSeek、OpenAI、Anthropic、Groq、Together、Fireworks、DashScope、Google Gemini、Mistral、Meta Model API | 预填官方 Base URL                                                                                                                                                                              |
+
+先保存配置，再保存 key。环境变量由路由派生（`DSH_PROVIDER_MANAGER_<hex(route)>_API_KEY`）。这些接口 **不支持** 配额查询。保留名：`opencode-go`、`commandcode`、`deepseek-official`、`cliproxy`、`muse-code`。
 
 **Muse Code** — 始终 `CLI_ONLY`。文档：[套餐](https://dev.meta.ai/docs/muse-code/subscriptions)、[Meta Model API](https://dev.meta.ai/docs/guides/coding-agents)。
 

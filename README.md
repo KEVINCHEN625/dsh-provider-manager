@@ -16,7 +16,7 @@ Verified on **DSH `0.1.5-rc.2`**.
 - **Looks like LLM Providers.** Trademark-style marks, LLM / Agent badges, a 3-column ledger (connection · remaining window · Details). Quota stays on the list; keys and catalogs open on a separate page.
 - **Quota is Host-only and official.** OpenCode Go uses `GET https://opencode.ai/zen/go/v1/usage`. Command Code uses `GET https://api.commandcode.ai/alpha/billing/credits` only when the default credential is unambiguous. Custom endpoints get **unsupported**, never a fake 100% bar. Accounts are never merged.
 - **Does not steal the native editors.** Plan filters, model catalogs, and GOAT eligibility stay on **Settings → LLM Providers** and **Settings → Models / Command Code**.
-- **Custom API + one-click Meta Model API.** Prefills `https://api.meta.ai/v1`, `openai-responses`, and Spark model ids. That is Meta **pay-as-you-go**, not a Muse Code CLI subscription.
+- **Custom API presets.** One **ZCode** card with **China / Overseas** URLs (Coding Plan, not `/api/paas/v4`). OpenRouter, SiliconFlow, Moonshot, DeepSeek, OpenAI, Anthropic, Groq, Together, Fireworks, DashScope, Gemini, Mistral, and one-click **Meta Model API**. Meta is **pay-as-you-go**, not a Muse Code CLI subscription.
 - **Honest Muse Code.** DSH cannot attach Everyday / High / Power. The row only reports whether the CLI is on `PATH`. Spark inside DSH is OpenCode Go (or Meta Model API if you pay Meta separately).
 - **Keys stay on the Host.** Snapshots never include secrets. Reveal is loopback-only `POST /provider-manager/reveal`.
 
@@ -66,11 +66,11 @@ CLI success and a live page are separate checks. Restart Web after adding the pl
 
 ### Also install the adapters you actually chat with
 
-| You want to… | Also install |
-| --- | --- |
+| You want to…                         | Also install                                                                                                                                              |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Chat with OpenCode Go / Spark in DSH | [`dsh-llm-opencode-go`](https://github.com/NOirBRight/dsh-llm-opencode-go) + [`dsh-llm-providers-ui`](https://github.com/NOirBRight/dsh-llm-providers-ui) |
-| Chat with Command Code GOAT | Command Code provider plugin |
-| Muse Code CLI plan | Official Muse CLI only — **not this plugin, not DSH** |
+| Chat with Command Code GOAT          | Command Code provider plugin                                                                                                                              |
+| Muse Code CLI plan                   | Official Muse CLI only — **not this plugin, not DSH**                                                                                                     |
 
 ## Using the page
 
@@ -80,7 +80,16 @@ The list shows icon, name, LLM/Agent badge, key status, primary remaining window
 
 **Command Code GOAT** — default ref `COMMANDCODE_API_KEY` only. Literal keys, extra accounts, and `auth.json` may take precedence; this page does not read login files. Ambiguous sources show **source-unverified** instead of a fake bar.
 
-**Custom API** — `llm-pi-ai` route `^[a-z][a-z0-9-]*$`. Save configuration, then save the key. The env name is derived from the route (`DSH_PROVIDER_MANAGER_<hex(route)>_API_KEY`). Reserved: `opencode-go`, `commandcode`, `deepseek-official`, `cliproxy`, `muse-code`.
+**Custom API** — `llm-pi-ai` route `^[a-z][a-z0-9-]*$`. **Add provider** can start from a known API. ZCode, SiliconFlow, and Moonshot stay on **one card**: choose **China** or **Overseas**, then save. The key must match the console that issued it.
+
+| Preset                                                                                                    | Notes                                                                                                                                                                                                                            |
+| --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ZCode**                                                                                                 | GLM Coding Plan. China `https://open.bigmodel.cn/api/coding/paas/v4`, Overseas `https://api.z.ai/api/coding/paas/v4`. Anthropic Messages uses `/api/anthropic` on the same card. Do **not** use the general `/api/paas/v4` path. |
+| **OpenRouter**                                                                                            | `https://openrouter.ai/api/v1`                                                                                                                                                                                                   |
+| SiliconFlow / Moonshot                                                                                    | China and Overseas URLs on the same card                                                                                                                                                                                         |
+| DeepSeek, OpenAI, Anthropic, Groq, Together, Fireworks, DashScope, Google Gemini, Mistral, Meta Model API | Official base URL prefilled                                                                                                                                                                                                      |
+
+Save configuration, then save the key. The env name is derived from the route (`DSH_PROVIDER_MANAGER_<hex(route)>_API_KEY`). Quota lookup is **unsupported** for these endpoints. Reserved: `opencode-go`, `commandcode`, `deepseek-official`, `cliproxy`, `muse-code`.
 
 **Muse Code** — always `CLI_ONLY`. Docs: [subscriptions](https://dev.meta.ai/docs/muse-code/subscriptions), [Meta Model API for coding agents](https://dev.meta.ai/docs/guides/coding-agents).
 

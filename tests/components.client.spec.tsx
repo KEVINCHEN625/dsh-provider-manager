@@ -296,3 +296,71 @@ test("OpenCode mark and Meta Model API draft from Muse details", async () => {
       .value,
   ).toContain("muse-spark-1.3");
 });
+test("ZCode preset keeps one route and switches China / Overseas URLs", async () => {
+  setup();
+  fireEvent.click(await screen.findByRole("button", { name: en.addProvider }));
+  fireEvent.change(screen.getByLabelText(en.apiPreset), {
+    target: { value: "zcode" },
+  });
+  expect((screen.getByLabelText("Route") as HTMLInputElement).value).toBe(
+    "zcode",
+  );
+  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe(
+    "https://open.bigmodel.cn/api/coding/paas/v4",
+  );
+  expect(
+    (
+      screen.getByRole("radio", {
+        name: new RegExp(en.regionChina),
+      }) as HTMLInputElement
+    ).checked,
+  ).toBe(true);
+  fireEvent.click(
+    screen.getByRole("radio", { name: new RegExp(en.regionOverseas) }),
+  );
+  expect((screen.getByLabelText("Route") as HTMLInputElement).value).toBe(
+    "zcode",
+  );
+  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe(
+    "https://api.z.ai/api/coding/paas/v4",
+  );
+  fireEvent.change(screen.getByLabelText("Protocol"), {
+    target: { value: "anthropic-messages" },
+  });
+  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe(
+    "https://api.z.ai/api/anthropic",
+  );
+  fireEvent.change(screen.getByLabelText(en.apiPreset), {
+    target: { value: "openrouter" },
+  });
+  expect((screen.getByLabelText("Route") as HTMLInputElement).value).toBe(
+    "openrouter",
+  );
+  expect((screen.getByLabelText("Base URL") as HTMLInputElement).value).toBe(
+    "https://openrouter.ai/api/v1",
+  );
+  expect(
+    screen.queryByRole("radio", { name: new RegExp(en.regionChina) }),
+  ).toBeNull();
+});
+test("ZCode list card shows an Overseas badge", async () => {
+  setup(en, async () => ({
+    ...snapshot,
+    providers: [
+      provider,
+      {
+        id: "custom:zcode",
+        name: "ZCode",
+        available: true,
+        revision: 1,
+        credential: { configured: true, writable: true, source: "env" },
+        models: [{ id: "glm-5.2" }],
+        baseURL: "https://api.z.ai/api/coding/paas/v4",
+        api: "openai-completions",
+      },
+    ],
+  }));
+  await screen.findByText("ZCode");
+  expect(screen.getByText(en.regionOverseas)).toBeTruthy();
+  expect(document.querySelector('.pm-icon[data-mark="zcode"]')).toBeTruthy();
+});

@@ -216,9 +216,56 @@ export const styles = `
 }
 .pm-quota-detail .pm-window { margin: 12px 0; }
 .provider-manager .pm-card { border: 1px solid var(--pm-border); border-radius: 12px; padding: 18px; min-width: 0; margin: 12px 0; }
+.pm-regions {
+  border: 0;
+  margin: 12px 0 4px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.pm-regions legend { font-size: 12px; margin: 0 0 4px; }
+.provider-manager .pm-region-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  align-items: start;
+  margin-top: 0;
+  font-weight: 400;
+  border: 1px solid var(--pm-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.provider-manager .pm-region-option input[type="radio"] {
+  display: inline;
+  width: auto;
+  margin: 3px 0 0;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+.pm-region-option span { font-weight: 550; }
+.pm-region-option small {
+  grid-column: 2;
+  color: var(--pm-faint);
+  overflow-wrap: anywhere;
+}
+.pm-region-option[data-on="true"] {
+  outline: 2px solid #668cff;
+  outline-offset: 1px;
+}
+.pm-region {
+  font-size: 10px;
+  color: var(--pm-muted);
+  border: 1px solid var(--pm-border);
+  border-radius: 999px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  font-weight: 500;
+}
 .provider-manager h3, .provider-manager h4 { font-size: 1.05rem; margin: 0 0 12px; }
 .provider-manager label { display: block; margin-top: 12px; font-weight: 500; }
-.provider-manager input,.provider-manager textarea,.provider-manager select {
+.provider-manager input:not([type="radio"]),.provider-manager textarea,.provider-manager select {
   display: block;
   width: 100%;
   box-sizing: border-box;

@@ -46,6 +46,15 @@ export const en = {
   docs: "Official Muse Code CLI documentation",
   docsApi: "Meta Model API for coding agents",
   custom: "Custom API",
+  apiPreset: "Known API",
+  presetCustom: "Blank custom API",
+  presetHelp:
+    "Pick a known API to fill the form. Edit model IDs to match your account. Quota lookup stays unsupported for these endpoints.",
+  endpointRegion: "Endpoint",
+  regionChina: "China",
+  regionOverseas: "Overseas",
+  regionHelp:
+    "China and Overseas keys are not interchangeable. Use the URL that issued the key. ZCode Coding Plan uses /api/coding/paas/v4 for OpenAI Completions and /api/anthropic for Anthropic Messages — not the general /api/paas/v4.",
   name: "Name",
   route: "Route",
   baseURL: "Base URL",
@@ -150,6 +159,15 @@ export const zh: Record<LocaleKey, string> = {
   docs: "Muse Code CLI 官方文档",
   docsApi: "Meta Model API 接入说明",
   custom: "自定义 API",
+  apiPreset: "常用 API",
+  presetCustom: "空白自定义 API",
+  presetHelp:
+    "选择常用 API 会预填表单。请按你的账户改模型 ID。这些接口暂不支持配额查询。",
+  endpointRegion: "接入点",
+  regionChina: "中国",
+  regionOverseas: "海外",
+  regionHelp:
+    "中国和海外的 key 不能混用，请选签发该 key 的网址。ZCode 编程套餐：OpenAI Completions 用 /api/coding/paas/v4，Anthropic Messages 用 /api/anthropic，不要用通用 /api/paas/v4。",
   name: "名称",
   route: "路由",
   baseURL: "Base URL",

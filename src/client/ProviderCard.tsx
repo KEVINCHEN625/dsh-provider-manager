@@ -1,6 +1,7 @@
 import type { Provider } from "../shared/protocol.js";
 import type { State } from "./controller.js";
 import type { Translate, LocaleKey } from "./locales.js";
+import { matchPreset, matchRegion } from "../shared/api-presets.js";
 import { ProviderIcon, RoleBadge } from "./ProviderIcon.js";
 import { QuotaSummary } from "./QuotaSummary.js";
 
@@ -20,6 +21,10 @@ export function ProviderCard({
     : provider.credential.configured
       ? "configured"
       : "missing";
+  const region = matchRegion(
+    matchPreset({ route: provider.id, baseURL: provider.baseURL }),
+    provider.baseURL,
+  );
   return (
     <article className="pm-row">
       <div className="pm-identity">
@@ -27,6 +32,7 @@ export function ProviderCard({
         <div>
           <div className="pm-title">
             <h3>{provider.name}</h3>
+            {region && <span className="pm-region">{t(region.labelKey)}</span>}
             <RoleBadge role="llm" label={t("llmBadge")} />
           </div>
           <p>
