@@ -1,5 +1,7 @@
 # Current status
 
+Planning handoff (2026-09-21): user requested a complete execution plan for another EXECUTOR, not implementation in this turn. The compact icon/quota overview and detail-page increment is specified in [quota-ui-plan.md](quota-ui-plan.md), with a copy-ready dispatch in [execute-quota-ui.md](execute-quota-ui.md). Independent plan review and the external-key cache correction are recorded there. No quota/UI product changes, deployment, or removals were performed in this planning turn.
+
 User follow-up (2026-09-21): authorized retiring the old third-party provider plugins only after the self-maintained replacement independently passes compatibility tests. Current 0.1.1 still consumes their inference adapters, so removal is not yet allowed by that condition. Replacement scope and gates are recorded in [provider-retirement.md](provider-retirement.md). No old provider package was removed.
 
 Controller update (2026-09-21): version 0.1.1 is deployed to the real Web profile after isolated browser and same-home headless validation. Existing user settings and provider artifacts remain unchanged. See [deployment.md](deployment.md) for final evidence and the still-unconnected Muse Code subscription boundary. The executor-only checkpoint below records the earlier handoff, not a deployment blocker.
