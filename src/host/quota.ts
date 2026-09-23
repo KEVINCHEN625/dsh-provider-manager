@@ -193,12 +193,15 @@ export function unofficialEndpoint(
   kind: "opencode-go" | "commandcode",
   profile: Record<string, unknown>,
 ): boolean {
-  const official =
-    kind === "opencode-go" ? OPENCODE_OFFICIAL : COMMAND_OFFICIAL;
-  const raw =
-    kind === "opencode-go"
-      ? (profile.baseURL ?? profile.apiBase)
-      : (profile.apiBase ?? profile.baseURL);
+  const definition = {
+    "opencode-go": {
+      official: OPENCODE_OFFICIAL,
+      fields: ["baseURL", "apiBase"],
+    },
+    commandcode: { official: COMMAND_OFFICIAL, fields: ["apiBase", "baseURL"] },
+  }[kind];
+  const official = definition.official;
+  const raw = profile[definition.fields[0]] ?? profile[definition.fields[1]];
   if (raw === undefined || raw === "") return false;
   if (typeof raw !== "string") return true;
   return normalizeBase(raw) !== official;

@@ -390,6 +390,23 @@ export const styles = `
 .provider-manager :focus-visible { outline: 2px solid #668cff; outline-offset: 3px; }
 .provider-manager [role=alert] { color: #d96950; }
 .provider-manager ul { max-height: 220px; overflow: auto; padding-left: 20px; overflow-wrap: anywhere; }
+.pm-catalog-wrap { overflow: auto; max-height: 480px; margin: 8px 0 12px; }
+.pm-catalog {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.pm-catalog th, .pm-catalog td {
+  border-bottom: 1px solid var(--pm-border);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.pm-catalog th { color: var(--pm-muted); font-weight: 550; white-space: nowrap; }
+.pm-catalog code { font-size: 11px; color: var(--pm-muted); }
+.pm-catalog-blocked td { color: var(--pm-muted); }
 .pm-page { min-width: 0; }
 .pm-page-head {
   display: flex;

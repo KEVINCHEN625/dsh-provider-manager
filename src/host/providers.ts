@@ -1,3 +1,10 @@
+import {
+  GO_ROUTE,
+  GO_NAME,
+  GO_KEY,
+  GO_CATALOG,
+  catalogModelDto,
+} from "./opencode/catalog.js";
 import { createHmac, randomBytes } from "node:crypto";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import type { Context } from "@deepseek-ai/cordis";
@@ -23,11 +30,7 @@ import {
   COMMAND_CREDITS_URL,
 } from "./quota.js";
 import type { QuotaSnapshot } from "../shared/protocol.js";
-import {
-  LoginSessionManager,
-  authorizationOf,
-  oauthEntries,
-} from "./login.js";
+import { LoginSessionManager, authorizationOf, oauthEntries } from "./login.js";
 type Services = Pick<Context, "settings" | "credentials" | "llm"> & {
   get?(name: string): unknown;
 };
@@ -39,15 +42,54 @@ const fixed: Record<string, { ns: string; ref: string; name: string }> = {
   "opencode-go": {
     ns: "llm-opencode-go",
     ref: "OPENCODE_API_KEY",
-    name: "OpenCode Go",
+    name: "OpenCode Go (legacy plugin)",
   },
   commandcode: {
     ns: "llm-commandcode",
     ref: "COMMANDCODE_API_KEY",
     name: "Command Code GOAT",
   },
+  [GO_ROUTE]: { ns: GO_ROUTE, ref: GO_KEY, name: GO_NAME },
 };
+const quotaDefinitions: Record<
+  string,
+  {
+    source: NonNullable<QuotaSnapshot["source"]>;
+    url: string;
+    kind: "opencode" | "command";
+    endpointKind: "opencode-go" | "commandcode";
+  }
+> = Object.fromEntries([
+  [
+    "opencode-go",
+    {
+      source: "opencode-official",
+      url: OPENCODE_USAGE_URL,
+      kind: "opencode",
+      endpointKind: "opencode-go",
+    },
+  ],
+  [
+    GO_ROUTE,
+    {
+      source: "opencode-official",
+      url: OPENCODE_USAGE_URL,
+      kind: "opencode",
+      endpointKind: "opencode-go",
+    },
+  ],
+  [
+    "commandcode",
+    {
+      source: "command-default-reference",
+      url: COMMAND_CREDITS_URL,
+      kind: "command",
+      endpointKind: "commandcode",
+    },
+  ],
+]);
 const reserved = new Set([
+  GO_ROUTE,
   "opencode-go",
   "commandcode",
   "deepseek-official",
@@ -140,12 +182,11 @@ export class Manager {
         stale: false,
       };
     }
-    if (providerId !== "opencode-go" && providerId !== "commandcode")
-      throw new SafeError("INVALID_INPUT");
-    const source =
-      providerId === "opencode-go"
-        ? "opencode-official"
-        : "command-default-reference";
+    const quota = Object.hasOwn(quotaDefinitions, providerId)
+      ? quotaDefinitions[providerId]
+      : undefined;
+    if (!quota) throw new SafeError("INVALID_INPUT");
+    const { source } = quota;
     const timeoutSnapshot = (): QuotaSnapshot => ({
       providerId,
       source,
@@ -171,7 +212,7 @@ export class Manager {
     if (p.bindingToken && p.bindingToken !== binding.token)
       throw new SafeError("BINDING_CHANGED");
     const profile = binding.profile as Record<string, unknown>;
-    if (unofficialEndpoint(providerId, profile))
+    if (unofficialEndpoint(quota.endpointKind, profile))
       return {
         providerId,
         source,
@@ -265,11 +306,8 @@ export class Manager {
       return await this.quotaReader.load({
         providerId,
         source,
-        url:
-          providerId === "opencode-go"
-            ? OPENCODE_USAGE_URL
-            : COMMAND_CREDITS_URL,
-        kind: providerId === "opencode-go" ? "opencode" : "command",
+        url: quota.url,
+        kind: quota.kind,
         bindingToken: binding.token,
         credentialSource,
         key,
@@ -359,6 +397,8 @@ export class Manager {
     signal?.throwIfAborted();
     this.check(input, true);
     await this.services.credentials.set(ref, value);
+    for (const [id, definition] of Object.entries(fixed))
+      if (definition.ref === b.ref) this.quotaReader.invalidate(id);
     this.quotaReader.invalidate(text(p.providerId));
     const info = await this.services.credentials.describe(ref);
     return {
@@ -439,15 +479,26 @@ export class Manager {
       card.error = "REF_NOT_ALLOWED";
     }
     try {
-      card.models = (await this.services.llm.listModels(route)).map((m) => {
-        const contextWindow = savedWindows.get(m.id);
-        return {
-          id: m.id,
-          name: m.name,
-          ...("api" in m && typeof m.api === "string" ? { api: m.api } : {}),
-          ...(contextWindow !== undefined ? { contextWindow } : {}),
-        };
-      });
+      const listed = await this.services.llm.listModels(route);
+      if (id === GO_ROUTE) {
+        card.catalogCheckedAt = GO_CATALOG.checkedAt;
+        card.models = GO_CATALOG.models.map((entry) => {
+          const live = listed.find((item) => item.id === entry.id);
+          return {
+            ...catalogModelDto(entry),
+            ...(live?.name ? { name: live.name } : {}),
+          };
+        });
+      } else
+        card.models = listed.map((m) => {
+          const contextWindow = savedWindows.get(m.id);
+          return {
+            id: m.id,
+            name: m.name,
+            ...("api" in m && typeof m.api === "string" ? { api: m.api } : {}),
+            ...(contextWindow !== undefined ? { contextWindow } : {}),
+          };
+        });
     } catch {
       card.catalogError = "UNAVAILABLE";
     }

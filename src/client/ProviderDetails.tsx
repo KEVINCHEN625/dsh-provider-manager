@@ -9,11 +9,117 @@ import { formatContextWindow } from "../shared/api-presets.js";
 import { CustomProviderForm } from "./CustomProviderForm.js";
 import { ProviderIcon } from "./ProviderIcon.js";
 
+function exactCount(value?: number) {
+  return typeof value === "number" ? value.toLocaleString("en-US") : undefined;
+}
+
+function reasoningSummary(
+  model: Provider["models"][number],
+  t: Translate,
+): string {
+  if (model.disposition === "blocked-with-evidence")
+    return [t("catalogBlocked"), ...(model.blockReasons ?? [])].join(" · ");
+  const parts: string[] = [];
+  if (model.toggle) parts.push(t("catalogToggle"));
+  if (model.nativeEfforts?.length)
+    parts.push(`effort: ${model.nativeEfforts.join(", ")}`);
+  if (model.budgetTokensMax)
+    parts.push(`budget_tokens max ${exactCount(model.budgetTokensMax)}`);
+  else if (model.budgetTokensUnbounded) parts.push("budget_tokens");
+  if (model.localBudgetPresets?.length)
+    parts.push(
+      `${t("catalogLocalBudget")}: ${model.localBudgetPresets
+        .map((item) => `${item.id}=${exactCount(item.tokens)}`)
+        .join(", ")}`,
+    );
+  if (model.toggleOnLevel === "high" && !model.nativeEfforts?.length)
+    parts.push(t("catalogToggleOn"));
+  if (
+    model.reasoning &&
+    !model.toggle &&
+    !model.nativeEfforts?.length &&
+    !model.localBudgetPresets?.length
+  )
+    parts.push(t("catalogAlwaysOn"));
+  if (!model.reasoning && model.disposition === "supported")
+    parts.push(t("catalogNone"));
+  return parts.join(" · ") || t("catalogNone");
+}
+
+function GoCatalogTable({ provider, t }: { provider: Provider; t: Translate }) {
+  const showInputLimitNote = provider.models.some((model) => model.inputLimit);
+  return (
+    <>
+      {provider.catalogCheckedAt && (
+        <p className="pm-meter-detail">
+          {t("catalogChecked")}: {provider.catalogCheckedAt}
+        </p>
+      )}
+      <div className="pm-catalog-wrap">
+        <table className="pm-catalog">
+          <thead>
+            <tr>
+              <th>{t("modelId")}</th>
+              <th>{t("catalogProtocol")}</th>
+              <th>{t("catalogContext")}</th>
+              <th>{t("catalogInputLimit")}</th>
+              <th>{t("catalogMaxOutput")}</th>
+              <th>{t("catalogReasoning")}</th>
+              <th>{t("catalogInput")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {provider.models.map((model) => (
+              <tr
+                key={model.id}
+                className={
+                  model.disposition === "blocked-with-evidence"
+                    ? "pm-catalog-blocked"
+                    : undefined
+                }
+              >
+                <td>
+                  <div>{model.name || model.id}</div>
+                  <code title={model.id}>{model.id}</code>
+                </td>
+                <td>{model.api || "—"}</td>
+                <td title={exactCount(model.contextWindow)}>
+                  {exactCount(model.contextWindow) || "—"}
+                </td>
+                <td title={exactCount(model.inputLimit)}>
+                  {exactCount(model.inputLimit) || "—"}
+                </td>
+                <td title={exactCount(model.maxOutputTokens)}>
+                  {exactCount(model.maxOutputTokens) || "—"}
+                </td>
+                <td>{reasoningSummary(model, t)}</td>
+                <td>
+                  {t("catalogSupported")}:{" "}
+                  {(model.input ?? []).join(", ") || t("catalogNone")}
+                  {model.advertisedInput?.length
+                    ? ` · ${t("catalogAdvertised")}: ${model.advertisedInput.join(", ")}`
+                    : ""}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {showInputLimitNote && (
+        <p className="pm-meter-detail">{t("catalogInputLimitNote")}</p>
+      )}
+    </>
+  );
+}
 const OPENCODE_ENDPOINT = "https://opencode.ai/zen/go/v1";
 const COMMAND_ENDPOINT = "https://api.commandcode.ai";
 
 function endpoint(provider: Provider) {
-  if (provider.id === "opencode-go") return OPENCODE_ENDPOINT;
+  if (
+    provider.id === "opencode-go" ||
+    provider.id === "provider-manager-opencode-go"
+  )
+    return OPENCODE_ENDPOINT;
   if (provider.id === "commandcode") return COMMAND_ENDPOINT;
   return provider.baseURL;
 }
@@ -72,7 +178,10 @@ export function ProviderDetails({
         </div>
       </header>
       {provider.id === "commandcode" && <p>{t("commandHelp")}</p>}
-      {provider.id === "opencode-go" && <p>{t("opencodeHelp")}</p>}
+      {(provider.id === "opencode-go" ||
+        provider.id === "provider-manager-opencode-go") && (
+        <p>{t("opencodeHelp")}</p>
+      )}
       <section className="pm-card">
         <h3>{t("accountHeading")}</h3>
         <p>
@@ -184,21 +293,27 @@ export function ProviderDetails({
         {provider.catalogError ? (
           <p>{t("catalogError")}</p>
         ) : (
-          <p>
-            {provider.models.length} {t("count")}
-          </p>
+          <>
+            <p>
+              {provider.models.length} {t("count")}
+            </p>
+            {provider.id === "provider-manager-opencode-go" ? (
+              <GoCatalogTable provider={provider} t={t} />
+            ) : (
+              <ul>
+                {provider.models.map((model) => (
+                  <li key={model.id}>
+                    {model.id}
+                    {model.api ? ` · ${model.api}` : ""}
+                    {model.contextWindow
+                      ? ` · ${formatContextWindow(model.contextWindow)}`
+                      : ""}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
-        <ul>
-          {provider.models.map((model) => (
-            <li key={model.id}>
-              {model.id}
-              {model.api ? ` · ${model.api}` : ""}
-              {model.contextWindow
-                ? ` · ${formatContextWindow(model.contextWindow)}`
-                : ""}
-            </li>
-          ))}
-        </ul>
         {!provider.catalogError && !provider.models.length && (
           <p>{t("noModels")}</p>
         )}

@@ -46,23 +46,24 @@ export function RoleBadge({
 
 export function ProviderIcon({ id, name }: { id: string; name: string }) {
   const key = `${id} ${name}`.toLowerCase();
-  const kind = id.startsWith("opencode")
-    ? "opencode"
-    : id.startsWith("command")
-      ? "command"
-      : id.startsWith("muse")
-        ? "muse"
-        : key.includes("zcode") ||
-            key.includes("bigmodel") ||
-            key.includes("z.ai")
-          ? "zcode"
-          : key.includes("minimax")
-            ? "minimax"
-            : key.includes("mimo") || key.includes("xiaomimimo")
-              ? "mimo"
-              : key.includes("openrouter")
-                ? "openrouter"
-                : "generic";
+  const kind =
+    id.startsWith("opencode") || id === "provider-manager-opencode-go"
+      ? "opencode"
+      : id.startsWith("command")
+        ? "command"
+        : id.startsWith("muse")
+          ? "muse"
+          : key.includes("zcode") ||
+              key.includes("bigmodel") ||
+              key.includes("z.ai")
+            ? "zcode"
+            : key.includes("minimax")
+              ? "minimax"
+              : key.includes("mimo") || key.includes("xiaomimimo")
+                ? "mimo"
+                : key.includes("openrouter")
+                  ? "openrouter"
+                  : "generic";
   return (
     <span className="pm-icon" data-mark={kind} aria-hidden="true" title={name}>
       {kind === "opencode" && (

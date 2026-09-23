@@ -24,7 +24,7 @@ DeepSeek Harness 的理念是*万物皆插件*。这个插件把它再往前推�
 | **你自己的网关** —— 本地代理、公司网关、中转 | 一个干净的自定义路由，选对协议，像内置 provider 一样命名管理 |
 | **只有 CLI 的套餐** —— Muse Code | 一行如实的说明，而不是假装能接 |
 
-它**刻意不做推理**。聊天仍然跑在你已经信任的适配器上 —— [`dsh-llm-opencode-go`](https://github.com/NOirBRight/dsh-llm-opencode-go)、[Command Code provider](https://github.com/Mars-Sea/dsh-commandcode-provider) 等。这一页负责的是它们各自散落的那部分：**凭据、额度、路由，一本台账。** 这个边界划分就是设计本身 —— 你的 provider 只有一个管理入口，而每个推理适配器保持可替换。
+0.2.9 把内置 **OpenCode Go (Provider Manager)** 连接扩到当前官方 Go 目录（31 个可调用模型；9 个仍列在详情表但协议未核实，暂不启用）。请手动选择新连接；安装不会修改默认模型或旧会话。两张 OpenCode 卡片仍共用 `OPENCODE_API_KEY`。[配置、限制与回滚](docs/opencode-integrated.md)。[目录证据](docs/opencode-all-models-evidence.md)。
 
 ## 页面上有什么
 
@@ -81,11 +81,11 @@ dsh plugin --profile web add --workspace-root --ignore-scripts --force \
 
 命令成功和页面真实可用是两回事。装完请重启 Web。
 
-### 聊天用的适配器仍需另外安装
+### 内置 Go 与其他适配器
 
 | 你想…… | 另需安装 |
 | --- | --- |
-| 在 DSH 里用 OpenCode Go / Spark 聊天 | [`dsh-llm-opencode-go`](https://github.com/NOirBRight/dsh-llm-opencode-go) + [`dsh-llm-providers-ui`](https://github.com/NOirBRight/dsh-llm-providers-ui) |
+| 在 DSH 里用 OpenCode Go / Spark 聊天 | Built in / 已内置：OpenCode Go (Provider Manager), no third-party Go plugin required |
 | 用 Command Code GOAT 聊天 | [Command Code provider 插件](https://github.com/Mars-Sea/dsh-commandcode-provider) |
 | Muse Code CLI 套餐 | 仅官方 Muse CLI —— **不是本插件，也不是 DSH** |
 
@@ -137,7 +137,7 @@ dsh plugin --profile web remove dsh-provider-manager
 dsh web
 ```
 
-只移除本 bundle。凭据、自定义 `llm-pi-ai` 路由、OpenCode Go、Command Code 全部保留。
+卸载本 bundle 会移除其内置 `provider-manager-opencode-go` 连接。凭据、自定义 `llm-pi-ai` 路由、单独安装的旧 `opencode-go` 插件与 Command Code 保留。继续使用内置路由的会话前，请先切换至仍可用的 provider。
 
 ## 开发
 

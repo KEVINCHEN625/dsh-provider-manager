@@ -99,7 +99,24 @@ export const en = {
   metadata:
     "Refresh rereads adapter metadata only; it does not send keys to a model discovery endpoint.",
   opencodeHelp:
-    "Existing plan filters and usage controls remain in Settings → LLM Providers → OpenCode Go.",
+    "Both OpenCode cards share OPENCODE_API_KEY; editing either updates both. Existing plan filters and usage controls remain in Settings → LLM Providers → OpenCode Go.",
+  catalogProtocol: "Protocol",
+  catalogContext: "Context",
+  catalogInputLimit: "Independent input limit",
+  catalogMaxOutput: "Maximum output",
+  catalogReasoning: "Reasoning",
+  catalogInput: "Input",
+  catalogBlocked: "Blocked until protocol is verified",
+  catalogAlwaysOn: "Reasoning not user-adjustable",
+  catalogToggle: "Toggle",
+  catalogToggleOn: "DSH High turns thinking on (not an official effort name)",
+  catalogLocalBudget: "Local DSH budget presets, not official effort names",
+  catalogInputLimitNote:
+    "Displayed only. Independent input-limit enforcement is blocked until a verified tokenizer is available; requests are not rejected by character heuristics.",
+  catalogChecked: "Catalog checked",
+  catalogAdvertised: "Advertised",
+  catalogSupported: "Supported here",
+  catalogNone: "None declared",
   commandHelp:
     "Default credential only. Literal overrides, multiple accounts and official auth.json may take precedence or provide fallback. Confirm GOAT eligibility in the original Settings → Models / Command Code page.",
   unknown: "Unknown",
@@ -149,8 +166,7 @@ export const en = {
   STALE: "That prompt is no longer waiting for an answer.",
   RESET: "Sign-in events were reset.",
   NOT_COMMITTED: "Sign-in finished without storing a credential.",
-  ALREADY_IN_FLIGHT:
-    "Another process is finishing sign-in for this provider.",
+  ALREADY_IN_FLIGHT: "Another process is finishing sign-in for this provider.",
 };
 export type LocaleKey = keyof typeof en;
 export const zh: Record<LocaleKey, string> = {
@@ -252,7 +268,24 @@ export const zh: Record<LocaleKey, string> = {
     "先保存配置，再在对应卡片设置凭据。配置和 key 分别保存并报告结果。",
   metadata: "刷新仅重新读取适配器目录，不携带 key 请求远程模型发现接口。",
   opencodeHelp:
-    "原有套餐过滤与额度入口保留在：设置 → LLM Providers → OpenCode Go。",
+    "两张 OpenCode 卡片共用 OPENCODE_API_KEY，编辑任意一张都会更新两个连接。原有套餐过滤与额度入口保留在：设置 → LLM Providers → OpenCode Go。",
+  catalogProtocol: "协议",
+  catalogContext: "上下文",
+  catalogInputLimit: "独立输入上限",
+  catalogMaxOutput: "最大输出",
+  catalogReasoning: "思考",
+  catalogInput: "输入",
+  catalogBlocked: "协议未核实，暂不启用",
+  catalogAlwaysOn: "可思考但无公开可调档位",
+  catalogToggle: "开关",
+  catalogToggleOn: "DSH High 表示打开思考（不是官方 effort 名）",
+  catalogLocalBudget: "本地 DSH 预算预设，不是官方 effort 名",
+  catalogInputLimitNote:
+    "仅展示。独立输入上限在没有已核实 tokenizer 前不执行，也不会用字符/4 拒绝请求。",
+  catalogChecked: "目录核对日期",
+  catalogAdvertised: "官方广告",
+  catalogSupported: "本插件实际支持",
+  catalogNone: "未声明",
   commandHelp:
     "仅管理默认凭据引用。字面覆盖、多账户及官方 auth.json 可能优先或 fallback；不代表每次请求实际 key。GOAT 套餐资格请到原入口“设置 → Models / Command Code”确认。",
   unknown: "未知",

@@ -1,6 +1,6 @@
 {
   "name": "dsh-provider-manager",
-  "version": "0.2.7",
+  "version": "0.2.9",
   "description": "DeepSeek Harness settings page for provider credentials, OpenCode Go / Command Code quota, ZCode / MiMo / MiniMax China-Overseas, per-model 1M context, llm-pi-ai sign-in flows, OpenRouter and other custom APIs, and Muse Code guidance.",
   "license": "MIT",
   "repository": {
@@ -37,7 +37,11 @@
     "cordis.patch.yml",
     "README.md",
     "README.zh.md",
-    "LICENSE"
+    "LICENSE",
+    "compat",
+    "scripts/apply-opencode-go-muse-compat.mjs",
+    "docs/muse-compat.md",
+    "docs/opencode-integrated.md"
   ],
   "dsh": {
     "bundle": {
@@ -65,7 +69,9 @@
     "test": "vitest run --exclude \"tests/*.client.spec.tsx\"",
     "test:client": "vitest run tests/*.client.spec.tsx",
     "check:pack": "pnpm pack --pack-destination artifacts && node scripts/check-pack.mjs",
-    "format:check": "prettier --check src tests scripts"
+    "format:check": "prettier --check src tests scripts",
+    "test:muse-compat": "TSX_TSCONFIG_PATH=../deepseek-harness/tsconfig.json node --import ../deepseek-harness/node_modules/tsx/dist/esm/index.mjs --test tests/muse-compat*.node.mjs",
+    "check:pack:opencode": "pnpm pack --pack-destination artifacts && node scripts/check-opencode-pack.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.2 <5.0.0",
@@ -79,7 +85,9 @@
     "@deepseek-ai/dsh-host-webserver": "*",
     "@deepseek-ai/dsh-llm": "*",
     "@deepseek-ai/dsh-settings": "*",
-    "react": "^18.2.0"
+    "react": "^18.2.0",
+    "@deepseek-ai/dsh-llm-pi-ai": "0.1.5-rc.2",
+    "@deepseek-ai/schemastery": ">=3.18.3 <4"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.2",
@@ -103,9 +111,14 @@
     "react-dom": "18.3.1",
     "tsdown": "0.15.12",
     "typescript": "5.9.3",
-    "vitest": "3.2.4"
+    "vitest": "3.2.4",
+    "@deepseek-ai/dsh-llm-pi-ai": "0.1.5-rc.2",
+    "@deepseek-ai/schemastery": "3.18.3"
   },
   "engines": {
     "node": ">=22.19"
+  },
+  "dependencies": {
+    "@earendil-works/pi-ai": "0.85.1"
   }
 }

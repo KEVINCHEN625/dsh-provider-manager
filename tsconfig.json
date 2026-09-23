@@ -6,17 +6,12 @@
     "strict": true,
     "jsx": "react-jsx",
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "declaration": true,
     "outDir": "lib/types",
     "rootDir": "src",
-    "lib": [
-      "ES2022",
-      "DOM"
-    ]
+    "lib": ["ES2022", "DOM"]
   },
-  "include": [
-    "src/host",
-    "src/shared"
-  ]
+  "include": ["src/host", "src/shared"]
 }

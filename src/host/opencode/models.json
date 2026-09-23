@@ -1,0 +1,1864 @@
+{
+  "checkedAt": "2026-09-23T06:15:22.000Z",
+  "origin": "https://opencode.ai/zen/go/v1",
+  "excluded": [
+    {
+      "id": "ox-alpha-free",
+      "reason": "metadata-only; not in official GET /zen/go/v1/models"
+    }
+  ],
+  "sources": {
+    "officialModels": {
+      "url": "https://opencode.ai/zen/go/v1/models",
+      "sha256": "f9d73c2852e94c67dc745d92caeaba34bf71ae5bcf7e4a21db2cd833c74125ad",
+      "path": "docs/opencode-all-models-2026-09-23/execution-2026-09-23/official-models.json"
+    },
+    "goDocs": {
+      "url": "https://opencode.ai/docs/go/",
+      "sha256": "f04f9a2c1d5ec68a6f486191acfee796e879f9b8266b7beb9de59f9437d6486d",
+      "path": "docs/opencode-all-models-2026-09-23/execution-2026-09-23/goDocs.mdx"
+    },
+    "modelsDev": {
+      "url": "https://models.dev/api.json#opencode-go",
+      "sha256": "9f9b5b628be47228725756b7ed320f0922f8f3a97ed17d59a2efef4374d32887",
+      "path": "docs/opencode-all-models-2026-09-23/execution-2026-09-23/opencode-go.models.dev.json"
+    }
+  },
+  "models": [
+    {
+      "id": "minimax-m3",
+      "name": "MiniMax-M3",
+      "disposition": "supported",
+      "api": "anthropic-messages",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 131072,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": true,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": "high",
+      "thinkingLevelMap": {
+        "off": "off",
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": "high",
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "video"
+      ],
+      "replayField": null,
+      "compatPolicy": "anthropic-toggle",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "minimax-m2.7",
+      "name": "MiniMax-M2.7",
+      "disposition": "supported",
+      "api": "anthropic-messages",
+      "contextWindow": 204800,
+      "inputLimit": null,
+      "maxOutputTokens": 131072,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": null,
+      "compatPolicy": "anthropic-default",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "minimax-m2.5",
+      "name": "MiniMax-M2.5",
+      "disposition": "supported",
+      "api": "anthropic-messages",
+      "contextWindow": 204800,
+      "inputLimit": null,
+      "maxOutputTokens": 65536,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": null,
+      "compatPolicy": "anthropic-default",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": "deprecated",
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "kimi-k3",
+      "name": "Kimi K3",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 1048576,
+      "inputLimit": null,
+      "maxOutputTokens": 131072,
+      "reasoning": true,
+      "nativeEfforts": [
+        "max"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": "max"
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "video"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "kimi-k2.7-code",
+      "name": "Kimi K2.7 Code",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 262144,
+      "inputLimit": null,
+      "maxOutputTokens": 262144,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "video"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "kimi-k2.6",
+      "name": "Kimi K2.6",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 262144,
+      "inputLimit": null,
+      "maxOutputTokens": 65536,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "video"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "longcat-2.0",
+      "name": "LongCat-2.0",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 131072,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": true,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": "high",
+      "thinkingLevelMap": {
+        "off": "off",
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": "high",
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "kimi-k2.5",
+      "name": "Kimi K2.5",
+      "disposition": "blocked-with-evidence",
+      "api": null,
+      "contextWindow": 262144,
+      "inputLimit": null,
+      "maxOutputTokens": 65536,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "video"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": null,
+      "forceAdaptiveThinking": false,
+      "blockReasons": [
+        "protocol-unverified: absent from live Go endpoint table 2026-09-23",
+        "models.dev-deprecated-is-not-official-retirement"
+      ],
+      "metadataStatus": "deprecated",
+      "sources": {
+        "protocol": null,
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "glm-5.2",
+      "name": "GLM-5.2",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 131072,
+      "reasoning": true,
+      "nativeEfforts": [
+        "high",
+        "max"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": "high",
+        "xhigh": null,
+        "max": "max"
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "glm-5.3-flash",
+      "name": "GLM-5.3-Flash",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 131072,
+      "reasoning": true,
+      "nativeEfforts": [
+        "low",
+        "high",
+        "max"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": "low",
+        "medium": null,
+        "high": "high",
+        "xhigh": null,
+        "max": "max"
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "video",
+        "pdf"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "glm-5.3",
+      "name": "GLM-5.3",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 131072,
+      "reasoning": true,
+      "nativeEfforts": [
+        "low",
+        "high",
+        "max"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": "low",
+        "medium": null,
+        "high": "high",
+        "xhigh": null,
+        "max": "max"
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "glm-5.1",
+      "name": "GLM-5.1",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 202752,
+      "inputLimit": null,
+      "maxOutputTokens": 32768,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "glm-5",
+      "name": "GLM-5",
+      "disposition": "blocked-with-evidence",
+      "api": null,
+      "contextWindow": 202752,
+      "inputLimit": null,
+      "maxOutputTokens": 32768,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": null,
+      "forceAdaptiveThinking": false,
+      "blockReasons": [
+        "protocol-unverified: absent from live Go endpoint table 2026-09-23",
+        "models.dev-deprecated-is-not-official-retirement"
+      ],
+      "metadataStatus": "deprecated",
+      "sources": {
+        "protocol": null,
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "deepseek-v4-pro",
+      "name": "DeepSeek V4 Pro (New)",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 384000,
+      "reasoning": true,
+      "nativeEfforts": [
+        "high",
+        "max"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": "high",
+        "xhigh": null,
+        "max": "max"
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "deepseek-v4-flash",
+      "name": "DeepSeek V4 Flash",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 384000,
+      "reasoning": true,
+      "nativeEfforts": [
+        "low",
+        "high",
+        "max"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": "low",
+        "medium": null,
+        "high": "high",
+        "xhigh": null,
+        "max": "max"
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "deepseek-flash",
+      "name": "deepseek-flash",
+      "disposition": "blocked-with-evidence",
+      "api": null,
+      "contextWindow": null,
+      "inputLimit": null,
+      "maxOutputTokens": null,
+      "reasoning": null,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": null,
+      "compatPolicy": null,
+      "forceAdaptiveThinking": false,
+      "blockReasons": [
+        "protocol-unverified: absent from live Go endpoint table 2026-09-23",
+        "metadata-missing: not in models.dev opencode-go",
+        "alias-forbidden: must not reuse deepseek-v4.1-flash/hy3 limits"
+      ],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": null,
+        "metadata": null
+      }
+    },
+    {
+      "id": "deepseek-v4.1-flash",
+      "name": "DeepSeek V4.1 Flash",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 384000,
+      "reasoning": true,
+      "nativeEfforts": [
+        "low",
+        "high",
+        "max"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": "low",
+        "medium": null,
+        "high": "high",
+        "xhigh": null,
+        "max": "max"
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "deepseek-v4-flash-vision-exp",
+      "name": "DeepSeek V4 Flash Vision Exp",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 384000,
+      "reasoning": true,
+      "nativeEfforts": [
+        "low",
+        "high",
+        "max"
+      ],
+      "toggle": true,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": "off",
+        "minimal": null,
+        "low": "low",
+        "medium": null,
+        "high": "high",
+        "xhigh": null,
+        "max": "max"
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "qwen3.7-max",
+      "name": "Qwen3.7 Max",
+      "disposition": "supported",
+      "api": "anthropic-messages",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 65536,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": true,
+      "budgetTokensMax": 262144,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [
+        {
+          "id": "minimal",
+          "tokens": 1024
+        },
+        {
+          "id": "low",
+          "tokens": 2048
+        },
+        {
+          "id": "medium",
+          "tokens": 8192
+        },
+        {
+          "id": "high",
+          "tokens": 16384
+        }
+      ],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": "off",
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": null,
+      "compatPolicy": "anthropic-budget",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "qwen3.8-max",
+      "name": "Qwen3.8 Max",
+      "disposition": "supported",
+      "api": "anthropic-messages",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 131072,
+      "reasoning": true,
+      "nativeEfforts": [
+        "low",
+        "medium",
+        "xhigh"
+      ],
+      "toggle": true,
+      "budgetTokensMax": 262144,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": "off",
+        "minimal": null,
+        "low": "low",
+        "medium": "medium",
+        "high": null,
+        "xhigh": "xhigh",
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "video"
+      ],
+      "replayField": null,
+      "compatPolicy": "anthropic-adaptive",
+      "forceAdaptiveThinking": true,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "qwen3.8-flash",
+      "name": "Qwen3.8 Flash",
+      "disposition": "supported",
+      "api": "anthropic-messages",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 131072,
+      "reasoning": true,
+      "nativeEfforts": [
+        "low",
+        "medium",
+        "xhigh"
+      ],
+      "toggle": true,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": true,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": "off",
+        "minimal": null,
+        "low": "low",
+        "medium": "medium",
+        "high": null,
+        "xhigh": "xhigh",
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "video"
+      ],
+      "replayField": null,
+      "compatPolicy": "anthropic-adaptive",
+      "forceAdaptiveThinking": true,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "qwen3.7-plus",
+      "name": "Qwen3.7 Plus",
+      "disposition": "supported",
+      "api": "anthropic-messages",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 65536,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": true,
+      "budgetTokensMax": 262144,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [
+        {
+          "id": "minimal",
+          "tokens": 1024
+        },
+        {
+          "id": "low",
+          "tokens": 2048
+        },
+        {
+          "id": "medium",
+          "tokens": 8192
+        },
+        {
+          "id": "high",
+          "tokens": 16384
+        }
+      ],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": "off",
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "video"
+      ],
+      "replayField": null,
+      "compatPolicy": "anthropic-budget",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "qwen3.6-plus",
+      "name": "Qwen3.6 Plus",
+      "disposition": "supported",
+      "api": "anthropic-messages",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 65536,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": true,
+      "budgetTokensMax": 81920,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [
+        {
+          "id": "minimal",
+          "tokens": 1024
+        },
+        {
+          "id": "low",
+          "tokens": 2048
+        },
+        {
+          "id": "medium",
+          "tokens": 8192
+        },
+        {
+          "id": "high",
+          "tokens": 16384
+        }
+      ],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": "off",
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "video"
+      ],
+      "replayField": null,
+      "compatPolicy": "anthropic-budget",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "qwen3.5-plus",
+      "name": "Qwen3.5 Plus",
+      "disposition": "blocked-with-evidence",
+      "api": null,
+      "contextWindow": 262144,
+      "inputLimit": null,
+      "maxOutputTokens": 65536,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": true,
+      "budgetTokensMax": 81920,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "video"
+      ],
+      "replayField": null,
+      "compatPolicy": null,
+      "forceAdaptiveThinking": false,
+      "blockReasons": [
+        "protocol-unverified: absent from live Go endpoint table 2026-09-23",
+        "models.dev-deprecated-is-not-official-retirement"
+      ],
+      "metadataStatus": "deprecated",
+      "sources": {
+        "protocol": null,
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "mimo-v2-pro",
+      "name": "MiMo V2 Pro",
+      "disposition": "blocked-with-evidence",
+      "api": null,
+      "contextWindow": 1048576,
+      "inputLimit": null,
+      "maxOutputTokens": 128000,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": null,
+      "forceAdaptiveThinking": false,
+      "blockReasons": [
+        "protocol-unverified: absent from live Go endpoint table 2026-09-23",
+        "models.dev-deprecated-is-not-official-retirement"
+      ],
+      "metadataStatus": "deprecated",
+      "sources": {
+        "protocol": null,
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "mimo-v2-omni",
+      "name": "MiMo V2 Omni",
+      "disposition": "blocked-with-evidence",
+      "api": null,
+      "contextWindow": 262144,
+      "inputLimit": null,
+      "maxOutputTokens": 128000,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "audio",
+        "pdf"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": null,
+      "forceAdaptiveThinking": false,
+      "blockReasons": [
+        "protocol-unverified: absent from live Go endpoint table 2026-09-23",
+        "models.dev-deprecated-is-not-official-retirement"
+      ],
+      "metadataStatus": "deprecated",
+      "sources": {
+        "protocol": null,
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "mimo-v2.6-pro",
+      "name": "MiMo-V2.6-Pro",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 1048576,
+      "inputLimit": null,
+      "maxOutputTokens": 131072,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "audio",
+        "video"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "mimo-v2.6-flash",
+      "name": "MiMo-V2.6-Flash",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 1048576,
+      "inputLimit": null,
+      "maxOutputTokens": 131072,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "audio",
+        "video"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "mimo-v2.5-pro",
+      "name": "MiMo V2.5 Pro",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 1048576,
+      "inputLimit": null,
+      "maxOutputTokens": 128000,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "mimo-v2.5",
+      "name": "MiMo V2.5",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 1000000,
+      "inputLimit": null,
+      "maxOutputTokens": 128000,
+      "reasoning": true,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "audio",
+        "video"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": "deepseek-reasoning-content",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "hy4-preview",
+      "name": "Hy4 preview",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 1024000,
+      "inputLimit": null,
+      "maxOutputTokens": 64000,
+      "reasoning": true,
+      "nativeEfforts": [
+        "none",
+        "high"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": "none",
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": "high",
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": null,
+      "compatPolicy": "openai-completions",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "hy3",
+      "name": "Hy3",
+      "disposition": "supported",
+      "api": "openai-completions",
+      "contextWindow": 256000,
+      "inputLimit": 192000,
+      "maxOutputTokens": 128000,
+      "reasoning": true,
+      "nativeEfforts": [
+        "none",
+        "low",
+        "high"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": "none",
+        "minimal": null,
+        "low": "low",
+        "medium": null,
+        "high": "high",
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": null,
+      "compatPolicy": "openai-completions",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "hy3-preview",
+      "name": "hy3-preview",
+      "disposition": "blocked-with-evidence",
+      "api": null,
+      "contextWindow": null,
+      "inputLimit": null,
+      "maxOutputTokens": null,
+      "reasoning": null,
+      "nativeEfforts": [],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text"
+      ],
+      "advertisedInput": [
+        "text"
+      ],
+      "replayField": null,
+      "compatPolicy": null,
+      "forceAdaptiveThinking": false,
+      "blockReasons": [
+        "protocol-unverified: absent from live Go endpoint table 2026-09-23",
+        "metadata-missing: not in models.dev opencode-go",
+        "alias-forbidden: must not reuse deepseek-v4.1-flash/hy3 limits"
+      ],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": null,
+        "metadata": null
+      }
+    },
+    {
+      "id": "gpt-5.6-luna",
+      "name": "GPT-5.6 Luna",
+      "disposition": "supported",
+      "api": "openai-responses",
+      "contextWindow": 1050000,
+      "inputLimit": 922000,
+      "maxOutputTokens": 128000,
+      "reasoning": true,
+      "nativeEfforts": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": "none",
+        "minimal": null,
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "pdf"
+      ],
+      "replayField": null,
+      "compatPolicy": "openai-responses",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "grok-4.5",
+      "name": "Grok 4.5",
+      "disposition": "blocked-with-evidence",
+      "api": null,
+      "contextWindow": 500000,
+      "inputLimit": null,
+      "maxOutputTokens": 500000,
+      "reasoning": true,
+      "nativeEfforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image"
+      ],
+      "replayField": null,
+      "compatPolicy": null,
+      "forceAdaptiveThinking": false,
+      "blockReasons": [
+        "protocol-unverified: absent from live Go endpoint table 2026-09-23",
+        "models.dev-deprecated-is-not-official-retirement"
+      ],
+      "metadataStatus": "deprecated",
+      "sources": {
+        "protocol": null,
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "grok-4.7",
+      "name": "Grok 4.7",
+      "disposition": "supported",
+      "api": "openai-responses",
+      "contextWindow": 500000,
+      "inputLimit": null,
+      "maxOutputTokens": 500000,
+      "reasoning": true,
+      "nativeEfforts": [
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "pdf"
+      ],
+      "replayField": null,
+      "compatPolicy": "openai-responses",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "grok-4.6",
+      "name": "Grok 4.6",
+      "disposition": "supported",
+      "api": "openai-responses",
+      "contextWindow": 500000,
+      "inputLimit": null,
+      "maxOutputTokens": 500000,
+      "reasoning": true,
+      "nativeEfforts": [
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image"
+      ],
+      "replayField": null,
+      "compatPolicy": "openai-responses",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "muse-spark-1.3-contributor",
+      "name": "Muse Spark 1.3 Contributor",
+      "disposition": "supported",
+      "api": "openai-responses",
+      "contextWindow": 1048576,
+      "inputLimit": null,
+      "maxOutputTokens": 131072,
+      "reasoning": true,
+      "nativeEfforts": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "video",
+        "pdf",
+        "audio"
+      ],
+      "replayField": null,
+      "compatPolicy": "muse-responses",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "muse-spark-1.2-contributor",
+      "name": "Muse Spark 1.2 Contributor",
+      "disposition": "supported",
+      "api": "openai-responses",
+      "contextWindow": 1048576,
+      "inputLimit": null,
+      "maxOutputTokens": 131072,
+      "reasoning": true,
+      "nativeEfforts": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "video",
+        "pdf",
+        "audio"
+      ],
+      "replayField": null,
+      "compatPolicy": "muse-responses",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-endpoint-table",
+        "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "omen-alpha",
+      "name": "Omen Alpha",
+      "disposition": "blocked-with-evidence",
+      "api": null,
+      "contextWindow": 500000,
+      "inputLimit": null,
+      "maxOutputTokens": 128000,
+      "reasoning": true,
+      "nativeEfforts": [
+        "low",
+        "high"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": null,
+        "low": null,
+        "medium": null,
+        "high": null,
+        "xhigh": null,
+        "max": null
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image"
+      ],
+      "replayField": "reasoning_content",
+      "compatPolicy": null,
+      "forceAdaptiveThinking": false,
+      "blockReasons": [
+        "protocol-unverified: absent from live Go endpoint table 2026-09-23",
+        "models.dev-deprecated-is-not-official-retirement"
+      ],
+      "metadataStatus": "deprecated",
+      "sources": {
+        "protocol": null,
+        "metadata": "models.dev-opencode-go"
+      }
+    }
+  ]
+}

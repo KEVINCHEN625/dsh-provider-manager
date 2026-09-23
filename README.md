@@ -24,7 +24,12 @@ Model quality today is table stakes; what actually shapes your day is **which pr
 | **Your own gateway** — local proxies, company gateways, relays | A clean custom route with the right protocol, named and managed like any built-in |
 | **CLI-only plans** — Muse Code | An honest row that says so, instead of pretending |
 
-It deliberately does **not** re-implement inference. Chat keeps running on the adapters you already trust — [`dsh-llm-opencode-go`](https://github.com/NOirBRight/dsh-llm-opencode-go), [Command Code provider](https://github.com/Mars-Sea/dsh-commandcode-provider), and the rest. This page owns the part they scatter: **credentials, quota, and routes, in one ledger.** That separation is the point — your providers get one manager, and every adapter stays swappable.
+Version 0.2.9 expands the built-in **OpenCode Go (Provider Manager)** connection
+to the current official Go catalog (31 callable models, 9 listed but blocked
+until protocol is verified). Select the new connection explicitly; installation
+leaves defaults and old sessions unchanged. Both OpenCode cards still share
+`OPENCODE_API_KEY`. [Setup, limits and rollback](docs/opencode-integrated.md).
+[Catalog evidence](docs/opencode-all-models-evidence.md).
 
 ## What's on the page
 
@@ -81,11 +86,11 @@ dsh plugin --profile web add --workspace-root --ignore-scripts --force \
 
 CLI success and a live page are separate checks. Restart Web after adding the plugin.
 
-### Also install the adapters you actually chat with
+### Built-in Go and other adapters
 
 | You want to… | Also install |
 | --- | --- |
-| Chat with OpenCode Go / Spark in DSH | [`dsh-llm-opencode-go`](https://github.com/NOirBRight/dsh-llm-opencode-go) + [`dsh-llm-providers-ui`](https://github.com/NOirBRight/dsh-llm-providers-ui) |
+| Chat with OpenCode Go / Spark in DSH | Built in / 已内置：OpenCode Go (Provider Manager), no third-party Go plugin required |
 | Chat with Command Code GOAT | [Command Code provider plugin](https://github.com/Mars-Sea/dsh-commandcode-provider) |
 | Muse Code CLI plan | Official Muse CLI only — **not this plugin, not DSH** |
 
@@ -137,7 +142,7 @@ dsh plugin --profile web remove dsh-provider-manager
 dsh web
 ```
 
-Removes this bundle only. Credentials, custom `llm-pi-ai` routes, OpenCode Go, and Command Code stay.
+Removing this bundle removes its built-in `provider-manager-opencode-go` connection. Credentials, custom `llm-pi-ai` routes, the separately installed legacy `opencode-go` plugin, and Command Code remain. Select a remaining provider before resuming sessions that used the built-in route.
 
 ## Develop
 

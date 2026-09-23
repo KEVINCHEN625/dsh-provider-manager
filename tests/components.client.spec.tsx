@@ -115,6 +115,46 @@ test("reveal and replacement input clear on blur, visibility and unmount", async
   unmount();
   expect(c.state.revealed).toBeUndefined();
 });
+test("built-in Go details show exact catalog integers and blocked rows", async () => {
+  setup(en, async () => ({
+    ...snapshot,
+    providers: [
+      {
+        id: "provider-manager-opencode-go",
+        name: "OpenCode Go (Provider Manager)",
+        available: true,
+        revision: 1,
+        bindingToken: "test",
+        credential: { configured: true, writable: true, source: "env" },
+        catalogCheckedAt: "2026-09-23T02:32:00.000Z",
+        models: [
+          {
+            id: "muse-spark-1.3-contributor",
+            name: "Muse Spark 1.3 Contributor",
+            api: "openai-responses",
+            contextWindow: 1048576,
+            maxOutputTokens: 131072,
+            disposition: "supported",
+            nativeEfforts: ["minimal", "low", "medium", "high", "xhigh"],
+            input: ["text", "image"],
+            advertisedInput: ["text", "image", "video"],
+          },
+          {
+            id: "deepseek-flash",
+            name: "deepseek-flash",
+            disposition: "blocked-with-evidence",
+            blockReasons: ["protocol-unverified", "alias-forbidden"],
+          },
+        ],
+      },
+    ],
+  }));
+  await openDetails("OpenCode Go (Provider Manager)");
+  expect(screen.getByText("1,048,576")).toBeTruthy();
+  expect(screen.getByText("131,072")).toBeTruthy();
+  expect(screen.getByText(/Blocked until protocol is verified/)).toBeTruthy();
+  expect(screen.getByText(/video/)).toBeTruthy();
+});
 test("Chinese labels readable and failure does not claim zero models", async () => {
   setup(zh, async () => ({
     ...snapshot,
@@ -476,9 +516,9 @@ const oauthEntry = {
 test("FilterTabs show ALL LLM OAuth and hide the other groups", async () => {
   setup(en, async () => ({ ...snapshot, oauth: [oauthEntry] }));
   await screen.findByRole("tab", { name: "ALL" });
-  expect(screen.getByRole("tab", { name: "LLM" }).getAttribute("aria-selected")).toBe(
-    "false",
-  );
+  expect(
+    screen.getByRole("tab", { name: "LLM" }).getAttribute("aria-selected"),
+  ).toBe("false");
   expect(screen.getByText("OpenCode Go")).toBeTruthy();
   expect(screen.getByText("ChatGPT Codex")).toBeTruthy();
   expect(screen.getByText("Muse Code")).toBeTruthy();
@@ -491,9 +531,7 @@ test("FilterTabs show ALL LLM OAuth and hide the other groups", async () => {
   expect(screen.queryByText("Muse Code")).toBeNull();
   expect(screen.getByText("ChatGPT Codex")).toBeTruthy();
   expect(screen.getByText(en.oauthSignedOut)).toBeTruthy();
-  expect(
-    screen.queryByRole("button", { name: en.addProvider }),
-  ).toBeNull();
+  expect(screen.queryByRole("button", { name: en.addProvider })).toBeNull();
 });
 
 test("oauthUnavailable empty state does not crash", async () => {

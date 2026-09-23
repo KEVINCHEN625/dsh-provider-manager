@@ -23,6 +23,10 @@ export function fixture() {
   const services: any = {
     settings: {
       writable: true,
+      installSection: (_ctx: any, ns: string, _schema: any, defaults: any) => {
+        if (!sections.some((s) => s.ns === ns))
+          sections.push({ ns, revision: 0, value: defaults });
+      },
       describe: () => structuredClone(sections),
       mutate: async (ns: string, ops: any[], revision: number) => {
         const d = sections.find((x) => x.ns === ns);
@@ -53,6 +57,8 @@ export function fixture() {
           : undefined,
     },
     llm: {
+      registerAdapter: () => ({ dispose() {} }),
+      registerConfigurableProviders: () => ({ dispose() {} }),
       listProviders: () => [
         { id: "opencode-go", name: "OpenCode Go" },
         { id: "commandcode", name: "Command Code" },

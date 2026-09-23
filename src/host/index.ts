@@ -1,3 +1,15 @@
+import { installBuiltInGo } from "./opencode/index.js";
+export {
+  createBuiltInGoProfile,
+  createBuiltInGoAdapter,
+  GO_ROUTE,
+  GO_MODELS,
+  GO_CATALOG,
+  GO_MANAGER_VERSION,
+  GO_ANTHROPIC_BASE,
+  requireGoModel,
+  goEntry,
+} from "./opencode/index.js";
 import type { Context } from "@deepseek-ai/cordis";
 import type {} from "@deepseek-ai/dsh-client-connection";
 import type {} from "@deepseek-ai/dsh-host-webserver";
@@ -6,7 +18,9 @@ import { createRevealHandler } from "./http.js";
 import { exact, text, SafeError } from "../shared/protocol.js";
 export const inject = ["settings", "credentials", "llm"];
 export function apply(ctx: Context, config: Config = {}) {
+  installBuiltInGo(ctx);
   const manager = new Manager(ctx, config);
+  ctx.effect(() => () => manager.dispose());
   ctx.inject(["connection", "webServer"], (scope) => {
     const lifetime = new AbortController();
     scope.effect(() => () => {

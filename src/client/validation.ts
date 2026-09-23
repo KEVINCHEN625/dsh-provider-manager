@@ -43,6 +43,69 @@ export function validateCredential(
     ...(data.source === undefined ? {} : { source: string(data.source) }),
   };
 }
+function optionalInteger(value: unknown): number {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1)
+    throw { code: "UNAVAILABLE" };
+  return value;
+}
+function optionalStringArray(value: unknown): string[] {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string"))
+    throw { code: "UNAVAILABLE" };
+  return value as string[];
+}
+function validateModel(value: unknown): Provider["models"][number] {
+  const model = record(value);
+  const next: Provider["models"][number] = {
+    id: string(model.id),
+    ...(model.name === undefined ? {} : { name: string(model.name) }),
+    ...(model.api === undefined ? {} : { api: string(model.api) }),
+  };
+  for (const key of [
+    "contextWindow",
+    "inputLimit",
+    "maxOutputTokens",
+    "budgetTokensMax",
+  ] as const)
+    if (model[key] !== undefined) next[key] = optionalInteger(model[key]);
+  if (model.reasoning !== undefined) next.reasoning = boolean(model.reasoning);
+  if (model.toggle !== undefined) next.toggle = boolean(model.toggle);
+  if (model.budgetTokensUnbounded !== undefined)
+    next.budgetTokensUnbounded = boolean(model.budgetTokensUnbounded);
+  if (model.inputLimitEnforced !== undefined)
+    next.inputLimitEnforced = boolean(model.inputLimitEnforced);
+  for (const key of [
+    "nativeEfforts",
+    "input",
+    "advertisedInput",
+    "blockReasons",
+    "selectableEfforts",
+  ] as const)
+    if (model[key] !== undefined) next[key] = optionalStringArray(model[key]);
+  if (model.localBudgetPresets !== undefined) {
+    if (!Array.isArray(model.localBudgetPresets)) throw { code: "UNAVAILABLE" };
+    next.localBudgetPresets = model.localBudgetPresets.map((item) => {
+      const preset = record(item);
+      return { id: string(preset.id), tokens: optionalInteger(preset.tokens) };
+    });
+  }
+  if (model.toggleOnLevel !== undefined)
+    next.toggleOnLevel = string(model.toggleOnLevel);
+  if (model.disposition !== undefined) {
+    const disposition = string(model.disposition);
+    if (
+      disposition !== "supported" &&
+      disposition !== "confirmed-alias" &&
+      disposition !== "officially-retired" &&
+      disposition !== "blocked-with-evidence"
+    )
+      throw { code: "UNAVAILABLE" };
+    next.disposition = disposition;
+  }
+  if (model.checkedAt !== undefined) next.checkedAt = string(model.checkedAt);
+  if (model.compatPolicy !== undefined)
+    next.compatPolicy = string(model.compatPolicy);
+  return next;
+}
 export function validateProvider(value: unknown): Provider {
   const data = record(value);
   if (!Array.isArray(data.models)) throw { code: "UNAVAILABLE" };
@@ -51,24 +114,7 @@ export function validateProvider(value: unknown): Provider {
     name: string(data.name),
     available: boolean(data.available),
     revision: revision(data.revision),
-    models: data.models.map((value) => {
-      const model = record(value);
-      const next: Provider["models"][number] = {
-        id: string(model.id),
-        ...(model.name === undefined ? {} : { name: string(model.name) }),
-        ...(model.api === undefined ? {} : { api: string(model.api) }),
-      };
-      if (model.contextWindow !== undefined) {
-        if (
-          typeof model.contextWindow !== "number" ||
-          !Number.isSafeInteger(model.contextWindow) ||
-          model.contextWindow < 1
-        )
-          throw { code: "UNAVAILABLE" };
-        next.contextWindow = model.contextWindow;
-      }
-      return next;
-    }),
+    models: data.models.map(validateModel),
   };
   for (const key of [
     "bindingToken",
@@ -76,6 +122,7 @@ export function validateProvider(value: unknown): Provider {
     "baseURL",
     "error",
     "catalogError",
+    "catalogCheckedAt",
   ] as const)
     if (data[key] !== undefined) provider[key] = string(data[key]);
   for (const key of ["defaultContextWindow", "defaultMaxTokens"] as const)
@@ -175,7 +222,11 @@ function validatePrompt(value: unknown): LoginPromptEvent {
 }
 function validateIndexedEvent(value: unknown): IndexedLoginEvent {
   const data = record(value);
-  if (typeof data.index !== "number" || !Number.isSafeInteger(data.index) || data.index < 0)
+  if (
+    typeof data.index !== "number" ||
+    !Number.isSafeInteger(data.index) ||
+    data.index < 0
+  )
     throw { code: "UNAVAILABLE" };
   if (data.kind === "notice") {
     const event: IndexedLoginEvent = {
@@ -197,9 +248,16 @@ function validateIndexedEvent(value: unknown): IndexedLoginEvent {
 }
 export function validateLoginEvents(value: unknown): LoginEventsResult {
   const data = record(value);
-  if (!Array.isArray(data.events) || !loginStatuses.includes(data.status as LoginStatus))
+  if (
+    !Array.isArray(data.events) ||
+    !loginStatuses.includes(data.status as LoginStatus)
+  )
     throw { code: "UNAVAILABLE" };
-  if (typeof data.nextIndex !== "number" || !Number.isSafeInteger(data.nextIndex) || data.nextIndex < 0)
+  if (
+    typeof data.nextIndex !== "number" ||
+    !Number.isSafeInteger(data.nextIndex) ||
+    data.nextIndex < 0
+  )
     throw { code: "UNAVAILABLE" };
   const result: LoginEventsResult = {
     events: data.events.map(validateIndexedEvent),

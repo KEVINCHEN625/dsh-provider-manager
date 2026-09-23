@@ -237,17 +237,25 @@ export class Controller {
       );
       this.hide();
       const snapshot = this.state.snapshot;
+      const openCodeIds = ["opencode-go", "provider-manager-opencode-go"];
+      const affected = (id: string) =>
+        id === provider.id ||
+        (openCodeIds.includes(provider.id) && openCodeIds.includes(id));
       if (snapshot)
         this.update({
           snapshot: {
             ...snapshot,
             providers: snapshot.providers.map((p) =>
-              p.id === provider.id ? { ...p, credential } : p,
+              affected(p.id) ? { ...p, credential } : p,
             ),
           },
         });
       this.operation(key, { status: "success" });
-      await this.refreshQuota(provider, true);
+      await Promise.all(
+        (snapshot?.providers.filter((p) => affected(p.id)) ?? [provider]).map(
+          (p) => this.refreshQuota(p, true),
+        ),
+      );
       return true;
     } catch (error) {
       this.operation(key, { status: "error", error: errorCode(error) });

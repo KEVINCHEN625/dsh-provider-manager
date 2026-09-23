@@ -497,7 +497,9 @@ test("loginStart returns a session immediately and polls running events", async 
   expect(c.state.login?.events[0]).toMatchObject({
     url: "https://example.test/login",
   });
-  expect(calls.filter((item) => item === "login/start")).toEqual(["login/start"]);
+  expect(calls.filter((item) => item === "login/start")).toEqual([
+    "login/start",
+  ]);
   expect(calls).toContain("login/events");
   c.dispose();
 });
@@ -658,5 +660,42 @@ test("ALREADY_IN_FLIGHT stays uncollapsed", async () => {
     status: "error",
     error: "ALREADY_IN_FLIGHT",
   });
+  c.dispose();
+});
+test("shared OpenCode key updates and refreshes both cards independently", async () => {
+  const cards = [
+    fixtureCard("opencode-go"),
+    fixtureCard("provider-manager-opencode-go"),
+  ].map((p, i) => ({
+    ...p,
+    bindingToken: "binding-" + i,
+    credential: { configured: false, writable: true, source: "file" },
+  }));
+  const reads: string[] = [];
+  const c = new Controller({
+    rpc: async (endpoint, payload: any) => {
+      if (endpoint === "snapshot") return fixtureSnapshot(cards);
+      if (endpoint === "credential/set")
+        return { configured: true, writable: true, source: "file" };
+      if (endpoint === "quota/read") {
+        reads.push(payload.providerId);
+        return {
+          providerId: payload.providerId,
+          status: "ready",
+          windows: [],
+          stale: false,
+        };
+      }
+      throw Error(endpoint);
+    },
+    reveal: async () => ({}),
+  });
+  await c.load();
+  reads.length = 0;
+  await c.saveKey(cards[1], "synthetic");
+  expect(
+    c.state.snapshot!.providers.every((p) => p.credential?.configured),
+  ).toBe(true);
+  expect(new Set(reads)).toEqual(new Set(cards.map((c) => c.id)));
   c.dispose();
 });

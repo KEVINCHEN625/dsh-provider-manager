@@ -3,6 +3,7 @@ import { readFileSync, mkdtempSync, realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import vm from "node:vm";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 const source = JSON.parse(readFileSync("package.json", "utf8"));
 const target = resolve(`artifacts/${source.name}-${source.version}.tgz`);
 const directory = mkdtempSync(resolve("artifacts/pack-check-"));
@@ -57,7 +58,11 @@ for (const [name, version] of Object.entries({
 })) {
   if (/workspace:|file:|link:/.test(version))
     throw Error("Nonregistry dependency");
-  if (realpathSync(require.resolve(name)).includes("/deepseek-harness/"))
+  if (
+    realpathSync(fileURLToPath(import.meta.resolve(name))).includes(
+      "/deepseek-harness/",
+    )
+  )
     throw Error("Mutable source dependency");
 }
 console.log(

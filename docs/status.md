@@ -1,5 +1,37 @@
 # Current status
 
+Executor (2026-09-23): **0.2.9 is installed on the local Web and headless
+profiles.** Built-in OpenCode Go loads the official catalog (31 callable, 9
+blocked-with-evidence). A same-day recheck matched the live endpoint table
+and models.dev limits; MiMo-V2.6 advertised input no longer includes pdf.
+Offline host 305 / client 58 / fresh tarball pack passed. Settings hash and
+the default model were unchanged by installation. Live model sweeps and npm
+publish were not run. Single-card retirement stays off while nine protocols
+are unverified. Tarball SHA256
+`d8a309a2e69c9cf8ad00bdc7c5315ccd3d0c3ff5b96c9f35cc4c29a9e27dc815`.
+See [opencode-all-models-evidence.md](opencode-all-models-evidence.md) and
+[opencode-all-models-acceptance.md](opencode-all-models-acceptance.md).
+
+Planning handoff (2026-09-23): user requested a plan for another executor to
+cover all OpenCode Go models and then remove the duplicate legacy card from
+Provider Manager. See [execution plan](opencode-all-models-plan.md),
+[40-ID source matrix](opencode-all-models-2026-09-23/matrix.md), and
+[forwardable executor prompt](execute-opencode-all-models.md). This planning
+turn changed documentation only; installed 0.2.8, provider cards, source runtime,
+credentials and service state remain unchanged. Protocol/metadata gaps are
+explicit checkpoint-A work, not verified implementation claims.
+
+Latest controller acceptance (2026-09-22): **0.2.8 is deployed to real Web and
+headless**, with an independent built-in OpenCode Go route for Muse 1.2/1.3 and
+DeepSeek V4.1 Flash. Real Muse 1.3 and DeepSeek tool continuations passed;
+default is built-in Muse 1.3/xhigh. Key and DSH source are unchanged, old provider
+plugins remain. Final tarball, tests (Host 141, Client 57), retained formatting
+baseline failure and rollback are recorded in
+[opencode-integrated-acceptance.md](opencode-integrated-acceptance.md).
+Source changes are not committed or publicly published.
+
+## Historical checkpoints (superseded by the latest acceptance above)
+
 Controller review of candidate 0.2.0 / `36acde0`: **not accepted for deployment**. Confirmed synthetic counterexamples concern full-operation cancellation, old-account stale quota after a key change, and secret reappearance when switching details. See [review-0.2.0-36acde0.md](review-0.2.0-36acde0.md) and the bounded [R1 execution prompt](execute-quota-ui-r1.md). The installed Web version remains 0.1.1; no old provider was removed and no real quota request was performed in this review.
 
 Executor candidate (2026-09-21): compact quota UI batch implemented in-tree as **0.2.0**. Host-only OpenCode/Command readers and the compact list are in the candidate tarball. This is **not** deployed to `~/.dsh`, does **not** restart the real service, and does **not** uninstall old inference plugins. Controller acceptance remains required. See [acceptance.md](acceptance.md) and artifacts under `artifacts/quota-ui/20260921-exec/`.

@@ -4,6 +4,38 @@ export const protocols = [
   "anthropic-messages",
 ] as const;
 export type Protocol = (typeof protocols)[number];
+export type CatalogDisposition =
+  | "supported"
+  | "confirmed-alias"
+  | "officially-retired"
+  | "blocked-with-evidence";
+export interface LocalBudgetPreset {
+  id: string;
+  tokens: number;
+}
+export interface ProviderModel {
+  id: string;
+  name?: string;
+  api?: string;
+  contextWindow?: number;
+  inputLimit?: number;
+  maxOutputTokens?: number;
+  reasoning?: boolean;
+  nativeEfforts?: string[];
+  toggle?: boolean;
+  budgetTokensMax?: number;
+  budgetTokensUnbounded?: boolean;
+  localBudgetPresets?: LocalBudgetPreset[];
+  toggleOnLevel?: string;
+  input?: string[];
+  advertisedInput?: string[];
+  disposition?: CatalogDisposition;
+  blockReasons?: string[];
+  checkedAt?: string;
+  compatPolicy?: string;
+  selectableEfforts?: string[];
+  inputLimitEnforced?: boolean;
+}
 export class SafeError extends Error {
   constructor(public code: string) {
     super(code);
@@ -32,8 +64,9 @@ export interface Provider {
   revision: number;
   bindingToken?: string;
   credential?: { configured: boolean; writable: boolean; source?: string };
-  models: { id: string; name?: string; api?: string; contextWindow?: number }[];
+  models: ProviderModel[];
   notice?: string;
+  catalogCheckedAt?: string;
   baseURL?: string;
   defaultContextWindow?: number;
   defaultMaxTokens?: number;
@@ -101,7 +134,10 @@ export interface LoginEventsResult {
   error?: string;
   pendingPrompt?: LoginPromptEvent;
 }
-export function httpUrl(value: string, max = LOGIN_URL_MAX): string | undefined {
+export function httpUrl(
+  value: string,
+  max = LOGIN_URL_MAX,
+): string | undefined {
   if (typeof value !== "string" || !value.trim() || value.length > max)
     return undefined;
   try {

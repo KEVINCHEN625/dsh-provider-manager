@@ -1,0 +1,6 @@
+recordedAt=2026-09-23T02:32:48Z
+HEAD=02b0729651ac964fcc61ac60fce54dc2c98631a7
+package.json version=
+src/host/opencode/catalog.ts f59d87c0654d0afbb9be9de7e18e991f00c90f59bef15e904083bb2697c0f8d9
+src/host/opencode/adapter.ts bce9151effd3f331ad5b7f8fefcb076f9cb2be9c987800a0de5ad774ff1d079d
+src/host/opencode/profile.ts 8a3f80b076cb797dc4ad1be79fc4a5c037fb2de5a0d4d006e072343d04463931
