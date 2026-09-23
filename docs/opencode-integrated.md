@@ -7,7 +7,9 @@ still-unverified official IDs. No installation step automatically changes the
 default model, reasoning level, or stored session history.
 
 The built-in route materializes the 31 models whose protocol is in the live Go
-endpoint table. The other nine official IDs stay in the details table as
+endpoint table, plus formal Muse Spark 1.3 (`muse-spark-1.3`) on OpenCode Zen
+with efforts through `max`. Contributor stays on Go and does not advertise
+`max`. The other nine official Go IDs stay in the details table as
 blocked rows. Limits, native effort/toggle/budget, and blocked reasons are in
 [opencode-all-models-evidence.md](opencode-all-models-evidence.md) and
 `src/host/opencode/models.json`.
@@ -65,7 +67,7 @@ native replay, model switches, headers, concurrent sessions, key rotation,
 missing credentials/attachments, cancellation, quota identity and shared-key
 invalidation, and headless mount/unload. The distribution check installs the
 tarball plus declared registry dependencies into a temporary directory outside
-the repository and, for the 0.2.9 catalog, runs 62 mock requests (31 enabled
+the repository and, for the 0.2.9 catalog, runs 64 mock requests (32 enabled
 models, two turns each) without an old Go plugin. The earlier 0.2.8 check was
 three models and six requests. Tests do not call real models. Real deployment
 and live model verification are separate controller acceptance steps.

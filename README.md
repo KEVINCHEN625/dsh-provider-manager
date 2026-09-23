@@ -19,8 +19,9 @@ Model quality today is table stakes; what actually shapes your day is **which pr
 
 | You bring | This page gives you |
 | --- | --- |
-| **Coding subscriptions** — OpenCode Go, Command Code GOAT | Default-key editing, official live quota (5h / weekly / monthly), source-of-truth checks |
+| **Coding subscriptions** — OpenCode Go, Command Code GOAT | Default-key editing, official live quota (5h / weekly / monthly), source-of-truth checks — plus a **built-in OpenCode Go adapter**, so no third-party Go plugin is required |
 | **Public API keys** — 16 presets from ZCode to OpenRouter to Meta | Prefilled official endpoints, China/Overseas region choice, per-model 1M-context ticks |
+| **Sign-in accounts** — Claude, Codex, Kimi, xAI, Copilot, OpenRouter | Official OAuth / device-code flows through the harness authorization service; credentials land in the official store, tokens never echoed |
 | **Your own gateway** — local proxies, company gateways, relays | A clean custom route with the right protocol, named and managed like any built-in |
 | **CLI-only plans** — Muse Code | An honest row that says so, instead of pretending |
 
@@ -33,6 +34,7 @@ leaves defaults and old sessions unchanged. Both OpenCode cards still share
 
 ## What's on the page
 
+- **A built-in OpenCode Go adapter.** Route `provider-manager-opencode-go` serves the official Go catalog (41 models: 31 callable today, 9 blocked until their protocol is verified, formal **Muse Spark 1.3** on Zen with `max` effort) with per-model protocol selection, the sticky `x-opencode-session` header, and catalog refresh from the live endpoint table. Read [docs/opencode-integrated.md](docs/opencode-integrated.md) for setup, limits, and rollback.
 - **A ledger that looks like LLM Providers.** Trademark-style marks, LLM / Agent badges, a 3-column list (connection · remaining window · Details). Quota lives on the list; keys and catalogs open one click deeper.
 - **Real quota, Host-only, from official endpoints.** OpenCode Go reads `GET https://opencode.ai/zen/go/v1/usage`; Command Code reads `GET https://api.commandcode.ai/alpha/billing/credits` — only when the default credential is unambiguous. Custom endpoints show **unsupported**, never a fake 100% bar. Accounts are never merged.
 - **16 API presets, one card each.** **ZCode** (GLM Coding Plan, China / Overseas, Anthropic on the same card), **MiMo** (Xiaomi Token Plan `tp-` keys, China / Singapore / Europe), **MiniMax** (China / Overseas, Anthropic on the same card), plus **OpenRouter, SiliconFlow, Moonshot, DeepSeek, OpenAI, Anthropic, Groq, Together, Fireworks, DashScope, Google Gemini, Mistral** — and one-click **Meta Model API** (pay-as-you-go, not a Muse Code subscription).
@@ -70,7 +72,7 @@ Install the **release tarball** (it already contains `lib/`). We do not ship a `
 
 ```sh
 dsh plugin --profile web add --ignore-scripts --force \
-  https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.2.3/dsh-provider-manager-0.2.3.tgz
+  https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.2.9/dsh-provider-manager-0.2.9.tgz
 dsh --profile web --dump-config   # look for "# == dsh-provider-manager"
 dsh web
 ```
@@ -81,7 +83,7 @@ If the web profile is itself a pnpm workspace (`packages: [.]`), pass pnpm's boo
 
 ```sh
 dsh plugin --profile web add --workspace-root --ignore-scripts --force \
-  ./dsh-provider-manager-0.2.3.tgz
+  ./dsh-provider-manager-0.2.9.tgz
 ```
 
 CLI success and a live page are separate checks. Restart Web after adding the plugin.

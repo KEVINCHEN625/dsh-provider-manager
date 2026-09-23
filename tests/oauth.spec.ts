@@ -2,7 +2,9 @@ import { test, expect } from "vitest";
 import { credentialKey, type CredentialKey } from "@deepseek-ai/dsh-credentials";
 import * as plugin from "../src/host/index.js";
 import { Manager } from "../src/host/providers.js";
+import { OAuthHost } from "../src/host/oauth-host.js";
 import {
+  accountFromPayload,
   authorizationOf,
   oauthEntries,
 } from "../src/host/login.js";
@@ -76,54 +78,85 @@ test("missing authorization degrades to an empty oauth list", async () => {
   ).toEqual({ oauth: [], oauthUnavailable: true });
   const snapshot = await new Manager(fixture().services).snapshot();
   expect(snapshot.oauth).toEqual([]);
-  expect(snapshot.oauthUnavailable).toBe(true);
+  expect(snapshot.oauthUnavailable).toBeUndefined();
   expect(JSON.stringify(snapshot)).not.toContain("SENTINEL");
 });
 
-test("snapshot joins describeRecord and never calls describe for oauth keys", async () => {
+test("the main snapshot does not read authorization records", async () => {
   const f = fixture();
-  const key = credentialKey("llm-pi-ai", "google-gemini-cli");
   let describeRecord = 0;
-  let describe = 0;
-  const originalDescribe = f.services.credentials.describe;
-  f.services.credentials.describe = async (ref: string) => {
-    describe += 1;
-    return originalDescribe(ref);
-  };
-  f.services.credentials.describeRecord = async (record: CredentialKey) => {
+  f.services.credentials.describeRecord = async () => {
     describeRecord += 1;
-    expect(record).toBe(key);
-    return { configured: true, kind: "grant", payload: "SECRET-GRANT" };
+    return { configured: true, kind: "grant" };
   };
-  f.services.get = (name: string) =>
-    name === "authorization"
-      ? {
-          list: () => [
-            {
-              key,
-              label: "Gemini CLI",
-              methods: [{ id: "oauth", label: "Google" }],
-              inFlight: false,
-            },
-          ],
-          describe: () => undefined,
-          begin: async () => ({ status: "cancelled" }),
-          cancel: () => {},
-        }
-      : undefined;
   const snapshot = await new Manager(f.services).snapshot();
-  expect(describeRecord).toBe(1);
-  expect(describe).toBeGreaterThan(0);
-  expect(snapshot.oauth).toEqual([
+  expect(describeRecord).toBe(0);
+  expect(snapshot.oauth).toEqual([]);
+});
+
+test("account label keeps the first whitelist field and drops token fields", async () => {
+  const key = credentialKey("llm-pi-ai", "openai-codex");
+  const result = await oauthEntries(
     {
-      providerId: "google-gemini-cli",
-      label: "Gemini CLI",
-      methods: [{ id: "oauth", label: "Google" }],
-      configured: true,
-      kind: "grant",
-      inFlight: false,
+      list: () => [
+        {
+          key,
+          label: "ChatGPT Codex",
+          methods: [{ id: "oauth", label: "OAuth" }],
+          inFlight: false,
+        },
+      ],
+      describe: () => undefined,
+      begin: async () => ({ status: "cancelled" }),
+      cancel: () => {},
     },
-  ]);
-  expect(snapshot.oauthUnavailable).toBeUndefined();
-  expect(JSON.stringify(snapshot.oauth)).not.toMatch(/SECRET|payload/);
+    async () => ({ configured: true, kind: "grant" }),
+    async () => ({
+      kind: "grant",
+      payload: {
+        email: "ada@example.com",
+        access_token: "SECRET-TOKEN",
+        refresh_token: "SECRET-REFRESH",
+      },
+    }),
+  );
+  expect(result.oauth[0]?.account).toBe("ada@example.com");
+  expect(accountFromPayload({ displayName: "Ada", email: "" })).toBe("Ada");
+  expect(accountFromPayload({ name: "x".repeat(80) })).toHaveLength(64);
+  expect(JSON.stringify(result)).not.toMatch(/SECRET/);
+});
+
+test("logout deletes the credential record and does not echo it", async () => {
+  const key = credentialKey("llm-pi-ai", "openrouter");
+  const deleted: CredentialKey[] = [];
+  const host = new OAuthHost(
+    {
+      list: () => [
+        {
+          key,
+          label: "OpenRouter",
+          methods: [{ id: "oauth", label: "OAuth" }],
+          inFlight: false,
+        },
+      ],
+      describe: () => undefined,
+      begin: async () => ({ status: "cancelled" }),
+      cancel: () => {},
+    },
+    {
+      describeRecord: async () => ({ configured: true, kind: "grant" }),
+      readRecord: async () => ({
+        kind: "grant",
+        payload: { email: "ada@example.com", access_token: "SECRET-TOKEN" },
+      }),
+      deleteRecord: async (record) => {
+        deleted.push(record);
+      },
+    },
+  );
+  expect(await host.logout({ providerId: "openrouter" })).toEqual({
+    removed: true,
+  });
+  expect(deleted).toEqual([key]);
+  host.dispose();
 });

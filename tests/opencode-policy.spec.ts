@@ -17,15 +17,17 @@ const deepseek = () => requireGoModel("deepseek-v4.1-flash");
 test("closed catalog uses independent identity and official endpoint", () => {
   const p = createBuiltInGoProfile();
   expect(p.provider).toBe(GO_ROUTE);
-  expect(p.piProvider!.getModels()).toHaveLength(31);
-  expect(GO_CATALOG.models).toHaveLength(40);
+  expect(p.piProvider!.getModels()).toHaveLength(32);
+  expect(GO_CATALOG.models).toHaveLength(41);
   expect(
     GO_MODELS.every(
       (m) =>
         m.provider === GO_ROUTE &&
-        (m.api === "anthropic-messages"
-          ? m.baseUrl === "https://opencode.ai/zen/go"
-          : m.baseUrl === "https://opencode.ai/zen/go/v1"),
+        (m.id === "muse-spark-1.3"
+          ? m.baseUrl === goEntry("muse-spark-1.3")?.baseUrl
+          : m.api === "anthropic-messages"
+            ? m.baseUrl === "https://opencode.ai/zen/go"
+            : m.baseUrl === "https://opencode.ai/zen/go/v1"),
     ),
   ).toBe(true);
   expect(deepseek()).toMatchObject({

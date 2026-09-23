@@ -75,7 +75,11 @@ test("real WebServer + Connection: authenticated snapshot, exact reveal, disposa
       },
     });
     expect(JSON.stringify(quotaBody)).not.toContain("SYNTHETIC");
-    const provider = data.result.value.providers[0];
+    expect(data.result.value.providers.some((item: { id: string }) => item.id === "opencode-go")).toBe(false);
+    const provider = data.result.value.providers.find(
+      (item: { id: string }) => item.id === "provider-manager-opencode-go",
+    );
+    expect(provider?.bindingToken).toEqual(expect.any(String));
     const binding = {
       providerId: provider.id,
       bindingToken: provider.bindingToken,

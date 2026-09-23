@@ -74,13 +74,37 @@ export function authorizationOf(value: unknown): AuthorizationSurface | undefine
   return value as AuthorizationSurface;
 }
 
+function grantPayload(record: unknown): unknown {
+  if (!record || typeof record !== "object" || Array.isArray(record))
+    return undefined;
+  const value = record as { kind?: unknown; payload?: unknown };
+  return value.kind === "grant" ? value.payload : undefined;
+}
+
 function kindOf(value: unknown): OAuthKind | undefined {
   return value === "api-key" || value === "grant" ? value : undefined;
+}
+
+const ACCOUNT_FIELDS = ["email", "displayName", "account", "name"] as const;
+
+export function accountFromPayload(payload: unknown): string | undefined {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload))
+    return undefined;
+  const record = payload as Record<string, unknown>;
+  for (const field of ACCOUNT_FIELDS) {
+    const value = record[field];
+    if (typeof value !== "string") continue;
+    const trimmed = value.trim();
+    if (!trimmed) continue;
+    return trimmed.slice(0, 64);
+  }
+  return undefined;
 }
 
 export async function oauthEntries(
   authorization: AuthorizationSurface | undefined,
   describeRecord: (key: CredentialKey) => Promise<RecordInfo>,
+  readRecord?: (key: CredentialKey) => Promise<unknown>,
 ): Promise<{ oauth: OAuthEntry[]; oauthUnavailable?: true }> {
   if (!authorization) return { oauth: [], oauthUnavailable: true };
   const listed = authorization.list().filter(
@@ -98,6 +122,14 @@ export async function oauthEntries(
       configured = false;
     }
     if (entry.methods.length < 1) continue;
+    let account: string | undefined;
+    if (configured && readRecord) {
+      try {
+        account = accountFromPayload(grantPayload(await readRecord(entry.key)));
+      } catch {
+        account = undefined;
+      }
+    }
     oauth.push({
       providerId: credentialKeyId(entry.key),
       label: entry.label,
@@ -107,6 +139,7 @@ export async function oauthEntries(
       })),
       configured,
       ...(kind ? { kind } : {}),
+      ...(account ? { account } : {}),
       inFlight: entry.inFlight === true,
     });
   }

@@ -39,8 +39,12 @@ test("local save preserves other provider fields and namespace fields", async ()
 test("secret save success survives separate config conflict", async () => {
   const f = fixture();
   const m: any = new Manager(f.services);
-  const p = (await m.snapshot()).providers[0];
-  await m.set({ providerId: p.id, bindingToken: p.bindingToken, value: "NEW" });
+  const b = m.binding("opencode-go");
+  await m.set({
+    providerId: "opencode-go",
+    bindingToken: b.token,
+    value: "NEW",
+  });
   await expect(m.save({ ...draft, revision: 0 })).rejects.toMatchObject({
     code: "CONFLICT",
   });
@@ -151,15 +155,15 @@ test("editing an explicitly authorized existing reference preserves its authenti
 test("catalog failure is independent of credential management failure", async () => {
   const f = fixture();
   const m: any = new Manager(f.services);
-  f.sections[0].value.apiKeyEnv = "UNMANAGED";
-  const readable = await m.card("opencode-go");
+  f.sections[1].value.apiKeyEnv = "UNMANAGED";
+  const readable = await m.card("commandcode");
   expect(readable.error).toBe("REF_NOT_ALLOWED");
   expect(readable.catalogError).toBeUndefined();
   expect(readable.models).toHaveLength(1);
   f.services.llm.listModels = async () => {
     throw Error("synthetic");
   };
-  const unavailable = await m.card("opencode-go");
+  const unavailable = await m.card("commandcode");
   expect(unavailable.catalogError).toBe("UNAVAILABLE");
 });
 test("reserved Muse route and unknown cards are rejected", async () => {

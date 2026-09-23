@@ -1,6 +1,6 @@
 {
   "name": "dsh-provider-manager",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "DeepSeek Harness settings page for provider credentials, OpenCode Go / Command Code quota, ZCode / MiMo / MiniMax China-Overseas, per-model 1M context, llm-pi-ai sign-in flows, OpenRouter and other custom APIs, and Muse Code guidance.",
   "license": "MIT",
   "repository": {
@@ -30,6 +30,10 @@
     "./client": {
       "types": "./lib/types/client/index.d.ts",
       "default": "./lib/client.js"
+    },
+    "./oauth": {
+      "types": "./lib/types/host/oauth-entry.d.ts",
+      "default": "./lib/oauth.js"
     }
   },
   "files": [
@@ -68,7 +72,8 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.client.json --noEmit",
     "test": "vitest run --exclude \"tests/*.client.spec.tsx\"",
     "test:client": "vitest run tests/*.client.spec.tsx",
-    "check:pack": "pnpm pack --pack-destination artifacts && node scripts/check-pack.mjs",
+    "check:pack": "pnpm pack --pack-destination artifacts && node scripts/name-content-tarball.mjs && node scripts/check-pack.mjs",
+    "check:deploy": "node scripts/check-deploy-consistency.mjs",
     "format:check": "prettier --check src tests scripts",
     "test:muse-compat": "TSX_TSCONFIG_PATH=../deepseek-harness/tsconfig.json node --import ../deepseek-harness/node_modules/tsx/dist/esm/index.mjs --test tests/muse-compat*.node.mjs",
     "check:pack:opencode": "pnpm pack --pack-destination artifacts && node scripts/check-opencode-pack.mjs"

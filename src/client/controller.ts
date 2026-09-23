@@ -5,6 +5,8 @@ import {
   validateQuota,
   validateLoginStart,
   validateLoginEvents,
+  validateOAuthSnapshot,
+  validateOAuthEntry,
 } from "./validation.js";
 import type {
   IndexedLoginEvent,
@@ -155,9 +157,11 @@ export class Controller {
     this.abortQuotas();
     this.update({ status: "loading", error: undefined });
     try {
-      const snapshot = validateSnapshot(
-        await this.request((signal) =>
-          this.transport.rpc("snapshot", {}, signal),
+      const snapshot = await this.attachOAuth(
+        validateSnapshot(
+          await this.request((signal) =>
+            this.transport.rpc("snapshot", {}, signal),
+          ),
         ),
       );
       if (generation === this.loadGeneration)
@@ -397,6 +401,96 @@ export class Controller {
         : Number.POSITIVE_INFINITY;
       if (!Number.isFinite(age) || age >= this.quotaPollMs)
         void this.refreshQuota(provider);
+    }
+    void this.refreshOAuth();
+  }
+  private async attachOAuth(snapshot: Snapshot, keepOnError = false) {
+    try {
+      const value = await this.request((signal) =>
+        this.transport.rpc("oauth/snapshot", {}, signal),
+      );
+      if (
+        value &&
+        typeof value === "object" &&
+        (value as { oauthUnavailable?: unknown }).oauthUnavailable === true
+      )
+        return { ...snapshot, oauth: [], oauthUnavailable: true };
+      const listed = validateOAuthSnapshot(value);
+      return {
+        ...snapshot,
+        oauth: listed.oauth,
+        oauthUnavailable: false,
+      };
+    } catch {
+      if (keepOnError) return snapshot;
+      return { ...snapshot, oauth: [], oauthUnavailable: true };
+    }
+  }
+  private async refreshOAuth() {
+    const generation = this.loadGeneration;
+    const current = this.state.snapshot;
+    if (!current || this.state.status !== "ready") return;
+    const next = await this.attachOAuth(current, true);
+    if (this.disposed || generation !== this.loadGeneration) return;
+    const latest = this.state.snapshot;
+    if (!latest) return;
+    this.update({
+      snapshot: {
+        ...latest,
+        oauth: next.oauth,
+        oauthUnavailable: next.oauthUnavailable,
+      },
+    });
+  }
+  async refreshOAuthQuota(providerId: string) {
+    const entry = this.state.snapshot?.oauth.find(
+      (item) => item.providerId === providerId,
+    );
+    if (!entry || this.disposed) return;
+    const key = `oauth-quota:${providerId}`;
+    this.operation(key, { status: "loading" });
+    try {
+      const updated = validateOAuthEntry(
+        await this.request((signal) =>
+          this.transport.rpc(
+            "oauth/quota",
+            {
+              providerId,
+              ...(entry.bindingToken
+                ? { bindingToken: entry.bindingToken }
+                : {}),
+              refresh: true,
+            },
+            signal,
+          ),
+        ),
+      );
+      const snapshot = this.state.snapshot;
+      if (!snapshot) return;
+      this.update({
+        snapshot: {
+          ...snapshot,
+          oauth: snapshot.oauth.map((item) =>
+            item.providerId === providerId ? updated : item,
+          ),
+        },
+      });
+      this.operation(key, { status: "success" });
+    } catch (error) {
+      this.operation(key, { status: "error", error: errorCode(error) });
+    }
+  }
+  async logout(providerId: string) {
+    if (this.disposed) return;
+    this.operation("logout", { status: "loading" });
+    try {
+      await this.request((signal) =>
+        this.transport.rpc("oauth/logout", { providerId }, signal),
+      );
+      this.operation("logout", { status: "success" });
+      await this.refreshOAuth();
+    } catch (error) {
+      this.operation("logout", { status: "error", error: errorCode(error) });
     }
   }
   private ensurePoll() {

@@ -1,7 +1,50 @@
 import type { OAuthEntry } from "../shared/protocol.js";
-import type { LoginState } from "./controller.js";
+import type { LoginState, QuotaView } from "./controller.js";
 import type { Translate } from "./locales.js";
+import { QuotaSummary } from "./QuotaSummary.js";
 import { RoleBadge } from "./ProviderIcon.js";
+
+const BRANDS: Record<string, string> = {
+  anthropic: "#d97757",
+  claude: "#d97757",
+  "openai-codex": "#10a37f",
+  codex: "#10a37f",
+  "kimi-coding": "#5b6cff",
+  kimi: "#5b6cff",
+  xai: "#111111",
+  "github-copilot": "#2f81f7",
+  copilot: "#2f81f7",
+  openrouter: "#6467f2",
+};
+
+export function oauthBrandColor(providerId: string): string | undefined {
+  const id = providerId.toLowerCase();
+  if (BRANDS[id]) return BRANDS[id];
+  for (const [name, color] of Object.entries(BRANDS))
+    if (id.includes(name)) return color;
+  return undefined;
+}
+
+export function oauthQuotaView(entry: OAuthEntry): QuotaView | undefined {
+  const quota = entry.quota;
+  if (!quota || quota.status === "unsupported") return undefined;
+  if (quota.status === "expired")
+    return { status: "error", error: "oauthExpired" };
+  if (quota.status === "missing-credential")
+    return { status: "missing-credential" };
+  if (quota.status === "error")
+    return { status: "error", error: quota.error || "UNAVAILABLE" };
+  return {
+    status: "ready",
+    snapshot: {
+      providerId: entry.providerId,
+      status: "ready",
+      windows: [...quota.windows],
+      stale: false,
+      ...(entry.quotaFetchedAt ? { fetchedAt: entry.quotaFetchedAt } : {}),
+    },
+  };
+}
 
 export type OAuthBadge = "oauthInFlight" | "oauthSignedIn" | "oauthSignedOut";
 
@@ -31,10 +74,19 @@ export function OAuthCard({
 }) {
   const status = oauthStatus(entry, login);
   const letter = [...entry.label][0]?.toUpperCase() || "?";
+  const brand = oauthBrandColor(entry.providerId);
+  const signedIn =
+    status === "oauthSignedIn" && entry.account
+      ? `${t("oauthSignedIn")} · ${entry.account}`
+      : t(status);
   return (
     <article className="pm-row">
       <div className="pm-identity">
-        <span className="pm-oauth-mark" aria-hidden="true">
+        <span
+          className="pm-oauth-mark"
+          aria-hidden="true"
+          style={brand ? { background: brand, color: "#fff" } : undefined}
+        >
           {letter}
         </span>
         <div>
@@ -48,12 +100,22 @@ export function OAuthCard({
                 status === "oauthSignedOut" ? "pm-dot" : "pm-dot pm-dot-on"
               }
             />
-            {t(status)}
+            {signedIn}
           </p>
         </div>
       </div>
       <div className="pm-quota">
-        <p>{t("loginMethod")}</p>
+        {entry.quota?.status === "unsupported" ? (
+          <p>{t("oauthQuotaUnsupported")}</p>
+        ) : entry.quota ? (
+          <QuotaSummary
+            view={oauthQuotaView(entry)}
+            t={t}
+            name={entry.label}
+          />
+        ) : (
+          <p>{t("loginMethod")}</p>
+        )}
       </div>
       <button
         type="button"

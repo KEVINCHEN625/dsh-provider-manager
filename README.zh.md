@@ -19,8 +19,9 @@ DeepSeek Harness 的理念是*万物皆插件*。这个插件把它再往前推�
 
 | 你带来什么 | 这一页给你什么 |
 | --- | --- |
-| **编程订阅** —— OpenCode Go、Command Code GOAT | 默认 key 编辑、官方实时额度（5 小时 / 周 / 月）、凭据来源核对 |
+| **编程订阅** —— OpenCode Go、Command Code GOAT | 默认 key 编辑、官方实时额度（5 小时 / 周 / 月）、凭据来源核对 —— 并自带**内置 OpenCode Go 适配器**，无需第三方 Go 插件 |
 | **公有 API key** —— 从 ZCode 到 OpenRouter 到 Meta 共 16 家预填 | 官方端点预填、中国/海外线路选择、按模型勾选 1M 上下文 |
+| **登录型账户** —— Claude、Codex、Kimi、xAI、Copilot、OpenRouter | 经宿主授权服务的官方 OAuth / 设备码登录流；凭据写入官方凭据库，绝不回显 token |
 | **你自己的网关** —— 本地代理、公司网关、中转 | 一个干净的自定义路由，选对协议，像内置 provider 一样命名管理 |
 | **只有 CLI 的套餐** —— Muse Code | 一行如实的说明，而不是假装能接 |
 
@@ -28,6 +29,7 @@ DeepSeek Harness 的理念是*万物皆插件*。这个插件把它再往前推�
 
 ## 页面上有什么
 
+- **内置 OpenCode Go 适配器。** 路由 `provider-manager-opencode-go` 承载官方 Go 目录（41 个模型：31 个可调用、9 个协议未核实暂列、正式版 **Muse Spark 1.3** 走 Zen 端点并支持 `max` 档），按模型自动选协议、发送粘性 `x-opencode-session` 头，目录可从实时端点表刷新。配置、限制与回滚见 [docs/opencode-integrated.md](docs/opencode-integrated.md)。
 - **长得像 LLM Providers 的台账。** 商标风格图标、LLM / Agent 标记、三列列表（连接 · 剩余窗口 · 详情）。配额留在列表上，key 和目录点一下进详情。
 - **真实额度：只在 Host 查、只查官方接口。** OpenCode Go 请求 `GET https://opencode.ai/zen/go/v1/usage`；Command Code 请求 `GET https://api.commandcode.ai/alpha/billing/credits` —— 且仅当默认凭据可确认时。自定义端点显示**不支持**，绝不编造 100% 进度条。账户之间不合并。
 - **16 家 API 预设，一卡一家。** **ZCode**（GLM 编程套餐，中国 / 海外，Anthropic 同卡切换）、**MiMo**（小米 Token Plan `tp-` key，中国 / 新加坡 / 欧洲）、**MiniMax**（中国 / 海外，Anthropic 同卡切换），另有 **OpenRouter、SiliconFlow、Moonshot、DeepSeek、OpenAI、Anthropic、Groq、Together、Fireworks、DashScope、Google Gemini、Mistral** —— 以及一键 **Meta Model API**（按量计费，不是 Muse Code 订阅）。
@@ -65,7 +67,7 @@ Muse Code —— 仅 CLI，附一键添加 Meta Model API：
 
 ```sh
 dsh plugin --profile web add --ignore-scripts --force \
-  https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.2.3/dsh-provider-manager-0.2.3.tgz
+  https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.2.9/dsh-provider-manager-0.2.9.tgz
 dsh --profile web --dump-config   # 应出现 "# == dsh-provider-manager"
 dsh web
 ```
@@ -76,7 +78,7 @@ dsh web
 
 ```sh
 dsh plugin --profile web add --workspace-root --ignore-scripts --force \
-  ./dsh-provider-manager-0.2.3.tgz
+  ./dsh-provider-manager-0.2.9.tgz
 ```
 
 命令成功和页面真实可用是两回事。装完请重启 Web。

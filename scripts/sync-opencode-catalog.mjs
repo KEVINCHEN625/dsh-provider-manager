@@ -37,6 +37,27 @@ function parseDocs(html) {
   }
   return ids;
 }
+// models.dev leaves these reasoning models with an empty options list.
+// OpenCode Go still accepts a control, but the wire value is family-specific:
+// MiMo takes reasoning_effort low|medium|high (minimal/xhigh/max are rejected).
+// Kimi rejects a request that sends thinking and reasoning_effort together, so
+// it only gets the existing on/off thinking switch. GLM-5.1 follows the
+// declared GLM-5.3 levels. MiniMax M2 follows the M3 thinking switch.
+function undeclaredEffort(id) {
+  if (id.startsWith("mimo-"))
+    return { nativeEfforts: ["low", "medium", "high"], toggle: true };
+  if (id === "kimi-k2.6" || id === "kimi-k2.7-code")
+    return { nativeEfforts: [], toggle: true };
+  if (id === "glm-5.1")
+    return { nativeEfforts: ["low", "high", "max"], toggle: false };
+  if (id === "minimax-m2.7" || id === "minimax-m2.5")
+    return {
+      nativeEfforts: [],
+      toggle: true,
+      compatPolicy: "anthropic-toggle",
+    };
+  return null;
+}
 function thinkingMap(nativeEfforts, hasToggle, localPresets) {
   const map = Object.fromEntries(LEVELS.map((level) => [level, null]));
   if (nativeEfforts.includes("none")) map.off = "none";
@@ -110,6 +131,28 @@ function buildCatalog() {
       hasToggle
         ? LOCAL_BUDGET
         : [];
+    const fallback =
+      disposition === "supported" &&
+      nativeEfforts.length === 0 &&
+      !hasToggle &&
+      localPresets.length === 0
+        ? undeclaredEffort(id)
+        : null;
+    if (fallback) {
+      nativeEfforts = fallback.nativeEfforts;
+      hasToggle = fallback.toggle;
+    }
+    const compatPolicy = api
+      ? (fallback?.compatPolicy ??
+        policyFor(
+          api,
+          id,
+          meta?.interleaved,
+          nativeEfforts,
+          hasToggle,
+          budget !== null || budgetUnbounded,
+        ))
+      : null;
     return {
       id,
       name: meta?.name ?? id,
@@ -144,16 +187,7 @@ function buildCatalog() {
         : ["text"],
       advertisedInput: advertised,
       replayField: meta?.interleaved?.field ?? null,
-      compatPolicy: api
-        ? policyFor(
-            api,
-            id,
-            meta?.interleaved,
-            nativeEfforts,
-            hasToggle,
-            budget !== null || budgetUnbounded,
-          )
-        : null,
+      compatPolicy,
       forceAdaptiveThinking: Boolean(
         api === "anthropic-messages" && nativeEfforts.length,
       ),
@@ -165,7 +199,45 @@ function buildCatalog() {
       },
     };
   });
-  return {
+// Formal Muse Spark 1.3 is a different Meta SKU from the Contributor model.
+// Live GET /zen/go/v1/models does not list it. Live GET /zen/v1/models does.
+// Meta models.dev and pi-ai opencode.json both advertise effort max; the
+// Contributor SKU stays on the five-step ladder without max.
+const formalEfforts = ["minimal", "low", "medium", "high", "xhigh", "max"];
+const formal = {
+  id: "muse-spark-1.3",
+  name: "Muse Spark 1.3",
+  disposition: "supported",
+  api: "openai-responses",
+  baseUrl: "https://opencode.ai/zen/v1",
+  contextWindow: 1048576,
+  inputLimit: null,
+  maxOutputTokens: 131072,
+  reasoning: true,
+  nativeEfforts: formalEfforts,
+  toggle: false,
+  budgetTokensMax: null,
+  budgetTokensUnbounded: false,
+  localBudgetPresets: [],
+  toggleOnLevel: null,
+  thinkingLevelMap: thinkingMap(formalEfforts, false, []),
+  input: ["text", "image"],
+  advertisedInput: ["text", "image", "video", "pdf", "audio"],
+  replayField: null,
+  compatPolicy: "muse-responses",
+  forceAdaptiveThinking: false,
+  blockReasons: [],
+  metadataStatus: null,
+  sources: {
+    protocol: "official-zen-models-list",
+    metadata: "models.dev-meta",
+  },
+};
+const contributorAt = models.findIndex(
+  (model) => model.id === "muse-spark-1.3-contributor",
+);
+models.splice(contributorAt < 0 ? models.length : contributorAt, 0, formal);
+return {
     checkedAt: "2026-09-23T06:15:22.000Z",
     origin: "https://opencode.ai/zen/go/v1",
     excluded: [

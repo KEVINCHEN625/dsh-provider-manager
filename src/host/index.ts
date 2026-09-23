@@ -64,18 +64,6 @@ export function apply(ctx: Context, config: Config = {}) {
                   AbortSignal.any([signal, lifetime.signal]),
                 );
                 break;
-              case "login/start":
-                value = manager.logins.start(payload);
-                break;
-              case "login/events":
-                value = manager.logins.events(payload);
-                break;
-              case "login/answer":
-                value = manager.logins.answer(payload);
-                break;
-              case "login/cancel":
-                value = manager.logins.cancel(payload);
-                break;
               default:
                 throw new SafeError("UNSUPPORTED");
             }

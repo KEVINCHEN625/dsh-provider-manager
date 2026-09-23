@@ -101,6 +101,10 @@ export interface OAuthEntry {
   configured: boolean;
   kind?: OAuthKind;
   inFlight: boolean;
+  account?: string;
+  bindingToken?: string;
+  quota?: OAuthQuota;
+  quotaFetchedAt?: string;
 }
 export type LoginPromptKind = "text" | "secret" | "select";
 export type LoginNoticeEvent = {
@@ -165,8 +169,19 @@ export type QuotaStatus =
   | "missing-credential"
   | "source-unverified"
   | "error";
+export type OAuthQuotaStatus =
+  | "ready"
+  | "unsupported"
+  | "missing-credential"
+  | "expired"
+  | "error";
+export interface OAuthQuota {
+  status: OAuthQuotaStatus;
+  windows: QuotaWindow[];
+  error?: "TIMEOUT" | "UNAUTHORIZED" | "UNAVAILABLE" | "INVALID_RESPONSE";
+}
 export interface QuotaWindow {
-  id: "five-hour" | "weekly" | "monthly";
+  id: "five-hour" | "weekly" | "monthly" | "credits";
   usedPercent?: number;
   remainingPercent?: number;
   resetsAt?: string;

@@ -21,6 +21,8 @@ export const GO_ROUTE = "provider-manager-opencode-go";
 export const GO_NAME = "OpenCode Go (Provider Manager)";
 export const GO_ENDPOINT = "https://opencode.ai/zen/go/v1";
 export const GO_ANTHROPIC_BASE = "https://opencode.ai/zen/go";
+/** Formal Muse Spark lives on OpenCode Zen, not the Go catalog. */
+export const ZEN_ENDPOINT = "https://opencode.ai/zen/v1";
 export const GO_KEY = "OPENCODE_API_KEY";
 export const GO_MANAGER_VERSION = "0.2.9";
 export const GO_CATALOG = validateGoCatalog(catalogJson);
@@ -70,7 +72,8 @@ export function toPiModel(entry: GoCatalogEntry): Model<Api> {
     name: entry.name,
     provider: GO_ROUTE,
     baseUrl:
-      entry.api === "anthropic-messages" ? GO_ANTHROPIC_BASE : GO_ENDPOINT,
+      entry.baseUrl ??
+      (entry.api === "anthropic-messages" ? GO_ANTHROPIC_BASE : GO_ENDPOINT),
     reasoning: entry.reasoning !== false,
     thinkingLevelMap: entry.thinkingLevelMap,
     input: entry.input,

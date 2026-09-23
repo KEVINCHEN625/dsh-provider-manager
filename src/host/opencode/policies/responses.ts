@@ -8,7 +8,8 @@ export function isMuseResponses(model: Model<Api>) {
     model.provider === GO_ROUTE &&
     model.api === "openai-responses" &&
     (model.id === "muse-spark-1.2-contributor" ||
-      model.id === "muse-spark-1.3-contributor")
+      model.id === "muse-spark-1.3-contributor" ||
+      model.id === "muse-spark-1.3")
   );
 }
 export function sanitizeMusePayload(

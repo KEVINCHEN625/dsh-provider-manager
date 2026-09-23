@@ -78,17 +78,17 @@
       "maxOutputTokens": 131072,
       "reasoning": true,
       "nativeEfforts": [],
-      "toggle": false,
+      "toggle": true,
       "budgetTokensMax": null,
       "budgetTokensUnbounded": false,
       "localBudgetPresets": [],
-      "toggleOnLevel": null,
+      "toggleOnLevel": "high",
       "thinkingLevelMap": {
-        "off": null,
+        "off": "off",
         "minimal": null,
         "low": null,
         "medium": null,
-        "high": null,
+        "high": "high",
         "xhigh": null,
         "max": null
       },
@@ -99,7 +99,7 @@
         "text"
       ],
       "replayField": null,
-      "compatPolicy": "anthropic-default",
+      "compatPolicy": "anthropic-toggle",
       "forceAdaptiveThinking": false,
       "blockReasons": [],
       "metadataStatus": null,
@@ -118,17 +118,17 @@
       "maxOutputTokens": 65536,
       "reasoning": true,
       "nativeEfforts": [],
-      "toggle": false,
+      "toggle": true,
       "budgetTokensMax": null,
       "budgetTokensUnbounded": false,
       "localBudgetPresets": [],
-      "toggleOnLevel": null,
+      "toggleOnLevel": "high",
       "thinkingLevelMap": {
-        "off": null,
+        "off": "off",
         "minimal": null,
         "low": null,
         "medium": null,
-        "high": null,
+        "high": "high",
         "xhigh": null,
         "max": null
       },
@@ -139,7 +139,7 @@
         "text"
       ],
       "replayField": null,
-      "compatPolicy": "anthropic-default",
+      "compatPolicy": "anthropic-toggle",
       "forceAdaptiveThinking": false,
       "blockReasons": [],
       "metadataStatus": "deprecated",
@@ -203,17 +203,17 @@
       "maxOutputTokens": 262144,
       "reasoning": true,
       "nativeEfforts": [],
-      "toggle": false,
+      "toggle": true,
       "budgetTokensMax": null,
       "budgetTokensUnbounded": false,
       "localBudgetPresets": [],
-      "toggleOnLevel": null,
+      "toggleOnLevel": "high",
       "thinkingLevelMap": {
-        "off": null,
+        "off": "off",
         "minimal": null,
         "low": null,
         "medium": null,
-        "high": null,
+        "high": "high",
         "xhigh": null,
         "max": null
       },
@@ -246,17 +246,17 @@
       "maxOutputTokens": 65536,
       "reasoning": true,
       "nativeEfforts": [],
-      "toggle": false,
+      "toggle": true,
       "budgetTokensMax": null,
       "budgetTokensUnbounded": false,
       "localBudgetPresets": [],
-      "toggleOnLevel": null,
+      "toggleOnLevel": "high",
       "thinkingLevelMap": {
-        "off": null,
+        "off": "off",
         "minimal": null,
         "low": null,
         "medium": null,
-        "high": null,
+        "high": "high",
         "xhigh": null,
         "max": null
       },
@@ -509,7 +509,11 @@
       "inputLimit": null,
       "maxOutputTokens": 32768,
       "reasoning": true,
-      "nativeEfforts": [],
+      "nativeEfforts": [
+        "low",
+        "high",
+        "max"
+      ],
       "toggle": false,
       "budgetTokensMax": null,
       "budgetTokensUnbounded": false,
@@ -518,11 +522,11 @@
       "thinkingLevelMap": {
         "off": null,
         "minimal": null,
-        "low": null,
+        "low": "low",
         "medium": null,
-        "high": null,
+        "high": "high",
         "xhigh": null,
-        "max": null
+        "max": "max"
       },
       "input": [
         "text"
@@ -1222,18 +1226,22 @@
       "inputLimit": null,
       "maxOutputTokens": 131072,
       "reasoning": true,
-      "nativeEfforts": [],
-      "toggle": false,
+      "nativeEfforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "toggle": true,
       "budgetTokensMax": null,
       "budgetTokensUnbounded": false,
       "localBudgetPresets": [],
       "toggleOnLevel": null,
       "thinkingLevelMap": {
-        "off": null,
+        "off": "off",
         "minimal": null,
-        "low": null,
-        "medium": null,
-        "high": null,
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
         "xhigh": null,
         "max": null
       },
@@ -1266,18 +1274,22 @@
       "inputLimit": null,
       "maxOutputTokens": 131072,
       "reasoning": true,
-      "nativeEfforts": [],
-      "toggle": false,
+      "nativeEfforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "toggle": true,
       "budgetTokensMax": null,
       "budgetTokensUnbounded": false,
       "localBudgetPresets": [],
       "toggleOnLevel": null,
       "thinkingLevelMap": {
-        "off": null,
+        "off": "off",
         "minimal": null,
-        "low": null,
-        "medium": null,
-        "high": null,
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
         "xhigh": null,
         "max": null
       },
@@ -1310,18 +1322,22 @@
       "inputLimit": null,
       "maxOutputTokens": 128000,
       "reasoning": true,
-      "nativeEfforts": [],
-      "toggle": false,
+      "nativeEfforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "toggle": true,
       "budgetTokensMax": null,
       "budgetTokensUnbounded": false,
       "localBudgetPresets": [],
       "toggleOnLevel": null,
       "thinkingLevelMap": {
-        "off": null,
+        "off": "off",
         "minimal": null,
-        "low": null,
-        "medium": null,
-        "high": null,
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
         "xhigh": null,
         "max": null
       },
@@ -1350,18 +1366,22 @@
       "inputLimit": null,
       "maxOutputTokens": 128000,
       "reasoning": true,
-      "nativeEfforts": [],
-      "toggle": false,
+      "nativeEfforts": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "toggle": true,
       "budgetTokensMax": null,
       "budgetTokensUnbounded": false,
       "localBudgetPresets": [],
       "toggleOnLevel": null,
       "thinkingLevelMap": {
-        "off": null,
+        "off": "off",
         "minimal": null,
-        "low": null,
-        "medium": null,
-        "high": null,
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
         "xhigh": null,
         "max": null
       },
@@ -1708,6 +1728,59 @@
       "sources": {
         "protocol": "official-endpoint-table",
         "metadata": "models.dev-opencode-go"
+      }
+    },
+    {
+      "id": "muse-spark-1.3",
+      "name": "Muse Spark 1.3",
+      "disposition": "supported",
+      "api": "openai-responses",
+      "baseUrl": "https://opencode.ai/zen/v1",
+      "contextWindow": 1048576,
+      "inputLimit": null,
+      "maxOutputTokens": 131072,
+      "reasoning": true,
+      "nativeEfforts": [
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "toggle": false,
+      "budgetTokensMax": null,
+      "budgetTokensUnbounded": false,
+      "localBudgetPresets": [],
+      "toggleOnLevel": null,
+      "thinkingLevelMap": {
+        "off": null,
+        "minimal": "minimal",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+        "xhigh": "xhigh",
+        "max": "max"
+      },
+      "input": [
+        "text",
+        "image"
+      ],
+      "advertisedInput": [
+        "text",
+        "image",
+        "video",
+        "pdf",
+        "audio"
+      ],
+      "replayField": null,
+      "compatPolicy": "muse-responses",
+      "forceAdaptiveThinking": false,
+      "blockReasons": [],
+      "metadataStatus": null,
+      "sources": {
+        "protocol": "official-zen-models-list",
+        "metadata": "models.dev-meta"
       }
     },
     {

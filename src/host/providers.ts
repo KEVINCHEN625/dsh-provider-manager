@@ -30,7 +30,6 @@ import {
   COMMAND_CREDITS_URL,
 } from "./quota.js";
 import type { QuotaSnapshot } from "../shared/protocol.js";
-import { LoginSessionManager, authorizationOf, oauthEntries } from "./login.js";
 type Services = Pick<Context, "settings" | "credentials" | "llm"> & {
   get?(name: string): unknown;
 };
@@ -88,6 +87,9 @@ const quotaDefinitions: Record<
     },
   ],
 ]);
+// The legacy management card is retired. The route stays reserved and the
+// shared OPENCODE_API_KEY binding stays usable by the built-in card.
+const retiredCards = new Set(["opencode-go"]);
 const reserved = new Set([
   GO_ROUTE,
   "opencode-go",
@@ -126,23 +128,16 @@ export function canonicalRef(route: string) {
 }
 export class Manager {
   private salt = randomBytes(32);
-  readonly logins: LoginSessionManager;
   constructor(
     private services: Services,
     private config: Config = {},
     private quotaReader: QuotaReader = new QuotaReader(),
-  ) {
-    this.logins = new LoginSessionManager(() => this.authorization());
-  }
-  private authorization() {
-    return authorizationOf(this.services.get?.("authorization"));
-  }
+  ) {}
   disposeQuota() {
     this.quotaReader.dispose();
   }
   dispose() {
     this.disposeQuota();
-    this.logins.dispose();
   }
   private customExists(route: string) {
     const d = this.descriptors().find((item) => item.ns === "llm-pi-ai");
@@ -426,6 +421,7 @@ export class Manager {
     };
   }
   async card(id: string): Promise<Provider> {
+    if (retiredCards.has(id)) throw new SafeError("INVALID_INPUT");
     const f = fixed[id];
     if (!f && (!id.startsWith("custom:") || id.length <= "custom:".length))
       throw new SafeError("INVALID_INPUT");
@@ -508,7 +504,7 @@ export class Manager {
     const d = this.descriptors().find((d) => d.ns === "llm-pi-ai");
     const providers = d ? object(d.value).providers : undefined;
     const ids = [
-      ...Object.keys(fixed),
+      ...Object.keys(fixed).filter((id) => !retiredCards.has(id)),
       ...Object.keys(
         providers && typeof providers === "object" ? providers : {},
       ).map((r) => "custom:" + r),
@@ -537,18 +533,7 @@ export class Manager {
         status: "CLI_ONLY",
         docs: "https://dev.meta.ai/docs/muse-code/subscriptions",
       },
-      ...(await oauthEntries(this.authorization(), async (key) => {
-        const describe = (
-          this.services.credentials as {
-            describeRecord?: (record: typeof key) => Promise<{
-              configured: boolean;
-              kind?: string;
-            }>;
-          }
-        ).describeRecord;
-        if (!describe) return { configured: false };
-        return describe.call(this.services.credentials, key);
-      })),
+      oauth: [],
     };
   }
   async save(input: unknown) {

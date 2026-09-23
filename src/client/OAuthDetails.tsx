@@ -2,7 +2,8 @@ import { useEffect, useId, useState } from "react";
 import { PROMPT_WITHDRAWN, type OAuthEntry } from "../shared/protocol.js";
 import type { Controller, State } from "./controller.js";
 import type { Translate, LocaleKey } from "./locales.js";
-import { oauthStatus } from "./OAuthCard.js";
+import { oauthBrandColor, oauthQuotaView, oauthStatus } from "./OAuthCard.js";
+import { QuotaSummary } from "./QuotaSummary.js";
 import { Result } from "./Result.js";
 import { RoleBadge } from "./ProviderIcon.js";
 
@@ -29,7 +30,14 @@ export function OAuthDetails({
     setAnswer("");
   }, [login?.pendingPrompt?.seq, state.clearEpoch]);
   const letter = [...entry.label][0]?.toUpperCase() || "?";
+  const brand = oauthBrandColor(entry.providerId);
   const status = oauthStatus(entry, login);
+  const signedIn =
+    status === "oauthSignedIn" && entry.account
+      ? `${t("oauthSignedIn")} · ${entry.account}`
+      : t(status);
+  const quotaBusy =
+    state.operations[`oauth-quota:${entry.providerId}`]?.status === "loading";
   const pending = active ? login?.pendingPrompt : undefined;
   const events = active ? login?.events ?? [] : [];
   const phase = active ? login?.phase : "idle";
@@ -47,7 +55,11 @@ export function OAuthDetails({
         {t("back")}
       </button>
       <header className="pm-page-head">
-        <span className="pm-oauth-mark" aria-hidden="true">
+        <span
+          className="pm-oauth-mark"
+          aria-hidden="true"
+          style={brand ? { background: brand, color: "#fff" } : undefined}
+        >
           {letter}
         </span>
         <div className="pm-identity">
@@ -61,7 +73,7 @@ export function OAuthDetails({
                 status === "oauthSignedOut" ? "pm-dot" : "pm-dot pm-dot-on"
               }
             />
-            {t(status)}
+            {signedIn}
           </p>
         </div>
       </header>
@@ -95,6 +107,18 @@ export function OAuthDetails({
         >
           {t("loginStart")}
         </button>
+        {entry.configured && <p>{t("loginOverwrite")}</p>}
+        {entry.configured && (
+          <button
+            type="button"
+            onClick={() => {
+              if (!window.confirm(t("loginLogoutConfirm"))) return;
+              void controller.logout(entry.providerId);
+            }}
+          >
+            {t("loginLogout")}
+          </button>
+        )}
         {(phase === "running" || phase === "awaiting-prompt") && (
           <button
             type="button"
@@ -220,7 +244,23 @@ export function OAuthDetails({
           {t("loginRetry")}
         </button>
       )}
+      {entry.quota?.status === "unsupported" ? (
+        <p>{t("oauthQuotaUnsupported")}</p>
+      ) : (
+        entry.quota && (
+          <QuotaSummary
+            view={quotaBusy ? { status: "loading" } : oauthQuotaView(entry)}
+            t={t}
+            name={entry.label}
+            variant="all"
+            onRefresh={() =>
+              void controller.refreshOAuthQuota(entry.providerId)
+            }
+          />
+        )
+      )}
       <Result operation={state.operations.login} t={t} />
+      <Result operation={state.operations.logout} t={t} />
     </div>
   );
 }

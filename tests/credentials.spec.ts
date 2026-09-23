@@ -17,7 +17,10 @@ test("arbitrary refs and forged canonical prefixes denied", async () => {
 test("ref or revision movement invalidates old set and reveal", async () => {
   const f = fixture();
   const m: any = new Manager(f.services);
-  const p = (await m.snapshot()).providers[0];
+  const p = {
+    id: "opencode-go",
+    bindingToken: m.binding("opencode-go").token,
+  };
   f.sections[0].revision++;
   for (const fn of ["set", "reveal"])
     await expect(
@@ -31,7 +34,10 @@ test("ref or revision movement invalidates old set and reveal", async () => {
 test("read-only source refuses write and reveal pairs source/value", async () => {
   const f = fixture();
   const m: any = new Manager(f.services);
-  const p = (await m.snapshot()).providers[0];
+  const p = {
+    id: "opencode-go",
+    bindingToken: m.binding("opencode-go").token,
+  };
   f.readonly();
   await expect(
     m.set({ providerId: p.id, bindingToken: p.bindingToken, value: "x" }),
@@ -62,7 +68,10 @@ test("non-custom identities and builtin catalog cannot claim canonical manager r
 test("cancellation during metadata describe cannot begin persistent key write", async () => {
   const f = fixture();
   const m: any = new Manager(f.services);
-  const p = (await m.snapshot()).providers[0];
+  const p = {
+    id: "opencode-go",
+    bindingToken: m.binding("opencode-go").token,
+  };
   let release: any;
   let reads = 0;
   f.services.credentials.describe = () =>
@@ -113,7 +122,10 @@ test("set invalidates quota cache so the next read cannot reuse the old key wind
         ),
     }),
   );
-  const p = (await m.snapshot()).providers[0];
+  const p = {
+    id: "opencode-go",
+    bindingToken: m.binding("opencode-go").token,
+  };
   expect(
     (await m.quota({ providerId: p.id, bindingToken: p.bindingToken }))
       .windows[0].usedPercent,

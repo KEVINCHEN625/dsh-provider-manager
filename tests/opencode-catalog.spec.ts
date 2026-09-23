@@ -5,16 +5,17 @@ import {
   GO_ROUTE,
   GO_ENDPOINT,
   GO_ANTHROPIC_BASE,
+  ZEN_ENDPOINT,
   requireGoModel,
   goEntry,
   selectableThinkingLevels,
   validateGoCatalog,
 } from "../src/host/opencode/index.js";
 test("catalog freeze keeps every official id and does not add ox-alpha-free", () => {
-  expect(GO_CATALOG.models.map((m) => m.id)).toHaveLength(40);
+  expect(GO_CATALOG.models.map((m) => m.id)).toHaveLength(41);
   expect(GO_CATALOG.excluded.map((item) => item.id)).toEqual(["ox-alpha-free"]);
-  expect(GO_MODELS).toHaveLength(31);
-  expect(new Set(GO_MODELS.map((m) => m.id)).size).toBe(31);
+  expect(GO_MODELS).toHaveLength(32);
+  expect(new Set(GO_MODELS.map((m) => m.id)).size).toBe(32);
   const blocked = GO_CATALOG.models.filter(
     (m) => m.disposition !== "supported",
   );
@@ -51,9 +52,20 @@ test("every catalog row pins thinkingLevelMap and keeps raw integer limits", () 
     if (entry.maxOutputTokens !== null)
       expect(Number.isSafeInteger(entry.maxOutputTokens)).toBe(true);
   }
+  expect(goEntry("muse-spark-1.3")).toMatchObject({
+    name: "Muse Spark 1.3",
+    api: "openai-responses",
+    contextWindow: 1048576,
+    maxOutputTokens: 131072,
+    nativeEfforts: ["minimal", "low", "medium", "high", "xhigh", "max"],
+    compatPolicy: "muse-responses",
+    baseUrl: ZEN_ENDPOINT,
+    thinkingLevelMap: { max: "max", xhigh: "xhigh" },
+  });
   expect(goEntry("muse-spark-1.3-contributor")).toMatchObject({
     contextWindow: 1048576,
     maxOutputTokens: 131072,
+    thinkingLevelMap: { max: null, xhigh: "xhigh" },
   });
   expect(goEntry("deepseek-v4.1-flash")).toMatchObject({
     contextWindow: 1000000,
@@ -64,6 +76,11 @@ test("every catalog row pins thinkingLevelMap and keeps raw integer limits", () 
   expect(goEntry("gpt-5.6-luna")?.inputLimit).toBe(922000);
 });
 test("enabled models use official protocols and Anthropic base without /v1", () => {
+  expect(requireGoModel("muse-spark-1.3")).toMatchObject({
+    api: "openai-responses",
+    baseUrl: ZEN_ENDPOINT,
+    provider: GO_ROUTE,
+  });
   expect(requireGoModel("muse-spark-1.3-contributor")).toMatchObject({
     api: "openai-responses",
     baseUrl: GO_ENDPOINT,
@@ -108,8 +125,47 @@ test("video is advertised but not claimed as a wired SDK input", () => {
   expect(muse.input).toEqual(["text", "image"]);
   expect(requireGoModel(muse.id).input).toEqual(["text", "image"]);
 });
-test("selectable levels match the pinned map, including empty menus", () => {
-  expect(selectableThinkingLevels(goEntry("glm-5.1")!)).toEqual([]);
+test("every enabled model offers a selectable effort", () => {
+  for (const model of GO_MODELS) {
+    expect(selectableThinkingLevels(goEntry(model.id)!).length).toBeGreaterThan(
+      0,
+    );
+  }
+  expect(selectableThinkingLevels(goEntry("mimo-v2.6-pro")!)).toEqual([
+    "off",
+    "low",
+    "medium",
+    "high",
+  ]);
+  expect(selectableThinkingLevels(goEntry("mimo-v2.6-flash")!)).toEqual([
+    "off",
+    "low",
+    "medium",
+    "high",
+  ]);
+  expect(selectableThinkingLevels(goEntry("kimi-k2.6")!)).toEqual([
+    "off",
+    "high",
+  ]);
+  expect(goEntry("kimi-k2.6")?.nativeEfforts).toEqual([]);
+  expect(selectableThinkingLevels(goEntry("glm-5.1")!)).toEqual([
+    "low",
+    "high",
+    "max",
+  ]);
+  expect(selectableThinkingLevels(goEntry("minimax-m2.7")!)).toEqual([
+    "off",
+    "high",
+  ]);
+  expect(goEntry("minimax-m2.7")?.compatPolicy).toBe("anthropic-toggle");
+  expect(selectableThinkingLevels(goEntry("muse-spark-1.3")!)).toEqual([
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+  ]);
   expect(
     selectableThinkingLevels(goEntry("muse-spark-1.3-contributor")!),
   ).toEqual(["minimal", "low", "medium", "high", "xhigh"]);

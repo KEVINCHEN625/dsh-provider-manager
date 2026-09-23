@@ -36,6 +36,10 @@ export interface QuotaLoadInput {
   signal?: AbortSignal;
   timedOut?: () => boolean;
   stillCurrent: () => Promise<boolean>;
+  ttlMs?: number;
+  headers?: Record<string, string>;
+  identityKey?: string;
+  parse?: (body: unknown) => QuotaWindow[] | undefined;
 }
 
 type CacheEntry = {
@@ -340,8 +344,10 @@ export class QuotaReader {
       input.providerId,
       input.bindingToken,
       input.credentialSource,
-      input.key,
+      input.identityKey ?? input.key,
     );
+    const ttlMs =
+      input.ttlMs === undefined ? QUOTA_TTL_MS : input.ttlMs;
     const cached = this.cache.get(input.providerId);
     if (cached && cached.identity !== identity)
       this.cache.delete(input.providerId);
@@ -376,7 +382,7 @@ export class QuotaReader {
         current &&
         current.identity === identity &&
         input.refresh !== true &&
-        this.now() - current.storedAt < QUOTA_TTL_MS
+        this.now() - current.storedAt < ttlMs
       ) {
         try {
           const same = await untilAborted(
@@ -452,7 +458,7 @@ export class QuotaReader {
                 redirect: "error",
                 cache: "no-store",
                 signal: combined,
-                headers: {
+                headers: input.headers ?? {
                   Accept: "application/json",
                   Authorization: "Bearer " + input.key,
                 },
@@ -502,8 +508,9 @@ export class QuotaReader {
         } catch {
           return fail("error", "INVALID_RESPONSE", true);
         }
-        const windows =
-          input.kind === "opencode"
+        const windows = input.parse
+          ? input.parse(body)
+          : input.kind === "opencode"
             ? parseOpenCodeUsage(body)
             : parseCommandCredits(body);
         if (!windows) return fail("error", "INVALID_RESPONSE", true);

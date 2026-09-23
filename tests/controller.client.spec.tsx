@@ -292,6 +292,7 @@ test("late quota results after hide, disconnect or a newer snapshot are ignored"
     rpc: async (endpoint) => {
       if (endpoint === "snapshot")
         return fixtureSnapshot([fixtureCard("opencode-go")]);
+      if (endpoint === "oauth/snapshot") return { oauth: [] };
       return new Promise((resolve) => (release = resolve));
     },
     reveal: async () => ({ value: "", revealTTL: 1 }),
@@ -316,6 +317,7 @@ test("quota poll stops while hidden and only rereads expired cards when visible"
       rpc: async (endpoint) => {
         if (endpoint === "snapshot")
           return fixtureSnapshot([fixtureCard("opencode-go")]);
+        if (endpoint === "oauth/snapshot") return { oauth: [] };
         reads += 1;
         return quotaFixture(
           "opencode-go",
@@ -458,7 +460,7 @@ test("snapshot without oauth stays ready with an empty oauth list", async () => 
   await c.load();
   expect(c.state.status).toBe("ready");
   expect(c.state.snapshot?.oauth).toEqual([]);
-  expect(c.state.snapshot?.oauthUnavailable).toBe(false);
+  expect(c.state.snapshot?.oauthUnavailable).toBe(true);
   c.dispose();
 });
 

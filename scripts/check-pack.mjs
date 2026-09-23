@@ -1,11 +1,21 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync, mkdtempSync, realpathSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { readFileSync, mkdtempSync, realpathSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import vm from "node:vm";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 const source = JSON.parse(readFileSync("package.json", "utf8"));
-const target = resolve(`artifacts/${source.name}-${source.version}.tgz`);
+const prefix = `${source.name}-${source.version}-`;
+const names = readdirSync("artifacts").filter(
+  (name) => name.startsWith(prefix) && name.endsWith(".tgz"),
+);
+if (names.length !== 1)
+  throw Error(`Expected one content-hashed tarball, found ${names.join(", ")}`);
+const target = resolve("artifacts", names[0]);
+const short = createHash("sha256").update(readFileSync(target)).digest("hex").slice(0, 12);
+if (!names[0].endsWith(`-${short}.tgz`))
+  throw Error("Tarball name does not match its content hash");
 const directory = mkdtempSync(resolve("artifacts/pack-check-"));
 execFileSync("tar", ["-xzf", target, "-C", directory]);
 const root = resolve(directory, "package");
@@ -14,6 +24,7 @@ const manifest = JSON.parse(
 );
 for (const file of [
   "lib/index.js",
+  "lib/oauth.js",
   "lib/client.js",
   "lib/types/host/index.d.ts",
   "lib/types/client/index.d.ts",

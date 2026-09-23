@@ -1,7 +1,10 @@
 import { defineConfig } from "tsdown";
 export default defineConfig([
   {
-    entry: { index: "src/host/index.ts" },
+    entry: {
+      index: "src/host/index.ts",
+      oauth: "src/host/oauth-entry.ts",
+    },
     format: "esm",
     platform: "node",
     outDir: "lib",

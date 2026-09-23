@@ -7,6 +7,8 @@ import {
   type QuotaWindow,
   type OAuthEntry,
   type OAuthKind,
+  type OAuthQuota,
+  type OAuthQuotaStatus,
   type LoginStartResult,
   type LoginEventsResult,
   type IndexedLoginEvent,
@@ -164,7 +166,7 @@ export function validateSnapshot(value: unknown): Snapshot {
         : boolean(data.oauthUnavailable),
   };
 }
-function validateOAuthEntry(value: unknown): OAuthEntry {
+export function validateOAuthEntry(value: unknown): OAuthEntry {
   const data = record(value);
   if (!Array.isArray(data.methods) || data.methods.length < 1)
     throw { code: "UNAVAILABLE" };
@@ -183,7 +185,56 @@ function validateOAuthEntry(value: unknown): OAuthEntry {
     if (!kinds.includes(data.kind as OAuthKind)) throw { code: "UNAVAILABLE" };
     entry.kind = data.kind as OAuthKind;
   }
+  if (data.account !== undefined) entry.account = string(data.account);
+  if (data.bindingToken !== undefined)
+    entry.bindingToken = string(data.bindingToken);
+  if (data.quotaFetchedAt !== undefined)
+    entry.quotaFetchedAt = iso(data.quotaFetchedAt);
+  if (data.quota !== undefined) entry.quota = validateOAuthQuota(data.quota);
   return entry;
+}
+const oauthQuotaStatuses: OAuthQuotaStatus[] = [
+  "ready",
+  "unsupported",
+  "missing-credential",
+  "expired",
+  "error",
+];
+function validateOAuthQuota(value: unknown): OAuthQuota {
+  const data = record(value);
+  if (!oauthQuotaStatuses.includes(data.status as OAuthQuotaStatus))
+    throw { code: "UNAVAILABLE" };
+  if (!Array.isArray(data.windows) || data.windows.length > 3)
+    throw { code: "UNAVAILABLE" };
+  const quota: OAuthQuota = {
+    status: data.status as OAuthQuotaStatus,
+    windows: data.windows.map((item) => {
+      const window = record(item);
+      const id = window.id;
+      if (!quotaWindows.includes(id as (typeof quotaWindows)[number]))
+        throw { code: "UNAVAILABLE" };
+      const next: QuotaWindow = { id: id as QuotaWindow["id"] };
+      if (window.usedPercent !== undefined)
+        next.usedPercent = usedPercent(window.usedPercent);
+      if (window.remainingPercent !== undefined)
+        next.remainingPercent = remainingPercent(window.remainingPercent);
+      if (window.resetsAt !== undefined) next.resetsAt = iso(window.resetsAt);
+      return next;
+    }),
+  };
+  if (data.error !== undefined) {
+    if (!quotaErrors.includes(data.error as (typeof quotaErrors)[number]))
+      throw { code: "UNAVAILABLE" };
+    quota.error = data.error as OAuthQuota["error"];
+  }
+  return quota;
+}
+export function validateOAuthSnapshot(value: unknown): {
+  oauth: OAuthEntry[];
+} {
+  const data = record(value);
+  if (!Array.isArray(data.oauth)) throw { code: "UNAVAILABLE" };
+  return { oauth: data.oauth.map(validateOAuthEntry) };
 }
 export function validateLoginStart(value: unknown): LoginStartResult {
   const data = record(value);
@@ -293,7 +344,7 @@ const quotaSources = [
   "opencode-official",
   "command-default-reference",
 ] as const;
-const quotaWindows = ["five-hour", "weekly", "monthly"] as const;
+const quotaWindows = ["five-hour", "weekly", "monthly", "credits"] as const;
 function iso(value: unknown): string {
   const text = string(value);
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/.test(text))

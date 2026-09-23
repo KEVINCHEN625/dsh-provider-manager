@@ -449,6 +449,21 @@ function pathOf(api: string) {
   if (api === "openai-completions") return "/chat/completions";
   return "/v1/messages";
 }
+function expectOfficialEndpoint(url: URL, model: { id: string; api: string }) {
+  expect(url.pathname.endsWith(pathOf(model.api))).toBe(true);
+  expect(url.pathname).not.toContain("/v1/v1/");
+  if (model.id === "muse-spark-1.3") {
+    expect(`${url.origin}${url.pathname}`).toBe(
+      "https://opencode.ai/zen/v1/responses",
+    );
+    return;
+  }
+  expect(url.pathname).toContain("/zen/go/");
+  if (model.api === "anthropic-messages")
+    expect(`${url.origin}${url.pathname}`).toBe(
+      "https://opencode.ai/zen/go/v1/messages",
+    );
+}
 for (const model of GO_MODELS)
   test(`enabled ${model.id} uses the official ${model.api} path`, async () => {
     const f = setup();
@@ -464,17 +479,11 @@ for (const model of GO_MODELS)
     );
     expect(f.requests).toHaveLength(1);
     const url = new URL(f.requests[0].url);
-    expect(url.pathname.endsWith(pathOf(model.api))).toBe(true);
-    expect(url.pathname).toContain("/zen/go/");
-    expect(url.pathname).not.toContain("/v1/v1/");
+    expectOfficialEndpoint(url, model);
     expect(f.requests[0].headers.get("x-opencode-session")).toBe("session-A");
     expect(f.requests[0].headers.get("user-agent")).toContain(
       `dsh-provider-manager/${GO_MANAGER_VERSION}`,
     );
-    if (model.api === "anthropic-messages")
-      expect(`${url.origin}${url.pathname}`).toBe(
-        "https://opencode.ai/zen/go/v1/messages",
-      );
   });
 test("Qwen budget models send local presets, never the advertised max as default", async () => {
   const f = setup();
@@ -579,7 +588,7 @@ for (const model of GO_MODELS) {
       );
       const request = f.requests[0];
       const url = new URL(request.url);
-      expect(url.pathname).toContain("/zen/go/");
+      expectOfficialEndpoint(url, model);
       expect(url.pathname).not.toContain("/v1/v1/");
       expect(url.search).not.toContain("beta=true");
       expect(request.headers.get("anthropic-beta")).toBeNull();
@@ -608,7 +617,7 @@ for (const entry of GO_CATALOG.models.filter(
     expect(f.requests).toHaveLength(0);
     expect(f.credentials.resolve).not.toHaveBeenCalled();
   });
-test("empty public effort menus still stream through LlmRuntime", async () => {
+test("provider-default calls still stream when an effort menu exists", async () => {
   const f = setup();
   const ctx = new Context();
   ctx.plugin(LlmRuntime);

@@ -1,16 +1,19 @@
 # Current status
 
-Executor (2026-09-23): **0.2.9 is installed on the local Web and headless
-profiles.** Built-in OpenCode Go loads the official catalog (31 callable, 9
-blocked-with-evidence). A same-day recheck matched the live endpoint table
-and models.dev limits; MiMo-V2.6 advertised input no longer includes pdf.
-Offline host 305 / client 58 / fresh tarball pack passed. Settings hash and
-the default model were unchanged by installation. Live model sweeps and npm
-publish were not run. Single-card retirement stays off while nine protocols
-are unverified. Tarball SHA256
-`d8a309a2e69c9cf8ad00bdc7c5315ccd3d0c3ff5b96c9f35cc4c29a9e27dc815`.
-See [opencode-all-models-evidence.md](opencode-all-models-evidence.md) and
-[opencode-all-models-acceptance.md](opencode-all-models-acceptance.md).
+Executor (2026-09-23): **0.2.10 is installed on the local Web and headless
+profiles.** OAuth sign-in runs in the `provider-manager-oauth` row, which
+mounts the official authorization service and registers its browser route on
+the same `webServer` carrier as the main plugin. The OAuth tab lists llm-pi-ai
+flows. A required `authorization` inject is not shipped: it fails the whole
+boot. Content-hashed tarball
+`dsh-provider-manager-0.2.10-4098cd09b303.tgz`, SHA256
+`4098cd09b3036a882a6e3711d7be6c5763b43e806c5a4601cabdd67c7f7b3bbe`.
+`check-deploy-consistency` reports the same artifact on Web and headless.
+Host tests 340, client tests 58. Formal Muse Spark 1.3 stays on OpenCode Zen
+with effort `max`; it is not added to the legacy Muse sanitizer. No completed
+OAuth login and no live quota window: the credential store has no
+`llm-pi-ai/*` grant. See [oauth-r3-probe.md](oauth-r3-probe.md) and
+[deployment.md](deployment.md).
 
 Planning handoff (2026-09-23): user requested a plan for another executor to
 cover all OpenCode Go models and then remove the duplicate legacy card from

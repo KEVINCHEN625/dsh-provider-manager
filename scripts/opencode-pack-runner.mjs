@@ -14,7 +14,11 @@ const require = createRequire(import.meta.url);
 assert.throws(() => require.resolve("dsh-llm-opencode-go"));
 const requests = [];
 globalThis.fetch = async (url, init) => {
-  assert.ok(String(url).startsWith("https://opencode.ai/zen/go/v1/"));
+  const href = String(url);
+  assert.ok(
+    href.startsWith("https://opencode.ai/zen/go/v1/") ||
+      href === "https://opencode.ai/zen/v1/responses",
+  );
   requests.push({
     url: String(url),
     body: JSON.parse(init.body),
@@ -50,8 +54,8 @@ assert.equal(
   ctx.llm.listProviders().filter((p) => p.id === plugin.GO_ROUTE).length,
   1,
 );
-assert.equal((await ctx.llm.listModels(plugin.GO_ROUTE)).length, 31);
-assert.equal(plugin.GO_CATALOG.models.length, 40);
+assert.equal((await ctx.llm.listModels(plugin.GO_ROUTE)).length, 32);
+assert.equal(plugin.GO_CATALOG.models.length, 41);
 const user = () =>
   createUserMessage({
     source: { kind: "user" },
@@ -126,6 +130,9 @@ for (const model of plugin.GO_MODELS) {
   assert.match(last.headers.get("user-agent"), /dsh-provider-manager\/0.2.9/);
   assert.equal(last.headers.get("x-opencode-session"), "packed-session");
   if (model.api === "openai-responses") {
+    if (model.id === "muse-spark-1.3")
+      assert.equal(last.url, "https://opencode.ai/zen/v1/responses");
+    else assert.equal(last.url, "https://opencode.ai/zen/go/v1/responses");
     if (model.id.startsWith("muse-spark-")) {
       assert.ok(!last.body.include?.includes("reasoning.encrypted_content"));
       assert.ok(!last.body.input.some((i) => i.type === "reasoning"));

@@ -1,3 +1,5 @@
 - insert:
     - id: provider-manager
       name: dsh-provider-manager
+    - id: provider-manager-oauth
+      name: dsh-provider-manager/oauth

@@ -21,9 +21,9 @@ test("built-in card shares key but has independent binding and quota destination
   });
   const m = new Manager(f.services, {}, reader);
   const c = await m.card(route);
-  const old = await m.card("opencode-go");
+  const oldToken = m.binding("opencode-go").token;
   expect(c.name).toBe("OpenCode Go (Provider Manager)");
-  expect(c.bindingToken).not.toBe(old.bindingToken);
+  expect(c.bindingToken).not.toBe(oldToken);
   expect(await m.quota({ providerId: route })).toMatchObject({
     status: "ready",
     source: "opencode-official",
@@ -63,15 +63,25 @@ test("built-in card shares key but has independent binding and quota destination
   await expect(
     m.quota({ providerId: route, bindingToken: c.bindingToken }),
   ).rejects.toMatchObject({ code: "BINDING_CHANGED" });
-  expect(m.binding("opencode-go").token).toBe(old.bindingToken);
+  expect(m.binding("opencode-go").token).toBe(oldToken);
   expect(
     (
       await m.reveal({
         providerId: "opencode-go",
-        bindingToken: old.bindingToken,
+        bindingToken: oldToken,
       })
     ).value,
   ).toBe("UPDATED");
+  const listed = await m.snapshot();
+  expect(listed.providers.some((item) => item.id === "opencode-go")).toBe(
+    false,
+  );
+  expect(listed.providers.some((item) => item.name.includes("legacy"))).toBe(
+    false,
+  );
+  await expect(m.card("opencode-go")).rejects.toMatchObject({
+    code: "INVALID_INPUT",
+  });
   m.dispose();
 });
 test("built-in card DTO joins the audited catalog including blocked ids", async () => {
@@ -93,7 +103,14 @@ test("built-in card DTO joins the audited catalog including blocked ids", async 
       : originalList(id);
   const m = new Manager(f.services);
   const card = await m.card(route);
-  expect(card.models).toHaveLength(40);
+  expect(card.models).toHaveLength(41);
+  expect(card.models.find((item) => item.id === "muse-spark-1.3")).toMatchObject(
+    {
+      name: "Muse Spark 1.3",
+      nativeEfforts: ["minimal", "low", "medium", "high", "xhigh", "max"],
+      disposition: "supported",
+    },
+  );
   expect(card.catalogCheckedAt).toBeTruthy();
   const muse = card.models.find(
     (item) => item.id === "muse-spark-1.3-contributor",
@@ -110,7 +127,8 @@ test("built-in card DTO joins the audited catalog including blocked ids", async 
   expect(card.models.find((item) => item.id === "hy3")?.inputLimit).toBe(
     192000,
   );
-  const legacy = await m.card("opencode-go");
-  expect(legacy.models[0]?.id).toBe("example");
+  await expect(m.card("opencode-go")).rejects.toMatchObject({
+    code: "INVALID_INPUT",
+  });
   m.dispose();
 });

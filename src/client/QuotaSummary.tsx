@@ -6,6 +6,7 @@ const labels: Record<QuotaWindow["id"], LocaleKey> = {
   "five-hour": "quotaFiveHour",
   weekly: "quotaWeekly",
   monthly: "quotaMonthly",
+  credits: "quotaCredits",
 };
 
 export function windowLabel(id: QuotaWindow["id"], t: Translate) {

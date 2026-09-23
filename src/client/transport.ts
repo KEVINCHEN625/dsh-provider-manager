@@ -7,12 +7,11 @@ export function createTransport(
 ): Transport {
   return {
     async rpc(endpoint, payload, signal) {
-      const result = await rpc.call(
-        "/provider-manager",
-        endpoint,
-        payload,
-        signal,
-      );
+      const channel =
+        endpoint.startsWith("login/") || endpoint.startsWith("oauth/")
+          ? "/provider-manager-oauth"
+          : "/provider-manager";
+      const result = await rpc.call(channel, endpoint, payload, signal);
       if (!result.ok) throw { code: errorCode(result.error) };
       return result.value;
     },

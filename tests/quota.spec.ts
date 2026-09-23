@@ -629,7 +629,10 @@ test("failed fetch on a new key does not return the previous account windows", a
         impl(...args)) as typeof fetch,
     }),
   );
-  const p = (await m.snapshot()).providers[0];
+  const p = {
+    id: "opencode-go",
+    bindingToken: m.binding("opencode-go").token,
+  };
   expect(
     (await m.quota({ providerId: p.id, bindingToken: p.bindingToken }))
       .windows[0].remainingPercent,
@@ -1003,7 +1006,10 @@ test("old in-flight request cannot clobber a newer cache after set", async () =>
       }),
   );
   const m = manager(f, new QuotaReader({ fetch: fetchWait, timeoutMs: 1000 }));
-  const p = (await m.snapshot()).providers[0];
+  const p = {
+    id: "opencode-go",
+    bindingToken: m.binding("opencode-go").token,
+  };
   const first = m.quota({ providerId: p.id, bindingToken: p.bindingToken });
   const firstOutcome = first.then(
     () => "resolved" as const,

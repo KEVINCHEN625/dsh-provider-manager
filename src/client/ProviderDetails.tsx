@@ -178,8 +178,7 @@ export function ProviderDetails({
         </div>
       </header>
       {provider.id === "commandcode" && <p>{t("commandHelp")}</p>}
-      {(provider.id === "opencode-go" ||
-        provider.id === "provider-manager-opencode-go") && (
+      {provider.id === "provider-manager-opencode-go" && (
         <p>{t("opencodeHelp")}</p>
       )}
       <section className="pm-card">

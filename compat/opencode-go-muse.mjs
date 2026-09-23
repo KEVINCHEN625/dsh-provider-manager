@@ -1,4 +1,9 @@
-/** A narrow wire-only workaround for pi-ai 0.85.1 / OpenCode Go Muse. */
+/**
+ * A narrow wire-only workaround for pi-ai 0.85.1 / the legacy `opencode-go`
+ * provider. Formal `muse-spark-1.3` is intentionally absent: that SKU is
+ * served by provider-manager-opencode-go, and the built-in muse-responses
+ * policy already covers it. This helper only matches `provider === "opencode-go"`.
+ */
 const knownMuseIds = new Set([
   "muse-spark-1.2-contributor",
   "muse-spark-1.3-contributor",

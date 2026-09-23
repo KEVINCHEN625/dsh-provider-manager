@@ -60,6 +60,8 @@ export interface GoCatalogEntry {
   forceAdaptiveThinking: boolean;
   blockReasons: string[];
   metadataStatus: string | null;
+  /** Official base URL when it is not the Go default for this api. */
+  baseUrl?: string;
   sources: {
     protocol: string | null;
     metadata: string | null;
@@ -191,6 +193,18 @@ function validateEntry(value: unknown, label: string): GoCatalogEntry {
   if (toggleOn && !THINKING_LEVELS.includes(toggleOn))
     fail(`${label}.toggleOnLevel is unknown`);
   const sources = record(data.sources, `${label}.sources`);
+  let baseUrl: string | undefined;
+  if (data.baseUrl !== undefined && data.baseUrl !== null) {
+    baseUrl = text(data.baseUrl, `${label}.baseUrl`);
+    let parsed: URL;
+    try {
+      parsed = new URL(baseUrl);
+    } catch {
+      fail(`${label}.baseUrl must be an https URL`);
+    }
+    if (parsed.protocol !== "https:" || parsed.username || parsed.password)
+      fail(`${label}.baseUrl must be an https URL`);
+  }
   if (disposition === "supported") {
     if (!api) fail(`${label} supported model needs api`);
     if (data.contextWindow === null || data.maxOutputTokens === null)
@@ -244,6 +258,7 @@ function validateEntry(value: unknown, label: string): GoCatalogEntry {
       data.metadataStatus === null
         ? null
         : text(data.metadataStatus, `${label}.metadataStatus`),
+    ...(baseUrl ? { baseUrl } : {}),
     sources: {
       protocol:
         sources.protocol === null
