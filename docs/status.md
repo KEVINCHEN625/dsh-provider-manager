@@ -1,5 +1,24 @@
 # Current status
 
+Controller review + commit (2026-09-23, `4d1bb7c`): workspace reviewed end to end
+(gates green: host 346 / client 59 / typecheck / build / pack; no secrets in
+source, tests, or the published registry) and committed. Committed in `4d1bb7c`:
+the R3.3 channel-catalog system plus the root-cause record below.
+
+## Root cause on record: "OAuth unavailable" (corrected)
+
+The earlier diagnosis of a loader **realm boundary was wrong**. The actual
+cause: `@deepseek-ai/dsh-authorization` is a Cordis Service that **no official
+patch row ever mounts**. llm-pi-ai's `ctx.inject(['authorization'], …)` is a
+lazy callback — its plugin body loads fine while the flow registration stays
+pending forever, so `ctx.get('authorization')` returned undefined because the
+service instance never existed. The fix (shipped on the `provider-manager-oauth`
+row) mounts the official service via `ctx.plugin(AuthorizationService)` and
+tolerates double-mount errors; this also activates llm-pi-ai's 39 login flows
+themselves — an upstream harness gap this plugin closes. Do not re-trace the
+realm theory when investigating service visibility; start from "is anything
+mounting this service?".
+
 Executor (2026-09-23): **0.2.14 splits the OAuth catalog.** Model parameters
 come from models.dev. Channel availability stays in
 <https://github.com/KEVINCHEN625/dsh-provider-models>. The Codex seed is the
@@ -10,6 +29,11 @@ writes a route only when that provider key is absent. Shipped artifact
 `dsh-provider-manager-0.2.14-9dccad6703cb.tgz`, SHA-256
 `9dccad6703cb05e695a78f52c86664a88ee43c25cd616fa9065920179aade337`,
 installed on web and headless. See [oauth-catalog.md](oauth-catalog.md).
+
+Known open item (2026-09-23, controller): models.dev vs the CLIProxyAPI
+channel catalog disagree on the Codex context window (1.05M vs 272K). We
+ship the models.dev figure (matches the OpenCode Go catalog); if very long
+sessions ever fail on the channel, check this split first.
 
 Planning handoff (2026-09-23): user requested a plan for another executor to
 cover all OpenCode Go models and then remove the duplicate legacy card from

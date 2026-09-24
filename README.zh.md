@@ -35,7 +35,8 @@ DeepSeek Harness 的理念是*万物皆插件*。这个插件把它再往前推�
 - **16 家 API 预设，一卡一家。** **ZCode**（GLM 编程套餐，中国 / 海外，Anthropic 同卡切换）、**MiMo**（小米 Token Plan `tp-` key，中国 / 新加坡 / 欧洲）、**MiniMax**（中国 / 海外，Anthropic 同卡切换），另有 **OpenRouter、SiliconFlow、Moonshot、DeepSeek、OpenAI、Anthropic、Groq、Together、Fireworks、DashScope、Google Gemini、Mistral** —— 以及一键 **Meta Model API**（按量计费，不是 Muse Code 订阅）。
 - **其余一切走自定义路由。** 任何 OpenAI-Completions、OpenAI-Responses 或 Anthropic-Messages 端点都能成为一等路由（`^[a-z][a-z0-9-]*$`），带保留名保护 —— 永远不会遮蔽 `opencode-go`、`commandcode`、`deepseek-official`、`cliproxy`。
 - **按模型勾选 1M 上下文。** 每个可添加的模型带一个 **1M 上下文** 复选框，按官方容量预填（GLM-5.3 / Flash / 5.2、MiMo V2.5、MiniMax-M3、Gemini 2.5 Flash、GPT-4.1 mini、Muse Spark 为 1M；GLM-5-Turbo 为 200K；MiniMax-M2.7 为 204,800）。保存前自行勾选或取消；写入的是 `llm-pi-ai` 的 `models[].contextWindow`。
-- **登录型 provider。** 经官方授权服务接入 Claude、Codex、Kimi、xAI、Copilot、OpenRouter 等带登录方式的 catalog provider。筛选 **ALL | LLM | OAuth**；凭据写入官方凭据库，本页不回显 token。
+- **登录型 provider，端到端。** 经官方授权服务接入 Claude、Codex、Kimi、xAI、Copilot、OpenRouter 及所有带登录方式的 catalog provider（标准安装下 39 条流）——本插件亲自挂载宿主授权服务（官方 patch 树从未挂载过它），开箱即可登录。筛选 **ALL | LLM | OAuth**；凭据写入官方凭据库、本页不回显 token；卡片显示已登录账号、实时额度（有官方端点的家，60 分钟自动 + 手动刷新）与一键登出。
+- **每个登录 provider 一份活的模型目录。** 通道可用性经真实探测验证（流式探测 + 实际服务模型核对，防上游静默替换），参数逐模型取自 models.dev，两者由独立版本化的目录仓库（[dsh-provider-models](https://github.com/KEVINCHEN625/dsh-provider-models)，双镜像、TTL 刷新 + 内置快照兜底）分发。登录后该 provider **经验证可用**的模型连同真实参数自动进入模型选择器——已下架的模型永不出现。
 - **Muse Code 说清楚。** Everyday / High / Power **接不进 DSH**。这一行只报告 CLI 是否在 `PATH` 上，并给出 Meta Model API 的入口。要在 DSH 里跑 Spark，用 OpenCode Go —— 或另购 Meta Model API。
 - **Key 不离开 Host。** 快照永不含密钥。显示 key 是仅限 loopback 的 `POST /provider-manager/reveal`，带真实 socket 校验；数值在隐藏、失焦、连接变化或 30 秒 TTL 后清空。见[安全](#安全)。
 
