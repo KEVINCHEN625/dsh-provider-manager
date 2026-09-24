@@ -13,6 +13,7 @@ import {
 import {
   LoginSessionManager,
   oauthEntries,
+  resolveLoginKey,
   type AuthorizationSurface,
   type RecordInfo,
 } from "./login.js";
@@ -58,7 +59,7 @@ export class OAuthHost {
       () => this.authorization,
       () => Date.now(),
       () => randomBytes(16).toString("hex"),
-      (providerId) => this.afterAuthorized(providerId),
+      (providerId, scope) => this.afterAuthorized(providerId, scope),
     );
   }
   dispose() {
@@ -105,7 +106,9 @@ export class OAuthHost {
     const providerId = text(parsed.providerId);
     if (!isCredentialKeySegment(providerId))
       throw new SafeError("INVALID_INPUT");
-    await this.credentials.deleteRecord(credentialKey(RECORD_SCOPE, providerId));
+    await this.credentials.deleteRecord(
+      resolveLoginKey(this.authorization, providerId),
+    );
     this.quotaReader.invalidate(`oauth:${providerId}`);
     await this.routes.removeOwned(providerId);
     return { removed: true };
@@ -128,7 +131,8 @@ export class OAuthHost {
     await this.routes.reset(providerId);
     return this.view(providerId, signal);
   }
-  private async afterAuthorized(providerId: string) {
+  private async afterAuthorized(providerId: string, scope: string) {
+    if (scope !== RECORD_SCOPE) return;
     const described = this.authorization.describe(
       credentialKey(RECORD_SCOPE, providerId),
     );

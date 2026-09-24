@@ -23,7 +23,7 @@ Model quality today is table stakes; what actually shapes your day is **which pr
 | **Public API keys** — 16 presets from ZCode to OpenRouter to Meta | Prefilled official endpoints, China/Overseas region choice, per-model 1M-context ticks |
 | **Sign-in accounts** — Claude, Codex, Kimi, xAI, Copilot, OpenRouter | Official OAuth / device-code flows through the harness authorization service; credentials land in the official store, tokens never echoed |
 | **Your own gateway** — local proxies, company gateways, relays | A clean custom route with the right protocol, named and managed like any built-in |
-| **CLI-only plans** — Muse Code | An honest row that says so, instead of pretending |
+| **Muse** | An unofficial device-code sign-in on the OAuth list. Bring your own Muse subscription. The client id is the public Muse CLI value. The CLI row only reports whether the Muse Code CLI is installed |
 
 Version 0.2.9 expands the built-in **OpenCode Go (Provider Manager)** connection
 to the current official Go catalog (31 callable models, 9 listed but blocked

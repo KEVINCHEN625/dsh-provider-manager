@@ -18,6 +18,7 @@ import {
   LOGIN_MESSAGE_MAX,
   LOGIN_SESSION_TTL_MS,
   PROMPT_WITHDRAWN,
+  PLUGIN_SCOPE,
   RECORD_SCOPE,
   SafeError,
   clipText,
@@ -107,9 +108,10 @@ export async function oauthEntries(
   readRecord?: (key: CredentialKey) => Promise<unknown>,
 ): Promise<{ oauth: OAuthEntry[]; oauthUnavailable?: true }> {
   if (!authorization) return { oauth: [], oauthUnavailable: true };
-  const listed = authorization.list().filter(
-    (entry) => credentialKeyScope(entry.key) === RECORD_SCOPE,
-  );
+  const listed = authorization.list().filter((entry) => {
+    const scope = credentialKeyScope(entry.key);
+    return scope === RECORD_SCOPE || scope === PLUGIN_SCOPE;
+  });
   const oauth: OAuthEntry[] = [];
   for (const entry of listed) {
     let configured = false;
@@ -141,6 +143,9 @@ export async function oauthEntries(
       ...(kind ? { kind } : {}),
       ...(account ? { account } : {}),
       inFlight: entry.inFlight === true,
+      ...(credentialKeyScope(entry.key) === PLUGIN_SCOPE
+        ? { builtin: true }
+        : {}),
     });
   }
   oauth.sort((a, b) => {
@@ -182,7 +187,10 @@ export class LoginSessionManager {
     private getAuthorization: () => AuthorizationSurface | undefined,
     private now: () => number = () => Date.now(),
     private id: () => string = () => randomBytes(16).toString("hex"),
-    private onAuthorized?: (providerId: string) => Promise<void>,
+    private onAuthorized?: (
+      providerId: string,
+      scope: string,
+    ) => Promise<void>,
   ) {}
   start(input: unknown): LoginStartResult {
     this.sweep();
@@ -191,7 +199,7 @@ export class LoginSessionManager {
     const providerId = text(p.providerId);
     if (!isCredentialKeySegment(providerId))
       throw new SafeError("INVALID_INPUT");
-    const key = credentialKey(RECORD_SCOPE, providerId);
+    const key = resolveLoginKey(authorization, providerId);
     const existing = this.byKey.get(key);
     if (existing && this.sessions.get(existing)?.status !== "done")
       return { sessionId: existing, busy: true };
@@ -335,7 +343,10 @@ export class LoginSessionManager {
       });
       if (outcome.status === "authorized") {
         try {
-          await this.onAuthorized?.(credentialKeyId(session.key));
+          await this.onAuthorized?.(
+            credentialKeyId(session.key),
+            credentialKeyScope(session.key),
+          );
         } catch {
           /* The credential is already stored. A route write must not fail login. */
         }
@@ -453,6 +464,19 @@ export class LoginSessionManager {
       }
     }
   }
+}
+
+export function resolveLoginKey(
+  authorization: AuthorizationSurface,
+  providerId: string,
+): CredentialKey {
+  const candidates = [
+    credentialKey(RECORD_SCOPE, providerId),
+    credentialKey(PLUGIN_SCOPE, providerId),
+  ];
+  return (
+    candidates.find((key) => authorization.describe(key)) ?? candidates[0]!
+  );
 }
 
 function noticeEvent(notice: {

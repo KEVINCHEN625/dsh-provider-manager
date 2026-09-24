@@ -183,6 +183,7 @@ export function validateOAuthEntry(value: unknown): OAuthEntry {
     configured: boolean(data.configured),
     inFlight: boolean(data.inFlight),
   };
+  if (data.builtin === true) entry.builtin = true;
   if (data.kind !== undefined) {
     if (!kinds.includes(data.kind as OAuthKind)) throw { code: "UNAVAILABLE" };
     entry.kind = data.kind as OAuthKind;

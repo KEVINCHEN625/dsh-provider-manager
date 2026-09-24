@@ -13,6 +13,7 @@ export const en = {
   columnQuota: "Primary window · remaining",
   columnSetup: "Setup",
   llmBadge: "LLM",
+  builtinAdapter: "Built-in adapter",
   agentBadge: "Agent",
   timezone: "System time zone",
   accountHeading: "Account",
@@ -41,7 +42,8 @@ export const en = {
   muse: "Muse Code",
   installed: "CLI detected",
   notInstalled: "CLI not detected",
-  museBoundary: "DSH does not run the Muse Code CLI as a native adapter.",
+  museBoundary:
+    "CLI detection stays on this row. Sign in with OAuth on the Muse card in the OAuth list.",
   museHelp:
     "The Muse Code CLI can sign in with a browser or META_API_KEY; you do not need the CLI to use Muse Spark inside DSH. Add Meta Model API as a custom Responses provider (https://api.meta.ai/v1), or keep using OpenCode Go.",
   addMetaApi: "Add Meta Model API",
@@ -212,6 +214,7 @@ export const zh: Record<LocaleKey, string> = {
   columnQuota: "主窗口 · 剩余",
   columnSetup: "设置",
   llmBadge: "LLM",
+  builtinAdapter: "内置适配器",
   agentBadge: "Agent",
   timezone: "系统时区",
   accountHeading: "账户",
@@ -240,7 +243,7 @@ export const zh: Record<LocaleKey, string> = {
   muse: "Muse Code",
   installed: "已检测到 CLI",
   notInstalled: "未检测到 CLI",
-  museBoundary: "DSH 没有把 Muse Code CLI 做成原生适配器。",
+  museBoundary: "这一行只做 CLI 检测。请在 OAuth 列表的 Muse 卡片上登录。",
   museHelp:
     "Muse Code CLI 可用浏览器登录或 META_API_KEY，在 DSH 里跑 Muse Spark 不必安装该 CLI。请添加 Meta Model API 自定义 provider（Responses，https://api.meta.ai/v1），或继续使用已有的 OpenCode Go。",
   addMetaApi: "添加 Meta Model API",

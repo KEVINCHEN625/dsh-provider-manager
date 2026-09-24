@@ -83,6 +83,7 @@ export interface Snapshot {
   oauthUnavailable?: boolean;
 }
 export const RECORD_SCOPE = "llm-pi-ai";
+export const PLUGIN_SCOPE = "provider-manager";
 export const LOGIN_EVENT_LIMIT = 100;
 export const LOGIN_SESSION_TTL_MS = 60_000;
 export const LOGIN_MESSAGE_MAX = 2048;
@@ -99,6 +100,7 @@ export interface OAuthEntry {
   label: string;
   methods: readonly OAuthMethod[];
   configured: boolean;
+  builtin?: boolean;
   kind?: OAuthKind;
   inFlight: boolean;
   account?: string;

@@ -1,4 +1,5 @@
 import { installBuiltInGo } from "./opencode/index.js";
+import { installMuseAdapter } from "./muse/index.js";
 export {
   createBuiltInGoProfile,
   createBuiltInGoAdapter,
@@ -19,6 +20,7 @@ import { exact, text, SafeError } from "../shared/protocol.js";
 export const inject = ["settings", "credentials", "llm"];
 export function apply(ctx: Context, config: Config = {}) {
   installBuiltInGo(ctx);
+  installMuseAdapter(ctx);
   const manager = new Manager(ctx, config);
   ctx.effect(() => () => manager.dispose());
   ctx.inject(["connection", "webServer"], (scope) => {

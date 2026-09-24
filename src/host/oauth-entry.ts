@@ -7,6 +7,7 @@ import { exact, SafeError } from "../shared/protocol.js";
 import { authorizationOf } from "./login.js";
 import { OAuthHost, type OAuthCredentialStore, type OAuthHostConfig } from "./oauth-host.js";
 import { installOwnedRoutes, type SettingsSurface } from "./oauth-routes.js";
+import { createMuseFlow } from "./muse/flow.js";
 
 export const inject = ["credentials"];
 export interface OAuthEntryConfig extends OAuthHostConfig {
@@ -32,6 +33,14 @@ export function apply(ctx: Context, config: OAuthEntryConfig = {}) {
   ctx.inject(["authorization", "connection", "webServer", "settings"], (scope) => {
     const authorization = authorizationOf(scope.get("authorization"));
     if (!authorization || !credentials) return;
+    const museFlow = createMuseFlow(ctx);
+    scope.effect(() => {
+      const service = scope.get("authorization") as {
+        registerFlow?: (flow: unknown) => () => void;
+      };
+      const dispose = service.registerFlow?.(museFlow);
+      return () => dispose?.();
+    });
     const settings = scope.settings as SettingsSurface;
     try {
       installOwnedRoutes(settings, ctx);

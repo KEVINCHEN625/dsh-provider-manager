@@ -93,6 +93,9 @@ export function OAuthCard({
           <div className="pm-title">
             <h3>{entry.label}</h3>
             <RoleBadge role="llm" label={t("llmBadge")} />
+            {entry.builtin && (
+              <span className="pm-badge">{t("builtinAdapter")}</span>
+            )}
           </div>
           <p>
             <span

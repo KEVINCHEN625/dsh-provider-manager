@@ -12,11 +12,8 @@ export function isMuseResponses(model: Model<Api>) {
       model.id === "muse-spark-1.3")
   );
 }
-export function sanitizeMusePayload(
-  payload: unknown,
-  model: Model<Api>,
-): unknown {
-  if (!isMuseResponses(model) || !record(payload)) return payload;
+export function sanitizeMuseWire(payload: unknown): unknown {
+  if (!record(payload)) return payload;
   const clean = { ...payload };
   if (Array.isArray(payload.include))
     clean.include = payload.include.filter(
@@ -32,4 +29,11 @@ export function sanitizeMusePayload(
         return call;
       });
   return clean;
+}
+export function sanitizeMusePayload(
+  payload: unknown,
+  model: Model<Api>,
+): unknown {
+  if (!isMuseResponses(model)) return payload;
+  return sanitizeMuseWire(payload);
 }
