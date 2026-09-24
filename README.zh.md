@@ -4,6 +4,8 @@
 
 [English](README.md) | 中文
 
+![dsh-provider-manager 引导图](docs/images/banner-zh.png)
+
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-plugin-4D6BFE?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
