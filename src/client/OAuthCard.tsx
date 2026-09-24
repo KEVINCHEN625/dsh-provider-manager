@@ -2,7 +2,7 @@ import type { OAuthEntry } from "../shared/protocol.js";
 import type { LoginState, QuotaView } from "./controller.js";
 import type { Translate } from "./locales.js";
 import { QuotaSummary } from "./QuotaSummary.js";
-import { RoleBadge, brandMark } from "./ProviderIcon.js";
+import { BrandMark, RoleBadge, brandMark } from "./ProviderIcon.js";
 
 const BRANDS: Record<string, string> = {
   anthropic: "#d97757",
@@ -89,9 +89,7 @@ export function OAuthCard({
           style={brand ? { background: brand, color: "#fff" } : undefined}
         >
           {mark ? (
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="currentColor" d={mark.path} />
-            </svg>
+            <BrandMark id={entry.providerId} name={entry.label} />
           ) : (
             letter
           )}

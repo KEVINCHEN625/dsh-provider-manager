@@ -11,7 +11,7 @@ import { errorCode } from "./controller.js";
 import { oauthBrandColor, oauthQuotaView, oauthStatus } from "./OAuthCard.js";
 import { QuotaSummary } from "./QuotaSummary.js";
 import { Result } from "./Result.js";
-import { RoleBadge } from "./ProviderIcon.js";
+import { BrandMark, RoleBadge, brandMark } from "./ProviderIcon.js";
 
 function formatTokens(value: number | undefined) {
   if (value === undefined) return "—";
@@ -70,7 +70,8 @@ export function OAuthDetails({
     setAnswer("");
   }, [login?.pendingPrompt?.seq, state.clearEpoch]);
   const letter = [...entry.label][0]?.toUpperCase() || "?";
-  const brand = oauthBrandColor(entry.providerId);
+  const mark = brandMark(entry.providerId, entry.label);
+  const brand = mark?.hex || oauthBrandColor(entry.providerId);
   const status = oauthStatus(entry, login);
   const signedIn =
     status === "oauthSignedIn" && entry.account
@@ -100,7 +101,11 @@ export function OAuthDetails({
           aria-hidden="true"
           style={brand ? { background: brand, color: "#fff" } : undefined}
         >
-          {letter}
+          {mark ? (
+            <BrandMark id={entry.providerId} name={entry.label} />
+          ) : (
+            letter
+          )}
         </span>
         <div className="pm-identity">
           <div className="pm-title">

@@ -319,8 +319,8 @@ test("OpenCode mark and Meta Model API draft from Muse details", async () => {
   setup();
   await screen.findByText("OpenCode Go");
   expect(
-    document.querySelector('.pm-icon[data-mark="opencode"]')?.innerHTML,
-  ).toContain("M384 416H128V96H384V416");
+    document.querySelector('.pm-icon[data-mark="brand"]')?.innerHTML,
+  ).toContain("M22 24H2V0h20z");
   expect(screen.queryByText(en.museBoundary)).toBeNull();
   fireEvent.click(
     screen.getByRole("button", { name: `${en.details}: Muse Code` }),

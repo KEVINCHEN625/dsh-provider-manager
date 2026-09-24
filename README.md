@@ -13,9 +13,12 @@ Whatever you bring — an OpenCode Go subscription, a Command Code GOAT plan, a 
 
 Verified on **DSH `0.1.5-rc.2`**.
 
-Brand marks on the cards come from [simple-icons](https://simpleicons.org).
-Each mark is a trademark of its owner and is shown only to identify the
-provider. Providers without a mark keep the letter badge.
+Brand marks on the cards come from [simple-icons](https://simpleicons.org)
+where that library has one. OpenAI, Groq, Amazon Bedrock, Azure, Cerebras,
+Fireworks, Together, Baseten, Z.ai, Ant Group, and Pi are the vendors' own
+published marks, embedded the same way. Each mark is a trademark of its owner
+and is shown only to identify the provider. A provider with no mark keeps the
+letter badge.
 
 ## The idea: providers are the scarce resource, so manage them like one
 

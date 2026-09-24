@@ -13,6 +13,8 @@ DeepSeek Harness 的理念是*万物皆插件*。这个插件把它再往前推�
 
 已验证宿主：**DSH `0.1.5-rc.2`**。
 
+卡片厂标优先用 [simple-icons](https://simpleicons.org)。图库里没有的（OpenAI、Groq、Amazon Bedrock、Azure、Cerebras、Fireworks、Together、Baseten、Z.ai、蚂蚁集团、Pi）用各家公开的单色标识，同样内嵌在包里。商标只用于认出是哪一家。没有标识的 provider 仍用首字母。
+
 ## 理念：Provider 才是稀缺资源，所以要像资源一样管理它
 
 今天模型质量只是及格线；真正决定你每天体验的，是**你能连上哪些 provider、用哪份凭据、还剩多少额度**。dsh-provider-manager 把这件事做成一等公民：

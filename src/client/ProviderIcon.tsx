@@ -21,6 +21,25 @@ const brandAliases: Record<string, string> = {
   moonshot: "moonshot",
   openrouter: "openrouter",
   mistral: "mistral",
+  openai: "openai",
+  "openai-codex": "openai",
+  codex: "openai",
+  groq: "groq",
+  "amazon-bedrock": "bedrock",
+  bedrock: "bedrock",
+  azure: "azure",
+  "azure-openai-responses": "azure",
+  cerebras: "cerebras",
+  fireworks: "fireworks",
+  together: "together",
+  baseten: "baseten",
+  zai: "zai",
+  "ant-ling": "antgroup",
+  radius: "pi",
+  minimax: "minimax",
+  opencode: "opencode",
+  vercel: "vercel",
+  xiaomi: "xiaomi",
 };
 
 export function brandMark(id: string, name = "") {
@@ -33,14 +52,35 @@ export function brandMark(id: string, name = "") {
   return undefined;
 }
 
-function BrandGlyph({ id, name }: { id: string; name: string }) {
+export function BrandMark({
+  id,
+  name = "",
+  colored = false,
+}: {
+  id: string;
+  name?: string;
+  colored?: boolean;
+}) {
   const brand = brandMark(id, name);
   if (!brand) return undefined;
+  const parts = brand.paths?.length ? brand.paths : [{ d: brand.path }];
   return (
     <Svg viewBox="0 0 24 24">
-      <path fill={brand.hex || "currentColor"} d={brand.path} />
+      {parts.map((part, index) => (
+        <path
+          key={index}
+          fill={colored ? brand.hex || "currentColor" : "currentColor"}
+          fillRule={brand.evenodd ? "evenodd" : undefined}
+          fillOpacity={part.opacity}
+          d={part.d}
+        />
+      ))}
     </Svg>
   );
+}
+
+function BrandGlyph({ id, name }: { id: string; name: string }) {
+  return BrandMark({ id, name, colored: true });
 }
 
 function Svg({ viewBox, children }: { viewBox: string; children: ReactNode }) {

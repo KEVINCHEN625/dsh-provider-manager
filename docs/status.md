@@ -26,9 +26,23 @@ pending. The shim reads and writes through `settingsScope`. Installed
 artifact: `dsh-provider-manager-0.3.2-5f99539f14b1.tgz`
 (`5f99539f14b1ded79dbbdce712577b857d0312d8e290d8c61e590e1ab1f41fe1`).
 
+Executor (2026-09-24): channel probes of `reasoning.effort=none` echoed on
+`gpt-6-luna`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`, and `gpt-5.5`
+(HTTP 200, served model matched, effort echoed `none`). `gpt-6-astra` returned
+HTTP 400: `none` is unsupported. The injection pipeline keeps `none` for the
+echoed ids via local `noneEnabled`. The published registry still stores only
+channel availability. `name` and `efforts` are read from models.dev at
+runtime. `pendingProbe` is computed inside the pipeline when an id has no
+models.dev spec; it is not a registry field. Local install for review is
+**0.3.3** `dsh-provider-manager-0.3.3-e8f76e7bb363.tgz`
+(`e8f76e7bb3631f4f7e4285cbb60cfee2ab5cd51ad7375f43acfaeebbc09b8c5d`),
+which also embeds the vendor marks that simple-icons does not ship. The
+recorded 0.3.2 artifact is unchanged.
+
 Executor (2026-09-24): **0.3.1** injects models.dev names and reasoning
 efforts. `none` stays out until a channel probe sets `noneEnabled`. Models
-with no models.dev row keep a normalized name and `pendingProbe`.
+with no models.dev row keep a normalized name. `pendingProbe` is computed
+by the pipeline and is not stored in the registry.
 Installed artifact: `dsh-provider-manager-0.3.1-1a81e1e554ce.tgz`
 (`1a81e1e554ce98edc8ce23a5be3193b03b51cb83ceba46fa7f20659c2649ab76`).
 `gpt-6-sol` has `noneEnabled` after the channel echoed `reasoning.effort=none`.
