@@ -9,63 +9,61 @@ English | [中文](README.zh.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-plugin-4D6BFE?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
-DeepSeek Harness promises *everything is a plugin*. This plugin finishes the sentence for providers: **every provider you can use in DSH — subscription sign-ins, public API keys, private gateways — lives on one Settings page**, from credential to quota to the models in your picker.
+Your models come from a dozen places — a Codex subscription, Claude Pro, an OpenCode Go plan, an OpenRouter account, maybe your own gateway. Until now, each of those meant its own setup: paste a key somewhere, edit a YAML file, wonder why the model picker shows a model that stopped existing months ago.
 
-Two families, one ledger:
+This page ends that. **Sign in or paste a key once — you see what's left of your quota, and your models appear in the picker by themselves: right names, real context windows, effort levels that work.** Everything lives in one Settings page, in the official stores DSH already uses.
 
-- **OAuth sign-ins** — Codex, Claude, Kimi, xAI, Copilot, OpenRouter, Muse. Sign in once; verified models with real parameters land in the model picker by themselves.
-- **LLM providers (API-key)** — OpenCode Go with a built-in adapter, Command Code GOAT, 16 prefilled presets, and any custom gateway.
+Works with **DSH `0.1.5-rc.2`**. Current release: **v0.4.0**.
 
-Verified on **DSH `0.1.5-rc.2`**. Current release: **v0.4.0**.
+## If your provider needs a sign-in
 
-## OAuth sign-ins — sign in, and the models just appear
+Sign in with the account you already pay for — Codex, Claude, Kimi, xAI, GitHub Copilot, OpenRouter, or any other provider with a login (39 of them on a stock install), plus Muse via device code.
 
 | | |
 | --- | --- |
-| **Providers** | Codex, Claude, Kimi, xAI, GitHub Copilot, OpenRouter, and every other catalog provider with a login method (39 flows on a stock install), plus an unofficial **Muse** device-code sign-in (bring your own subscription; the client id is the public Muse CLI value) |
-| **The flow** | Official OAuth / device-code flows through the harness authorization service — which this plugin mounts, because the stock patch tree never does. Sign-in works out of the box |
-| **After sign-in** | The provider's **verified-available** models are injected into the model picker with per-model context windows, output caps, official display names, and effort levels (`off / low / medium / high / xhigh / max` as the channel supports). Retired models never appear |
-| **Card** | Brand mark, signed-in account, live quota where the provider exposes an endpoint (60-min auto + manual refresh), one-click logout, "will overwrite existing sign-in" guard |
-| **Filter** | **ALL \| LLM \| OAuth** tabs; credentials land in the official store and tokens are never echoed |
+| **Signing in** | The standard OAuth / device-code flow, in the page, working out of the box |
+| **Right after** | Your provider's models appear in the picker with their real context windows, output limits, proper display names, and the effort levels the channel actually supports (`off / low / medium / high / xhigh / max`). Dead models don't show up |
+| **The card** | Brand mark, which account is signed in, how much quota you have left (60-min auto refresh + a manual button, wherever the provider exposes an endpoint), one-click logout |
+| **Browsing** | **ALL \| LLM \| OAuth** tabs; your credentials go to the official DSH store and are never displayed back |
 
-### How the model list stays true
+### Why you can trust the model list
 
-Channel reality is **probed, not assumed**: signing in triggers a lightweight verification (batch of 8, 24-hour per-model cooldown, never carries output caps) that reads the **served model** from each response — immune to silent upstream substitution. Results are recorded per model as `available`, `unavailable` (probed and rejected), or `unverified` (never enters the picker), with parameters cross-checked against [models.dev](https://models.dev). Availability ships from a separately versioned registry — [dsh-provider-models](https://github.com/KEVINCHEN625/dsh-provider-models) (dual mirrors, TTL refresh, bundled snapshot fallback); probe results persist locally and override the registry per model. The channel tier the harness calls `off` maps to the channel wire value `none` where probes confirmed it. OpenRouter stays tractable with a curated top-N seed (free tier + newest + allowlist, cap 50) plus **pick-from-catalog** additions that survive managed rewrites.
+When you sign in, the plugin quietly checks each model against the provider — a tiny request, at most eight at a time, at most once a day per model — and reads which model actually answered. If a provider quietly retires or swaps a model, the check catches it; what's unproven simply stays out of your picker. Sizes and prices are cross-checked against [models.dev](https://models.dev), and live availability data ships from a community registry ([dsh-provider-models](https://github.com/KEVINCHEN625/dsh-provider-models)) that updates without plugin releases. OpenRouter's four hundred models stay browsable with a curated shortlist plus search-and-add.
 
-## LLM providers — one card per key
+## If your provider uses an API key
 
-- **OpenCode Go, built in.** The `provider-manager-opencode-go` connection serves the official Go catalog (41 models — 31 callable today, 9 blocked until their protocol is verified, formal Muse Spark 1.3 on Zen with `max` effort) with per-model protocol selection, the sticky `x-opencode-session` header, and live-table catalog refresh. No third-party Go plugin required. [Setup, limits, rollback](docs/opencode-integrated.md) · [Catalog evidence](docs/opencode-all-models-evidence.md)
-- **Command Code GOAT** — default-key editing plus official quota from `GET https://api.commandcode.ai/alpha/billing/credits` (only when the default credential is unambiguous; chat runs on the [Command Code provider plugin](https://github.com/Mars-Sea/dsh-commandcode-provider)).
-- **Real quota, Host-only, from official endpoints.** OpenCode Go reads `GET https://opencode.ai/zen/go/v1/usage`. Custom endpoints show **unsupported**, never a fake 100% bar. Accounts are never merged.
-- **16 prefilled presets, one card each.** **ZCode** (GLM Coding Plan, China / Overseas, Anthropic on the same card), **MiMo** (Xiaomi Token Plan `tp-` keys, China / Singapore / Europe), **MiniMax** (China / Overseas, Anthropic on the same card), plus **OpenRouter, SiliconFlow, Moonshot, DeepSeek, OpenAI, Anthropic, Groq, Together, Fireworks, DashScope, Google Gemini, Mistral** — and one-click **Meta Model API** (pay-as-you-go, not a Muse subscription). OpenRouter appears on both sides: API-key card here, OAuth card above.
-- **Custom routes for everything else.** Any OpenAI-Completions, OpenAI-Responses, or Anthropic-Messages endpoint becomes a first-class route (`^[a-z][a-z0-9-]*$`), with reserved-name protection so you can never shadow `opencode-go`, `commandcode`, `deepseek-official`, or `cliproxy`.
-- **Per-model 1M context.** Every addable model carries a **1M context** checkbox, prefilled to official sizes (GLM-5.3 / Flash / 5.2, MiMo V2.5, MiniMax-M3, Gemini 2.5 Flash, GPT-4.1 mini, Muse Spark = 1M; GLM-5-Turbo = 200K; MiniMax-M2.7 = 204,800). Tick or untick before save.
+- **OpenCode Go, built in.** No extra plugin to install. The connection serves the official Go catalog — 41 models, each talking the protocol it actually needs, including Muse Spark 1.3 with `max`. [Setup, limits, rollback](docs/opencode-integrated.md) · [Catalog evidence](docs/opencode-all-models-evidence.md)
+- **Command Code GOAT** — manage the key and watch the official quota; chat runs on the [Command Code provider plugin](https://github.com/Mars-Sea/dsh-commandcode-provider).
+- **Honest numbers only.** OpenCode Go and Command Code read the providers' own usage endpoints. Anything custom shows **unsupported** rather than a made-up progress bar.
+- **16 presets, one card each.** **ZCode** (GLM Coding Plan), **MiMo** (Xiaomi Token Plan), **MiniMax** — each with China / Overseas endpoints on one card — plus **OpenRouter, SiliconFlow, Moonshot, DeepSeek, OpenAI, Anthropic, Groq, Together, Fireworks, DashScope, Google Gemini, Mistral**, and one-click **Meta Model API**. OpenRouter is on both sides of this page: API key here, sign-in above.
+- **Anything else becomes a custom route.** Any OpenAI-Completions, OpenAI-Responses, or Anthropic-Messages endpoint, named and managed like a built-in — and it can never collide with the reserved ones.
+- **1M context, per model.** A checkbox on every model, pre-filled to the official size. Change it before you save.
 
 ## Screenshots
 
-The promise, delivered: sign in once, the picker fills itself.
+Sign in once — the models are already waiting in your picker:
 
 ![Model picker after Codex sign-in: canonical names, and GPT-6 Sol efforts from Off through Max](docs/images/provider-manager-picker.png)
 
-Settings → **Provider manager**. The ALL tab shows the brand marks and the remaining-quota column:
+The page itself — **Settings → Provider manager**, every provider on one list:
 
 ![Provider manager list: ALL, LLM, and OAuth tabs, brand cards, and OpenCode Go remaining quota](docs/images/provider-manager-list.png)
 
-OAuth — Codex is signed in; the other providers stay signed out behind their own marks:
+The OAuth tab — Codex signed in, the rest waiting behind their own marks:
 
 ![OAuth tab: Codex signed in, other providers signed out with their brand marks](docs/images/provider-manager-oauth-tab.png)
 
-Codex details — canonical names, context and output windows, effort levels including off, and unavailable rows:
+What a signed-in provider looks like in detail — real names, real windows, effort levels, and the retired ones marked unavailable:
 
 ![Codex model table: canonical names, context windows, effort levels including off](docs/images/provider-manager-codex-models.png)
 
-OpenCode Go details — the key stays masked; Host reads the 5-hour, weekly, and monthly windows:
+OpenCode Go — the key stays masked; quota windows straight from the provider:
 
 ![OpenCode Go account card with the key masked](docs/images/provider-manager-opencode.png)
 
 ![OpenCode Go 5-hour, weekly, and monthly remaining quota](docs/images/provider-manager-quota.png)
 
-Muse — signed out, with the sign-in entry for the device-code flow:
+Muse — sign in with a device code when you're ready:
 
 ![Muse card signed out, showing the sign-in entry](docs/images/provider-manager-muse.png)
 
@@ -95,7 +93,7 @@ dsh plugin --profile web add --workspace-root --ignore-scripts --force \
   ./dsh-provider-manager-0.4.0-664a895a3f1b.tgz
 ```
 
-CLI success and a live page are separate checks. Restart Web after adding the plugin.
+After installing, restart Web and open Settings — the page is there.
 
 ### Which adapter runs the chat
 
@@ -104,18 +102,18 @@ CLI success and a live page are separate checks. Restart Web after adding the pl
 | OpenCode Go / Spark | **Built in** — `provider-manager-opencode-go`, no third-party plugin required |
 | Muse | **Built in** — `provider-manager-muse` after a device-code sign-in (5 models; only Spark 1.3 carries `max`) |
 | Command Code GOAT | [Command Code provider plugin](https://github.com/Mars-Sea/dsh-commandcode-provider) |
-| OAuth sign-ins (Codex, Claude, …) | The harness `llm-pi-ai` route named after the provider |
+| Sign-in providers (Codex, Claude, …) | The harness `llm-pi-ai` route named after the provider |
 | Custom gateways | The `llm-pi-ai` custom route you created |
 
 ## Using the page
 
-The list shows brand mark, name, LLM/Agent badge, key status, primary remaining window, Details.
+The list shows brand mark, name, LLM/Agent badge, key status, remaining quota, and a Details page for each card.
 
-**OpenCode Go** — default ref `OPENCODE_API_KEY`. Quota from the official usage endpoint. Unofficial base URLs: quota unsupported.
+**OpenCode Go** — key ref `OPENCODE_API_KEY`. Quota from the official usage endpoint.
 
-**Command Code GOAT** — default ref `COMMANDCODE_API_KEY` only. Literal keys, extra accounts, and `auth.json` may take precedence; this page does not read login files. Ambiguous sources show **source-unverified** instead of a fake bar.
+**Command Code GOAT** — key ref `COMMANDCODE_API_KEY`. If a literal key, an extra account, or `auth.json` takes precedence in your setup, the card says **source-unverified** instead of guessing.
 
-**Custom API** — `llm-pi-ai` route. **Add provider** starts from a known API when one matches. ZCode, MiMo, MiniMax, SiliconFlow, and Moonshot stay on **one card**: choose **China** or **Overseas**, then save. The key must match the console that issued it.
+**Custom API** — pick a preset or start from scratch. ZCode, MiMo, MiniMax, SiliconFlow, and Moonshot keep China / Overseas on one card; the key must match the console that issued it.
 
 | Preset | Notes |
 | --- | --- |
@@ -126,23 +124,22 @@ The list shows brand mark, name, LLM/Agent badge, key status, primary remaining 
 | SiliconFlow / Moonshot | China and Overseas URLs on the same card |
 | DeepSeek, OpenAI, Anthropic, Groq, Together, Fireworks, DashScope, Google Gemini, Mistral, Meta Model API | Official base URL prefilled |
 
-Save configuration first, then save the key. Each model row can tick **1M context**; that writes `models[].contextWindow` for `llm-pi-ai` (1,048,576 when ticked, or the model's listed size when not). The env name is derived from the route (`DSH_PROVIDER_MANAGER_<hex(route)>_API_KEY`). Quota lookup is **unsupported** for these endpoints. Reserved routes: `opencode-go`, `commandcode`, `deepseek-official`, `cliproxy`, `muse-code`, `provider-manager-opencode-go`, `provider-manager-muse`.
+Save the configuration, then save the key. Each model row has the **1M context** checkbox; the env name is derived from the route (`DSH_PROVIDER_MANAGER_<hex(route)>_API_KEY`). Reserved routes: `opencode-go`, `commandcode`, `deepseek-official`, `cliproxy`, `muse-code`, `provider-manager-opencode-go`, `provider-manager-muse`.
 
 ## Security
 
-- RPC and snapshots never echo key material.
-- Reveal requires an authenticated same-origin POST from a **real loopback socket** — proxies, tunnels, and `Origin: null` are rejected.
-- Revealed values clear on hide, back, blur, connection change, and TTL (max 30s).
-- Quota fetches and channel probes send credentials only to the official provider endpoints; probes never carry output caps and run at most once per model per 24 hours.
+- Keys and tokens never leave the host process; snapshots and logs never contain them.
+- Showing a key requires an authenticated request from a **real loopback socket** — proxies, tunnels, and `Origin: null` are rejected — and the value clears on hide, blur, connection change, or after 30 seconds.
+- Quota queries and model checks talk only to the providers' official endpoints, never carry output caps, and run at most once per model per 24 hours.
 
-Remote browsers need SSH forwarding to `127.0.0.1` to persist settings or reveal a key.
+Using a remote browser? SSH-forward to `127.0.0.1` to save settings or reveal a key.
 
-## Roadmap — closing the last miles to "everything"
+## What's next
 
-1. **Channel data for every family** — each provider's seed lands as its users sign in and probe; the registry accumulates verified truth per channel.
-2. **Key health check on save** — verify a freshly pasted key against the provider before you trust the card.
-3. **Multi-account** — per-provider key pools with rotation, for plans that allow it.
-4. **More quota adapters** — the same official-endpoint ledger for the sign-in families.
+1. **More channel data** — every provider's verified model list grows as its users sign in.
+2. **Key health check on save** — a fresh key gets tested before you trust the card.
+3. **Multi-account** — key pools with rotation, where plans allow.
+4. **More quota adapters** — the same official-quota treatment for the sign-in families.
 
 ## Uninstall
 
@@ -151,7 +148,7 @@ dsh plugin --profile web remove dsh-provider-manager
 dsh web
 ```
 
-Removing this bundle removes its built-in `provider-manager-opencode-go` and `provider-manager-muse` connections. Credentials, custom `llm-pi-ai` routes, and separately installed provider plugins remain. Select a remaining provider before resuming sessions that used a built-in route.
+This removes the plugin's built-in `provider-manager-opencode-go` and `provider-manager-muse` connections. Your credentials, custom routes, and other provider plugins stay.
 
 ## Develop
 
@@ -161,7 +158,7 @@ pnpm typecheck && pnpm test && pnpm test:client
 pnpm build && pnpm check:pack
 ```
 
-Design, deployment evidence, and the review trail live in [`docs/`](docs/). The plugin touches only published dsh services — `settings`, `credentials`, `llm` — and never patches the harness or other plugins.
+Design docs, deployment evidence, and the review trail live in [`docs/`](docs/).
 
 ## Trademarks
 
