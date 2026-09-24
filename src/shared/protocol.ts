@@ -127,8 +127,25 @@ export interface OAuthCatalogModel {
   verifiedAt?: string;
   servedModel?: string;
   pendingProbe?: boolean;
+  /** Channel fact. Injected settings map this to the host key `off`. */
   noneEnabled?: boolean;
+  /** Probe result. Missing on old rows; `available` is the boolean fallback. */
+  status?: CatalogAvailability;
+  source?: CatalogFactSource;
 }
+export type CatalogAvailability = "available" | "unavailable" | "unverified";
+export type CatalogFactSource = "probe" | "models.dev";
+/** Levels llm-pi-ai accepts as reasoningEfforts keys. Channel "none" is not one of them. */
+export const HOST_THINKING_LEVELS = [
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
+export type HostThinkingLevel = (typeof HOST_THINKING_LEVELS)[number];
 export interface OAuthCatalogView {
   providerId: string;
   source: OAuthCatalogSource;
@@ -137,6 +154,9 @@ export interface OAuthCatalogView {
   models: OAuthCatalogModel[];
   fetchedAt?: string;
   specFetchedAt?: string;
+  /** Models still waiting for a sign-in probe. */
+  probeRemaining?: number;
+  credential?: "ok" | "expired";
 }
 export type LoginPromptKind = "text" | "secret" | "select";
 export type LoginNoticeEvent = {

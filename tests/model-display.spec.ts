@@ -38,7 +38,7 @@ test("effort cross keeps the fullest majority set and leaves none out", () => {
     max: "max",
   });
   expect(reasoningEfforts(["none", "low"], { noneEnabled: true })).toEqual({
-    none: "none",
+    off: "none",
     low: "low",
   });
 });
@@ -169,7 +169,7 @@ test("the Codex selector matches the hand-fixed route", () => {
   ]);
   expect(injected.find((model) => model.id === "gpt-6-sol")).toMatchObject({
     name: "GPT-6 Sol",
-    reasoningEfforts: { none: "none", low: "low", high: "high", max: "max" },
+    reasoningEfforts: { off: "none", low: "low", high: "high", max: "max" },
   });
   expect(injected.find((model) => model.id === "gpt-6-astra")).toEqual({
     id: "gpt-6-astra",
@@ -187,7 +187,7 @@ test("the Codex selector matches the hand-fixed route", () => {
   expect(injected.find((model) => model.id === "gpt-5.5")).toMatchObject({
     name: "GPT-5.5",
     reasoningEfforts: {
-      none: "none",
+      off: "none",
       low: "low",
       medium: "medium",
       high: "high",
@@ -205,9 +205,9 @@ test("the Codex selector matches the hand-fixed route", () => {
     id: "codex-auto-review",
     name: "Codex Auto Review",
   });
-  expect(JSON.stringify(injected)).not.toMatch(/"off"|spark|gpt-5\.4/);
+  expect(JSON.stringify(injected)).not.toMatch(/"none":|spark|gpt-5\.4/);
   expect(
-    injected.filter((model) => model.reasoningEfforts?.none === "none").map((model) => model.id),
+    injected.filter((model) => model.reasoningEfforts?.off === "none").map((model) => model.id),
   ).toEqual([
     "gpt-6-sol",
     "gpt-6-luna",

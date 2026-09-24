@@ -1,6 +1,21 @@
 import codexAvailability from "./oauth-catalogs/openai-codex.json" with { type: "json" };
+import anthropicAvailability from "./oauth-catalogs/anthropic.json" with { type: "json" };
+import copilotAvailability from "./oauth-catalogs/github-copilot.json" with { type: "json" };
+import kimiAvailability from "./oauth-catalogs/kimi-coding.json" with { type: "json" };
+import xaiAvailability from "./oauth-catalogs/xai.json" with { type: "json" };
+import openrouterAvailability from "./oauth-catalogs/openrouter.json" with { type: "json" };
 import openaiSpecs from "./oauth-catalogs/models-dev-openai.json" with { type: "json" };
-import type { OAuthCatalogModel, OAuthCatalogSource } from "../shared/protocol.js";
+import anthropicSpecs from "./oauth-catalogs/models-dev-anthropic.json" with { type: "json" };
+import copilotSpecs from "./oauth-catalogs/models-dev-github-copilot.json" with { type: "json" };
+import kimiSpecs from "./oauth-catalogs/models-dev-kimi.json" with { type: "json" };
+import xaiSpecs from "./oauth-catalogs/models-dev-xai.json" with { type: "json" };
+import openrouterSpecs from "./oauth-catalogs/models-dev-openrouter.json" with { type: "json" };
+import type {
+  CatalogAvailability,
+  CatalogFactSource,
+  OAuthCatalogModel,
+  OAuthCatalogSource,
+} from "../shared/protocol.js";
 
 export const OAUTH_CATALOG_TTL_MS = 86_400_000;
 export const CATALOG_BYTE_LIMIT = 8 * 1024 * 1024;
@@ -36,7 +51,20 @@ const SECRET_VALUE = /^(sk-|eyJ)/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const MODELS_DEV_PROVIDER: Record<string, string> = {
   "openai-codex": "openai",
+  anthropic: "anthropic",
+  "github-copilot": "github-copilot",
+  "kimi-coding": "kimi-coding",
+  xai: "xai",
+  openrouter: "openrouter",
 };
+export const OPENROUTER_LIMIT = 50;
+export const OPENROUTER_ALLOWLIST = [
+  "anthropic/claude-sonnet-4.6",
+  "anthropic/claude-opus-4.7",
+  "openai/gpt-5.5",
+  "google/gemini-2.5-pro",
+  "deepseek/deepseek-v4.1-flash",
+] as const;
 
 export interface SpecModel {
   id: string;
@@ -46,6 +74,7 @@ export interface SpecModel {
   efforts: string[];
   input: Array<"text" | "image">;
   cost?: { input: number; output: number };
+  releaseDate?: string;
 }
 
 export interface AvailabilityModel {
@@ -58,6 +87,8 @@ export interface AvailabilityModel {
   pendingProbe?: boolean;
   servedModel?: string;
   contextWindow?: number;
+  status?: CatalogAvailability;
+  source?: CatalogFactSource;
 }
 
 export interface CatalogDocument {
@@ -75,9 +106,19 @@ export interface CatalogHit {
 
 const AVAILABILITY: Record<string, unknown> = {
   "openai-codex": codexAvailability,
+  anthropic: anthropicAvailability,
+  "github-copilot": copilotAvailability,
+  "kimi-coding": kimiAvailability,
+  xai: xaiAvailability,
+  openrouter: openrouterAvailability,
 };
 const SPECS: Record<string, unknown> = {
   openai: openaiSpecs,
+  anthropic: anthropicSpecs,
+  "github-copilot": copilotSpecs,
+  "kimi-coding": kimiSpecs,
+  xai: xaiSpecs,
+  openrouter: openrouterSpecs,
 };
 
 export function catalogMirrors(providerId: string): string[] {
@@ -164,10 +205,12 @@ export function joinCatalog(
         ? entry.efforts
         : [];
     const pendingProbe = !spec && listed.length === 0;
+    const status = catalogStatus(entry);
     return {
       id: entry.id,
-      name: spec?.name ?? displayModelName(entry.id),
-      available: entry.available,
+      name: spec?.name ?? entry.name ?? displayModelName(entry.id),
+      available: status === "available",
+      status,
       efforts: pendingProbe
         ? []
         : fullestConsistentEfforts(listed.length ? [listed] : [], noneEnabled),
@@ -182,8 +225,78 @@ export function joinCatalog(
       ...(spec?.cost ? { cost: { ...spec.cost } } : {}),
       verifiedAt: entry.verifiedAt,
       ...(entry.servedModel ? { servedModel: entry.servedModel } : {}),
+      ...(entry.source ? { source: entry.source } : {}),
     };
   });
+}
+
+export function catalogStatus(entry: {
+  status?: string;
+  available: boolean;
+}): CatalogAvailability {
+  if (
+    entry.status === "available" ||
+    entry.status === "unavailable" ||
+    entry.status === "unverified"
+  )
+    return entry.status;
+  return entry.available ? "available" : "unverified";
+}
+
+/** Remote rows first. A local row with the same id replaces the remote one. */
+export function applyLocal(
+  remote: readonly AvailabilityModel[],
+  local: readonly AvailabilityModel[],
+): AvailabilityModel[] {
+  const byId = new Map(remote.map((model) => [model.id, { ...model }]));
+  const extra: AvailabilityModel[] = [];
+  for (const row of local) {
+    const previous = byId.get(row.id);
+    if (!previous) {
+      byId.set(row.id, { ...row });
+      extra.push(row);
+      continue;
+    }
+    byId.set(row.id, {
+      ...previous,
+      ...row,
+      id: row.id,
+      verifiedAt: row.verifiedAt || previous.verifiedAt,
+    });
+  }
+  return [
+    ...remote.map((model) => byId.get(model.id) ?? model),
+    ...extra.map((model) => byId.get(model.id) ?? model),
+  ];
+}
+
+export interface RankedModel {
+  id: string;
+  releaseDate?: string;
+  cost?: { input: number };
+}
+
+/** Picks, then the free group, the 20 newest release dates, and the allowlist. */
+export function selectOpenRouterIds(
+  models: readonly RankedModel[],
+  picks: readonly string[] = [],
+): string[] {
+  const known = new Set(models.map((model) => model.id));
+  const byDate = (left: RankedModel, right: RankedModel) =>
+    String(right.releaseDate ?? "").localeCompare(String(left.releaseDate ?? "")) ||
+    left.id.localeCompare(right.id);
+  const free = models
+    .filter((model) => model.cost?.input === 0)
+    .sort(byDate)
+    .map((model) => model.id);
+  const newest = models
+    .filter((model) => typeof model.releaseDate === "string" && model.releaseDate.length > 0)
+    .sort(byDate)
+    .slice(0, 20)
+    .map((model) => model.id);
+  const allow = OPENROUTER_ALLOWLIST.filter((id) => known.has(id));
+  const chosen = picks.filter((id) => known.has(id));
+  return [...new Set([...chosen, ...free, ...newest, ...allow])].slice(0, OPENROUTER_LIMIT);
 }
 
 /** Majority levels across models.dev providers. `none` stays out until a probe sets noneEnabled. */
@@ -233,7 +346,12 @@ export function reasoningEfforts(
     [efforts],
     options?.noneEnabled === true,
   );
-  return Object.fromEntries(selected.map((effort) => [effort, effort]));
+  // The channel spelling stays "none". The host schema only accepts `off`.
+  return Object.fromEntries(
+    selected.map((effort) =>
+      effort === "none" ? ["off", "none"] : [effort, effort],
+    ),
+  );
 }
 
 export function effortProbeRequest(modelId: string, effort: "none" | "high") {
@@ -254,6 +372,7 @@ export function effortProbeRequest(modelId: string, effort: "none" | "high") {
 }
 
 export class CatalogStore {
+  private shared?: { at: number; document?: unknown };
   private checked = new Map<
     string,
     {
@@ -273,7 +392,11 @@ export class CatalogStore {
       specs?: Record<string, unknown>;
     } = {},
   ) {}
-  async current(providerId: string, signal?: AbortSignal): Promise<CatalogHit> {
+  async current(
+    providerId: string,
+    signal?: AbortSignal,
+    overlay?: { local?: readonly AvailabilityModel[]; picks?: readonly string[] },
+  ): Promise<CatalogHit> {
     const now = this.now();
     const cached = this.checked.get(providerId);
     const fresh = cached && now - cached.at < this.ttl() ? cached : undefined;
@@ -294,6 +417,7 @@ export class CatalogStore {
     }
     const availability = availabilityRemote ?? this.availabilitySnapshot(providerId);
     const specs = specsRemote ?? this.specSnapshot(providerId);
+    const rows = this.withOverlay(providerId, availability ?? [], specs ?? [], overlay, now);
     const source: OAuthCatalogSource = availabilityRemote
       ? "remote"
       : availability
@@ -307,7 +431,7 @@ export class CatalogStore {
     return {
       source,
       specSource,
-      models: joinCatalog(specs ?? [], availability ?? []),
+      models: joinCatalog(specs ?? [], rows),
       ...(availabilityRemote ? { fetchedAt: new Date(fresh?.at ?? now).toISOString() } : {}),
       ...(specsRemote ? { specFetchedAt: new Date(fresh?.at ?? now).toISOString() } : {}),
     };
@@ -348,22 +472,77 @@ export class CatalogStore {
     }
     return undefined;
   }
+  hasModel(providerId: string, modelId: string): boolean {
+    const specs = this.specSnapshot(providerId) ?? [];
+    if (specs.some((model) => model.id === modelId)) return true;
+    const availability = this.availabilitySnapshot(providerId) ?? [];
+    if (availability.some((model) => model.id === modelId)) return true;
+    const modelsDevProvider = MODELS_DEV_PROVIDER[providerId];
+    const document = this.shared?.document;
+    if (!modelsDevProvider || !document) return false;
+    try {
+      return Object.hasOwn(providerModels(document, modelsDevProvider), modelId);
+    } catch {
+      return false;
+    }
+  }
+  private withOverlay(
+    providerId: string,
+    availability: AvailabilityModel[],
+    specs: readonly SpecModel[],
+    overlay: { local?: readonly AvailabilityModel[]; picks?: readonly string[] } | undefined,
+    now: number,
+  ): AvailabilityModel[] {
+    let rows = overlay?.local?.length ? applyLocal(availability, overlay.local) : [...availability];
+    if (providerId !== "openrouter" || !overlay?.picks?.length) return rows;
+    const known = new Set(specs.map((model) => model.id));
+    for (const id of overlay.picks) {
+      if (rows.some((model) => model.id === id)) continue;
+      if (!known.has(id) && !this.hasModel(providerId, id)) continue;
+      rows.push({
+        id,
+        available: false,
+        status: "unverified",
+        source: "models.dev",
+        verifiedAt: new Date(now).toISOString().slice(0, 10),
+      });
+    }
+    const picked = new Set(overlay.picks);
+    return [
+      ...rows.filter((model) => picked.has(model.id)),
+      ...rows.filter((model) => !picked.has(model.id)),
+    ].slice(0, OPENROUTER_LIMIT);
+  }
+  private async sharedDocument(signal?: AbortSignal): Promise<unknown | undefined> {
+    const now = this.now();
+    if (this.shared && now - this.shared.at < this.ttl()) return this.shared.document;
+    let document: unknown;
+    for (const url of modelsDevMirrors()) {
+      const text = await this.read(url, signal);
+      if (!text) continue;
+      try {
+        document = unwrapModelsDev(text);
+        break;
+      } catch {
+        continue;
+      }
+    }
+    this.shared = { at: now, ...(document !== undefined ? { document } : {}) };
+    return document;
+  }
   private async pullSpecs(
     providerId: string,
     signal?: AbortSignal,
   ): Promise<SpecModel[] | undefined> {
     const modelsDevProvider = MODELS_DEV_PROVIDER[providerId];
     if (!modelsDevProvider) return undefined;
-    for (const url of modelsDevMirrors()) {
-      const text = await this.read(url, signal);
-      if (!text) continue;
-      try {
-        return parseModelsDevDocument(unwrapModelsDev(text), modelsDevProvider);
-      } catch {
-        continue;
-      }
+    const document = await this.sharedDocument(signal);
+    if (!document) return undefined;
+    try {
+      return parseModelsDevDocument(document, modelsDevProvider);
+    } catch {
+      return undefined;
     }
-    return undefined;
   }
   private async read(url: string, signal?: AbortSignal): Promise<string | undefined> {
     try {
@@ -404,6 +583,8 @@ function parseAvailability(value: unknown): AvailabilityModel {
     "pendingProbe",
     "servedModel",
     "contextWindow",
+    "status",
+    "source",
   ];
   if (Object.keys(item).some((key) => !allowed.includes(key)))
     throw new Error("catalog");
@@ -428,6 +609,19 @@ function parseAvailability(value: unknown): AvailabilityModel {
   }
   if (item.servedModel !== undefined) parsed.servedModel = token(item.servedModel, 128);
   if (item.contextWindow !== undefined) parsed.contextWindow = positive(item.contextWindow);
+  if (item.status !== undefined) {
+    if (
+      item.status !== "available" &&
+      item.status !== "unavailable" &&
+      item.status !== "unverified"
+    )
+      throw new Error("catalog");
+    parsed.status = item.status;
+  }
+  if (item.source !== undefined) {
+    if (item.source !== "probe" && item.source !== "models.dev") throw new Error("catalog");
+    parsed.source = item.source;
+  }
   return parsed;
 }
 
@@ -473,6 +667,10 @@ function specFromModelsDev(fallbackId: string, value: unknown): SpecModel | unde
   const input = modalityValues(modalities?.input);
   if (efforts.length < 1 || input.length < 1) return undefined;
   const cost = costOf(item.cost);
+  const releaseDate =
+    typeof item.release_date === "string" && item.release_date.length <= 32
+      ? item.release_date
+      : undefined;
   return {
     id,
     name,
@@ -481,11 +679,21 @@ function specFromModelsDev(fallbackId: string, value: unknown): SpecModel | unde
     efforts,
     input,
     ...(cost ? { cost } : {}),
+    ...(releaseDate ? { releaseDate } : {}),
   };
 }
 
 function specDocumentModel(item: Record<string, unknown>): SpecModel {
-  const allowed = ["id", "name", "contextWindow", "maxTokens", "efforts", "input", "cost"];
+  const allowed = [
+    "id",
+    "name",
+    "contextWindow",
+    "maxTokens",
+    "efforts",
+    "input",
+    "cost",
+    "releaseDate",
+  ];
   if (Object.keys(item).some((key) => !allowed.includes(key))) throw new Error("catalog");
   const efforts = stringList(item.efforts).map((effort) => {
     if (!EFFORTS.includes(effort as (typeof EFFORTS)[number])) throw new Error("catalog");
@@ -502,6 +710,7 @@ function specDocumentModel(item: Record<string, unknown>): SpecModel {
     efforts,
     input,
     ...(cost ? { cost } : {}),
+    ...(typeof item.releaseDate === "string" ? { releaseDate: token(item.releaseDate, 32) } : {}),
   };
 }
 

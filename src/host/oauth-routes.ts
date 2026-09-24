@@ -1,16 +1,41 @@
 import z from "@deepseek-ai/schemastery";
 import { SafeError } from "../shared/protocol.js";
-import type { OAuthCatalogModel, OAuthRouteState } from "../shared/protocol.js";
-import { displayModelName, reasoningEfforts } from "./oauth-catalog.js";
+import {
+  HOST_THINKING_LEVELS,
+  type OAuthCatalogModel,
+  type OAuthRouteState,
+} from "../shared/protocol.js";
+import {
+  displayModelName,
+  reasoningEfforts,
+  type AvailabilityModel,
+} from "./oauth-catalog.js";
 
 export const OWNED_OAUTH_NS = "dsh-provider-manager";
+const ProbeRowSchema = z.object({
+  status: z.union([
+    z.const("available"),
+    z.const("unavailable"),
+    z.const("unverified"),
+  ]),
+  verifiedAt: z.string(),
+  cooledUntil: z.number(),
+  servedModel: z.string().required(false),
+  noneEnabled: z.boolean().required(false),
+});
 const OwnedOAuthSchema = z.object({
   ownedOauthRoutes: z.dict(z.boolean()).default({}),
+  probe: z.dict(ProbeRowSchema).default({}),
+  selections: z.dict(z.array(z.string())).default({}),
+  credential: z.dict(z.string()).default({}),
 });
 
 export function installOwnedRoutes(settings: SettingsSurface, owner: unknown) {
   settings.installSection?.(owner, OWNED_OAUTH_NS, OwnedOAuthSchema, {
     ownedOauthRoutes: {},
+    probe: {},
+    selections: {},
+    credential: {},
   }, {
     setSource: () => {},
     onChange: () => {},
@@ -87,9 +112,15 @@ export function selectorModels(models: readonly OAuthCatalogModel[]) {
   return models.flatMap((model) => {
     if (!model.available) return [];
     const name = injectedName(model);
-    const efforts = reasoningEfforts(model.efforts, {
-      noneEnabled: model.noneEnabled === true,
-    });
+    const efforts = Object.fromEntries(
+      Object.entries(
+        reasoningEfforts(model.efforts, {
+          noneEnabled: model.noneEnabled === true,
+        }),
+      ).filter(([key]) =>
+        (HOST_THINKING_LEVELS as readonly string[]).includes(key),
+      ),
+    );
     const ready =
       !model.pendingProbe &&
       model.contextWindow !== undefined &&
@@ -223,6 +254,100 @@ export class OAuthRoutes {
     const result = await this.writeManaged(providerId, label, models);
     return result.written;
   }
+  catalogOverlay(providerId: string): {
+    local: AvailabilityModel[];
+    picks: string[];
+  } {
+    const owned = this.ownedValue();
+    const probe = record(owned.probe);
+    const local: AvailabilityModel[] = [];
+    const cooledPrefix = `${providerId}::`;
+    for (const [key, value] of Object.entries(probe)) {
+      if (!key.startsWith(cooledPrefix)) continue;
+      const row = record(value);
+      const status = row.status;
+      if (status !== "available" && status !== "unavailable" && status !== "unverified")
+        continue;
+      const id = key.slice(cooledPrefix.length);
+      if (!id) continue;
+      local.push({
+        id,
+        available: status === "available",
+        status,
+        source: "probe",
+        verifiedAt:
+          typeof row.verifiedAt === "string" ? row.verifiedAt : "1970-01-01",
+        ...(typeof row.servedModel === "string" ? { servedModel: row.servedModel } : {}),
+        ...(row.noneEnabled === true ? { noneEnabled: true } : {}),
+      });
+    }
+    const selections = record(owned.selections);
+    const picks = Array.isArray(selections[providerId])
+      ? selections[providerId].filter((item): item is string => typeof item === "string")
+      : [];
+    return { local, picks };
+  }
+  cooledUntil(providerId: string): Record<string, number> {
+    const probe = record(this.ownedValue().probe);
+    const prefix = `${providerId}::`;
+    const cooled: Record<string, number> = {};
+    for (const [key, value] of Object.entries(probe)) {
+      if (!key.startsWith(prefix)) continue;
+      const row = record(value);
+      if (typeof row.cooledUntil === "number")
+        cooled[key.slice(prefix.length)] = row.cooledUntil;
+    }
+    return cooled;
+  }
+  credentialState(providerId: string): "ok" | "expired" | undefined {
+    const credential = record(this.ownedValue().credential);
+    const value = credential[providerId];
+    return value === "expired" || value === "ok" ? value : undefined;
+  }
+  async rememberProbe(
+    providerId: string,
+    modelId: string,
+    row: {
+      status: "available" | "unavailable" | "unverified";
+      verifiedAt: string;
+      cooledUntil: number;
+      servedModel?: string;
+      noneEnabled?: boolean;
+    },
+  ) {
+    if (!this.section(OWNED_OAUTH_NS)) return;
+    await this.mutate(OWNED_OAUTH_NS, [
+      {
+        op: "set",
+        path: ["probe", `${providerId}::${modelId}`],
+        value: row,
+      },
+    ]);
+  }
+  async rememberCredential(providerId: string, state: "ok" | "expired") {
+    if (!this.section(OWNED_OAUTH_NS)) return;
+    await this.mutate(OWNED_OAUTH_NS, [
+      { op: "set", path: ["credential", providerId], value: state },
+    ]);
+  }
+  async addSelection(providerId: string, modelId: string) {
+    if (!this.section(OWNED_OAUTH_NS)) return;
+    const current = this.catalogOverlay(providerId).picks;
+    if (current.includes(modelId)) return;
+    await this.mutate(OWNED_OAUTH_NS, [
+      {
+        op: "set",
+        path: ["selections", providerId],
+        value: [...current, modelId].slice(0, 50),
+      },
+    ]);
+  }
+  private ownedValue(): Record<string, unknown> {
+    const section = this.section(OWNED_OAUTH_NS);
+    const value = section?.user;
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    return value as Record<string, unknown>;
+  }
   private userProfile(providerId: string): unknown {
     const section = this.section("llm-pi-ai");
     const source = section?.user;
@@ -262,4 +387,9 @@ export class OAuthRoutes {
       }
     }
   }
+}
+
+function record(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
 }
