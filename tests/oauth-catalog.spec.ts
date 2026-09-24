@@ -43,22 +43,18 @@ test("codex snapshots keep channel availability apart from models.dev specs", ()
   });
   expect(parsed.models.find((model) => model.id === "gpt-5.6-luna")).toMatchObject({
     name: "GPT-5.6 Luna",
-    efforts: ["low", "medium", "high", "xhigh", "max"],
+    noneEnabled: true,
+    efforts: ["none", "low", "medium", "high", "xhigh", "max"],
   });
   expect(parsed.models.find((model) => model.id === "gpt-5.6-luna")?.contextWindow).toBe(
     undefined,
   );
-  expect(parsed.models.find((model) => model.id === "gpt-5.5")?.efforts).not.toContain(
+  expect(parsed.models.find((model) => model.id === "gpt-5.5")?.efforts).toContain(
     "none",
   );
-  expect(parsed.models.find((model) => model.id === "gpt-reserve")).toMatchObject({
-    name: "GPT Reserve",
-    pendingProbe: true,
-  });
-  expect(parsed.models.find((model) => model.id === "codex-auto-review")).toMatchObject({
-    name: "Codex Auto Review",
-    pendingProbe: true,
-  });
+  expect(parsed.models.find((model) => model.id === "gpt-6-astra")?.noneEnabled).toBeUndefined();
+  expect(parsed.models.find((model) => model.id === "gpt-reserve")?.pendingProbe).toBeUndefined();
+  expect(parsed.models.find((model) => model.id === "codex-auto-review")?.pendingProbe).toBeUndefined();
   const specs = JSON.parse(
     readFileSync(
       new URL("../src/host/oauth-catalogs/models-dev-openai.json", import.meta.url),
@@ -74,6 +70,9 @@ test("codex snapshots keep channel availability apart from models.dev specs", ()
     128_000,
   );
   expect(joined.find((model) => model.id === "gpt-reserve")?.contextWindow).toBeUndefined();
+  expect(joined.find((model) => model.id === "gpt-reserve")?.pendingProbe).toBe(true);
+  expect(joined.find((model) => model.id === "gpt-reserve")?.name).toBe("GPT Reserve");
+  expect(joined.find((model) => model.id === "codex-auto-review")?.pendingProbe).toBe(true);
   expect(joined.find((model) => model.id === "gpt-5.3-codex")?.available).toBe(false);
   expect(reasoningEfforts(["none", "low"])).toEqual({ low: "low" });
   expect(modelsDevMirrors()[0]).toBe("https://models.dev/api.json");
@@ -321,6 +320,7 @@ test("login writes the catalog once, reset returns to {}, and logout keeps forei
     name: "GPT-5.6 Luna",
     contextWindow: 1_050_000,
     reasoningEfforts: {
+      none: "none",
       low: "low",
       medium: "medium",
       high: "high",

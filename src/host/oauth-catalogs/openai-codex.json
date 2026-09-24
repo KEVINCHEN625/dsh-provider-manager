@@ -4,7 +4,7 @@
     {
       "id": "gpt-6-astra",
       "available": true,
-      "verifiedAt": "2026-09-23",
+      "verifiedAt": "2026-09-24",
       "name": "GPT-6 Astra",
       "efforts": [
         "low",
@@ -32,9 +32,11 @@
     {
       "id": "gpt-6-luna",
       "available": true,
-      "verifiedAt": "2026-09-23",
+      "verifiedAt": "2026-09-24",
       "name": "GPT-6 Luna",
+      "noneEnabled": true,
       "efforts": [
+        "none",
         "low",
         "medium",
         "high",
@@ -45,9 +47,11 @@
     {
       "id": "gpt-5.6-sol",
       "available": true,
-      "verifiedAt": "2026-09-23",
+      "verifiedAt": "2026-09-24",
       "name": "GPT-5.6 Sol",
+      "noneEnabled": true,
       "efforts": [
+        "none",
         "low",
         "medium",
         "high",
@@ -58,9 +62,11 @@
     {
       "id": "gpt-5.6-terra",
       "available": true,
-      "verifiedAt": "2026-09-23",
+      "verifiedAt": "2026-09-24",
       "name": "GPT-5.6 Terra",
+      "noneEnabled": true,
       "efforts": [
+        "none",
         "low",
         "medium",
         "high",
@@ -71,9 +77,11 @@
     {
       "id": "gpt-5.6-luna",
       "available": true,
-      "verifiedAt": "2026-09-23",
+      "verifiedAt": "2026-09-24",
       "name": "GPT-5.6 Luna",
+      "noneEnabled": true,
       "efforts": [
+        "none",
         "low",
         "medium",
         "high",
@@ -84,9 +92,11 @@
     {
       "id": "gpt-5.5",
       "available": true,
-      "verifiedAt": "2026-09-23",
+      "verifiedAt": "2026-09-24",
       "name": "GPT-5.5",
+      "noneEnabled": true,
       "efforts": [
+        "none",
         "low",
         "medium",
         "high",
@@ -96,16 +106,12 @@
     {
       "id": "gpt-reserve",
       "available": true,
-      "verifiedAt": "2026-09-23",
-      "name": "GPT Reserve",
-      "pendingProbe": true
+      "verifiedAt": "2026-09-23"
     },
     {
       "id": "codex-auto-review",
       "available": true,
-      "verifiedAt": "2026-09-23",
-      "name": "Codex Auto Review",
-      "pendingProbe": true
+      "verifiedAt": "2026-09-23"
     },
     {
       "id": "gpt-5.3-codex",

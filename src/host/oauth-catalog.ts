@@ -155,15 +155,18 @@ export function joinCatalog(
     const specWindow = spec?.contextWindow;
     const contextWindow = channelWindow ?? specWindow;
     const noneEnabled = entry.noneEnabled === true;
-    const listed = entry.efforts?.length
-      ? entry.efforts
-      : spec
-        ? [...spec.efforts]
+    // Names and effort sets come from models.dev. A channel row only contributes
+    // efforts when that id has no spec. pendingProbe is computed here; it is
+    // not a registry field.
+    const listed = spec?.efforts.length
+      ? [...spec.efforts]
+      : entry.efforts?.length
+        ? entry.efforts
         : [];
     const pendingProbe = !spec && listed.length === 0;
     return {
       id: entry.id,
-      name: entry.name ?? spec?.name ?? displayModelName(entry.id),
+      name: spec?.name ?? displayModelName(entry.id),
       available: entry.available,
       efforts: pendingProbe
         ? []

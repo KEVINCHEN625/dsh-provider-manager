@@ -26,7 +26,11 @@ The only custom dataset is which subscription models are actually enabled.
 Repository: <https://github.com/KEVINCHEN625/dsh-provider-models>
 
 `<providerId>.json` is `{ providerId, models: [{ id, available, verifiedAt, servedModel?, contextWindow? }] }`.
-Context stays on the models.dev row for that id. A channel `contextWindow` is
+That file stores channel availability only. `name` and `efforts` are not registry
+fields: the injection pipeline reads them from the models.dev spec at runtime.
+`pendingProbe` is also not a registry field. The pipeline sets it when an
+available id has no models.dev spec, and then the selector row is `{ id, name }`
+with the fallback display name. A channel `contextWindow` is
 written only after a measurement for that one model disagrees with models.dev,
 and then that measurement wins. The Codex seed does not copy one window onto
 every id. Mirrors:
@@ -70,8 +74,9 @@ Details then shows that the request was served by the other model.
 
 Settings `models` is the intersection: models.dev parameters for channel rows
 with `available: true` and a complete spec. `gpt-reserve` and
-`codex-auto-review` stay visible but are not written, because models.dev has
-no spec for them. An unavailable row is not written.
+`codex-auto-review` are written as `{ id, name }` only, because models.dev has
+no spec for them and the pipeline marks them `pendingProbe`. An unavailable
+row is not written.
 
 Sign-in writes `llm-pi-ai` `providers.<id>` when the catalog has available
 rows and the profile is missing, empty, or already marked with
@@ -86,6 +91,13 @@ pinned by deleting `models`, and refresh a pinned list when a newer channel
 catalog arrives. Logout deletes the route only when this plugin owns it.
 Ownership is `dsh-provider-manager.ownedOauthRoutes`.
 
-`none` is written as reasoning level `off` with wire value `none`. Writing
-`maxTokens` also becomes llm-pi-ai's per-request default. That is host
+`none` is injected as `reasoningEfforts.none = "none"` only after a channel
+probe of `reasoning.effort = "none"` returns HTTP 200 and the stream echoes
+that effort. The pipeline records that result as `noneEnabled` on its local
+Codex seed. `noneEnabled` is not a published registry field. On 2026-09-24
+the echo succeeded for `gpt-6-sol`, `gpt-6-luna`, `gpt-5.6-sol`,
+`gpt-5.6-terra`, `gpt-5.6-luna`, and `gpt-5.5`. `gpt-6-astra` returned HTTP
+400 and said `none` is unsupported, so it stays without `none`. Models with
+no models.dev row stay `pendingProbe` and receive no invented efforts.
+Writing `maxTokens` also becomes llm-pi-ai's per-request default. That is host
 behavior. Resetting the route returns output sizing to the installed catalog.

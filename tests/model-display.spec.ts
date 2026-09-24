@@ -90,8 +90,8 @@ test("registry rows accept name, efforts, and probe flags, and old rows still pa
           id: "gpt-5.5",
           available: true,
           verifiedAt: "2026-09-24",
-          name: "GPT-5.5",
-          efforts: ["low", "medium", "high", "xhigh"],
+          name: "Not From The Registry",
+          efforts: ["low"],
           noneEnabled: false,
         },
         {
@@ -186,7 +186,13 @@ test("the Codex selector matches the hand-fixed route", () => {
   });
   expect(injected.find((model) => model.id === "gpt-5.5")).toMatchObject({
     name: "GPT-5.5",
-    reasoningEfforts: { low: "low", medium: "medium", high: "high", xhigh: "xhigh" },
+    reasoningEfforts: {
+      none: "none",
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: "xhigh",
+    },
   });
   expect(
     injected.find((model) => model.id === "gpt-5.5")?.reasoningEfforts,
@@ -202,5 +208,12 @@ test("the Codex selector matches the hand-fixed route", () => {
   expect(JSON.stringify(injected)).not.toMatch(/"off"|spark|gpt-5\.4/);
   expect(
     injected.filter((model) => model.reasoningEfforts?.none === "none").map((model) => model.id),
-  ).toEqual(["gpt-6-sol"]);
+  ).toEqual([
+    "gpt-6-sol",
+    "gpt-6-luna",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+    "gpt-5.5",
+  ]);
 });
