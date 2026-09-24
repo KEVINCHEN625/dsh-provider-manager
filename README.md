@@ -80,7 +80,7 @@ Install the **release tarball** (it already contains `lib/`). We do not ship a `
 
 ```sh
 dsh plugin --profile web add --ignore-scripts --force \
-  https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.3.3/dsh-provider-manager-0.3.3.tgz
+  https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.4.0/dsh-provider-manager-0.4.0-664a895a3f1b.tgz
 dsh --profile web --dump-config   # look for "# == dsh-provider-manager"
 dsh web
 ```
@@ -91,7 +91,7 @@ If the web profile is itself a pnpm workspace (`packages: [.]`), pass pnpm's boo
 
 ```sh
 dsh plugin --profile web add --workspace-root --ignore-scripts --force \
-  ./dsh-provider-manager-0.3.3.tgz
+  ./dsh-provider-manager-0.4.0-664a895a3f1b.tgz
 ```
 
 CLI success and a live page are separate checks. Restart Web after adding the plugin.
