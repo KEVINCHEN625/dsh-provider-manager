@@ -89,7 +89,7 @@ test("overview is compact and shows remaining quota without expanding models", a
   expect(
     screen.queryByRole("button", { name: `${en.details}: Muse Code` }),
   ).toBeNull();
-  await screen.findByText("fixture-model");
+  expect((await screen.findAllByText("fixture-model")).length).toBeGreaterThan(0);
   expect(screen.getByLabelText("New key")).toBeTruthy();
   expect(screen.getByLabelText(en.apiUrl)).toBeTruthy();
 });
@@ -215,7 +215,7 @@ test("details summary is keyboard operable and Muse states facts without a quota
   });
   details.focus();
   fireEvent.click(details);
-  await screen.findByText("fixture-model");
+  expect((await screen.findAllByText("fixture-model")).length).toBeGreaterThan(0);
   expect(
     screen.getByRole("progressbar", { name: /5-hour window remaining 100%/ }),
   ).toBeTruthy();

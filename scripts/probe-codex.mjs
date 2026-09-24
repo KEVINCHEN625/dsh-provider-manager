@@ -20,12 +20,22 @@ const availability = JSON.parse(
 const CANDIDATES = availability.models.map((model) => model.id);
 const LIVE_SETTINGS = join(homedir(), ".dsh", "settings.yaml");
 
+const effortFlag = process.argv.indexOf("--effort");
+const effort =
+  effortFlag >= 0 && process.argv[effortFlag + 1] === "none" ? "none" : undefined;
 const confirm = process.argv.includes("--confirm");
 if (!confirm) {
   console.log(
-    "Dry run. Candidates: " +
-      CANDIDATES.join(", ") +
-      ". Re-run with --confirm and type yes before any request is sent.",
+    JSON.stringify({
+      live: false,
+      effort: effort ?? null,
+      candidates: availability.models.map((model) => ({
+        id: model.id,
+        ...(model.name ? { name: model.name } : {}),
+        ...(model.efforts ? { efforts: model.efforts } : {}),
+        ...(model.pendingProbe ? { pendingProbe: true } : {}),
+      })),
+    }),
   );
   process.exit(0);
 }
@@ -81,6 +91,9 @@ for model in ids:
         "input": [{"role": "user", "content": [{"type": "input_text", "text": "Reply with exactly the word ok."}]}],
         "text": {"verbosity": "low"},
     }
+    effort = ${JSON.stringify(effort ?? null)}
+    if effort:
+        body["reasoning"] = {"effort": effort}
     if "max_output_tokens" in body:
         raise SystemExit("max_output_tokens must not be sent")
     request = urllib.request.Request(

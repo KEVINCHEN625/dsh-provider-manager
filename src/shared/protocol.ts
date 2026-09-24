@@ -126,6 +126,8 @@ export interface OAuthCatalogModel {
   cost?: OAuthCatalogCost;
   verifiedAt?: string;
   servedModel?: string;
+  pendingProbe?: boolean;
+  noneEnabled?: boolean;
 }
 export interface OAuthCatalogView {
   providerId: string;

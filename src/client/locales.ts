@@ -65,6 +65,7 @@ export const en = {
   protocol: "Protocol",
   models: "Models",
   modelId: "Model ID",
+  modelColumn: "Model",
   context1m: "1M context",
   context1mHelp:
     "Tick models that support a 1M-token window. Unticked models keep their listed size (for example 200K). You can change the ticks before saving.",
@@ -265,6 +266,7 @@ export const zh: Record<LocaleKey, string> = {
   protocol: "协议",
   models: "模型",
   modelId: "模型 ID",
+  modelColumn: "模型",
   context1m: "1M 上下文",
   context1mHelp:
     "在支持 1M 上下文的模型后打勾。未勾选的模型沿用列表里的容量（例如 200K）。保存前可以自行改勾选。",

@@ -343,7 +343,7 @@ export function OAuthDetails({
                 <table className="pm-catalog">
                   <thead>
                     <tr>
-                      <th>{t("modelId")}</th>
+                      <th>{t("modelColumn")}</th>
                       <th>{t("catalogContext")}</th>
                       <th>{t("catalogMaxOutput")}</th>
                       <th>{t("catalogReasoning")}</th>

@@ -19,6 +19,7 @@ const providerId = process.argv
   .find((arg) => !arg.startsWith("-"));
 const confirm = process.argv.includes("--confirm");
 const known = new Set([
+  "openai-codex",
   "anthropic",
   "kimi-coding",
   "github-copilot",
@@ -26,6 +27,7 @@ const known = new Set([
   "openrouter",
   "radius",
   "openrouter-images",
+  "muse",
 ]);
 if (!providerId || !known.has(providerId)) {
   console.error(
@@ -41,7 +43,15 @@ try {
       "utf8",
     ),
   );
-  models = Array.isArray(doc.models) ? doc.models.map((model) => model.id) : [];
+  models = Array.isArray(doc.models)
+    ? doc.models.map((model) => ({
+        id: model.id,
+        ...(typeof model.name === "string" ? { name: model.name } : {}),
+        ...(Array.isArray(model.efforts) ? { efforts: model.efforts } : {}),
+        ...(model.pendingProbe === true ? { pendingProbe: true } : {}),
+        ...(model.noneEnabled === true ? { noneEnabled: true } : {}),
+      }))
+    : [];
 } catch {
   models = [];
 }

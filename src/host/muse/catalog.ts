@@ -1,4 +1,5 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
+import { displayModelName } from "../oauth-catalog.js";
 
 export const MUSE_ROUTE = "provider-manager-muse";
 export const MUSE_NAME = "Muse (Provider Manager)";
@@ -52,9 +53,17 @@ function model(
 }
 
 export const MUSE_MODELS: Model<Api>[] = [
-  model("muse-spark-1.3", "Muse Spark 1.3", true),
-  model("muse-spark-1.3-contributor", "Muse Spark 1.3 Contributor", false),
-  model("muse-spark-1.2-contributor", "Muse Spark 1.2 Contributor", false),
+  model("muse-spark-1.3", displayModelName("muse-spark-1.3"), true),
+  model(
+    "muse-spark-1.3-contributor",
+    displayModelName("muse-spark-1.3-contributor"),
+    false,
+  ),
+  model(
+    "muse-spark-1.2-contributor",
+    displayModelName("muse-spark-1.2-contributor"),
+    false,
+  ),
 ];
 
 export const MUSE_MODEL_IDS = new Set(MUSE_MODELS.map((item) => item.id));

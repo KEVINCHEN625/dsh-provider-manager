@@ -1,7 +1,7 @@
 import z from "@deepseek-ai/schemastery";
 import { SafeError } from "../shared/protocol.js";
 import type { OAuthCatalogModel, OAuthRouteState } from "../shared/protocol.js";
-import { reasoningEfforts } from "./oauth-catalog.js";
+import { displayModelName, reasoningEfforts } from "./oauth-catalog.js";
 
 export const OWNED_OAUTH_NS = "dsh-provider-manager";
 const OwnedOAuthSchema = z.object({
@@ -77,38 +77,39 @@ export function hasManagedMark(profile: unknown) {
   return typeof displayName === "string" && displayName.includes(MANAGED_MARK);
 }
 
-/** Available rows become selector entries. A row without a models.dev spec keeps its id. */
+function injectedName(model: OAuthCatalogModel) {
+  if (model.name && model.name !== model.id) return model.name;
+  return displayModelName(model.id);
+}
+
+/** Available rows become selector entries. A row without a spec keeps id and name. */
 export function selectorModels(models: readonly OAuthCatalogModel[]) {
   return models.flatMap((model) => {
     if (!model.available) return [];
-    const full = modelProfiles([model]);
-    return full.length === 1 ? full : [{ id: model.id }];
-  });
-}
-
-export function modelProfiles(models: readonly OAuthCatalogModel[]) {
-  return models.flatMap((model) => {
-    if (
-      !model.available ||
-      model.contextWindow === undefined ||
-      model.maxTokens === undefined ||
-      model.efforts.length < 1 ||
-      model.input.length < 1
-    )
-      return [];
-    const efforts = reasoningEfforts(model.efforts);
-    if (!Object.keys(efforts).some((key) => key !== "off")) return [];
+    const name = injectedName(model);
+    const efforts = reasoningEfforts(model.efforts, {
+      noneEnabled: model.noneEnabled === true,
+    });
+    const ready =
+      !model.pendingProbe &&
+      model.contextWindow !== undefined &&
+      model.maxTokens !== undefined &&
+      Object.keys(efforts).length > 0;
+    if (!ready) return [{ id: model.id, name }];
     return [
       {
         id: model.id,
-        name: model.name,
+        name,
         contextWindow: model.contextWindow,
         maxTokens: model.maxTokens,
-        input: [...model.input],
         reasoningEfforts: efforts,
       },
     ];
   });
+}
+
+export function modelProfiles(models: readonly OAuthCatalogModel[]) {
+  return selectorModels(models).filter((model) => "reasoningEfforts" in model);
 }
 
 export class OAuthRoutes {
@@ -184,9 +185,17 @@ export class OAuthRoutes {
             ),
           )
         : {};
+    const currentName =
+      current &&
+      typeof current === "object" &&
+      !Array.isArray(current) &&
+      typeof (current as { displayName?: unknown }).displayName === "string"
+        ? (current as { displayName: string }).displayName
+        : undefined;
     const value = {
       ...preserved,
-      displayName: managedDisplayName(label),
+      displayName:
+        currentName && hasManagedMark(current) ? currentName : managedDisplayName(label),
       models: nextModels,
     };
     if (JSON.stringify(current) === JSON.stringify(value))

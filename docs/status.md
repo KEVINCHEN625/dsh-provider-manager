@@ -19,6 +19,13 @@ themselves — an upstream harness gap this plugin closes. Do not re-trace the
 realm theory when investigating service visibility; start from "is anything
 mounting this service?".
 
+Executor (2026-09-24): **0.3.1** injects models.dev names and reasoning
+efforts. `none` stays out until a channel probe sets `noneEnabled`. Models
+with no models.dev row keep a normalized name and `pendingProbe`.
+Installed artifact: `dsh-provider-manager-0.3.1-1a81e1e554ce.tgz`
+(`1a81e1e554ce98edc8ce23a5be3193b03b51cb83ceba46fa7f20659c2649ab76`).
+`gpt-6-sol` has `noneEnabled` after the channel echoed `reasoning.effort=none`.
+
 Executor (2026-09-24): **0.3.0** injects a managed selector after sign-in,
 adds an unofficial Muse device-code route, and embeds brand marks. Claude,
 Kimi, and Copilot candidate lists are the installed client catalog crossed

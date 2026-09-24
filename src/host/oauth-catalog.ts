@@ -14,6 +14,23 @@ const EFFORTS = [
   "xhigh",
   "max",
 ] as const;
+const EFFORT_ORDER = ["minimal", "low", "medium", "high", "xhigh", "max"] as const;
+const BRANDS: Record<string, string> = {
+  gpt: "GPT",
+  codex: "Codex",
+  glm: "GLM",
+  kimi: "Kimi",
+  grok: "Grok",
+  gemini: "Gemini",
+  qwen: "Qwen",
+  muse: "Muse",
+  minimax: "MiniMax",
+  mimo: "MiMo",
+  omen: "Omen",
+  deepseek: "DeepSeek",
+  claude: "Claude",
+  openai: "OpenAI",
+};
 const SECRET_KEY = /^(access_token|refresh_token|access|refresh|apiKey|secret|token)$/i;
 const SECRET_VALUE = /^(sk-|eyJ)/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -35,6 +52,10 @@ export interface AvailabilityModel {
   id: string;
   available: boolean;
   verifiedAt: string;
+  name?: string;
+  efforts?: string[];
+  noneEnabled?: boolean;
+  pendingProbe?: boolean;
   servedModel?: string;
   contextWindow?: number;
 }
@@ -133,12 +154,23 @@ export function joinCatalog(
     const channelWindow = entry.contextWindow;
     const specWindow = spec?.contextWindow;
     const contextWindow = channelWindow ?? specWindow;
+    const noneEnabled = entry.noneEnabled === true;
+    const listed = entry.efforts?.length
+      ? entry.efforts
+      : spec
+        ? [...spec.efforts]
+        : [];
+    const pendingProbe = !spec && listed.length === 0;
     return {
       id: entry.id,
-      name: spec?.name ?? entry.id,
+      name: entry.name ?? spec?.name ?? displayModelName(entry.id),
       available: entry.available,
-      efforts: spec ? [...spec.efforts] : [],
+      efforts: pendingProbe
+        ? []
+        : fullestConsistentEfforts(listed.length ? [listed] : [], noneEnabled),
       input: spec ? [...spec.input] : [],
+      ...(pendingProbe ? { pendingProbe: true } : {}),
+      ...(noneEnabled ? { noneEnabled: true } : {}),
       ...(contextWindow !== undefined ? { contextWindow } : {}),
       ...(specWindow !== undefined && specWindow !== contextWindow
         ? { specContextWindow: specWindow }
@@ -151,13 +183,71 @@ export function joinCatalog(
   });
 }
 
-export function reasoningEfforts(efforts: readonly string[]): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const effort of efforts) {
-    if (effort === "none") out.off = "none";
-    else if (effort !== "off") out[effort] = effort;
+/** Majority levels across models.dev providers. `none` stays out until a probe sets noneEnabled. */
+export function fullestConsistentEfforts(
+  sets: readonly (readonly string[])[],
+  noneEnabled = false,
+): string[] {
+  const known = new Set<string>(["none", ...EFFORT_ORDER]);
+  const cleaned = sets
+    .map((set) => [
+      ...new Set(
+        set.filter(
+          (effort) =>
+            known.has(effort) && (effort !== "none" || noneEnabled),
+        ),
+      ),
+    ])
+    .filter((set) => set.length > 0);
+  if (cleaned.length === 0) return [];
+  const threshold = Math.ceil(cleaned.length / 2);
+  const counts = new Map<string, number>();
+  for (const set of cleaned) {
+    for (const effort of set) counts.set(effort, (counts.get(effort) ?? 0) + 1);
   }
-  return out;
+  const order = noneEnabled ? ["none", ...EFFORT_ORDER] : [...EFFORT_ORDER];
+  return order.filter((effort) => (counts.get(effort) ?? 0) >= threshold);
+}
+
+export function displayModelName(id: string): string {
+  return id
+    .split("-")
+    .filter((segment) => segment.length > 0)
+    .map((segment) => {
+      const brand = BRANDS[segment.toLowerCase()];
+      if (brand) return brand;
+      if (/^\d+(?:\.\d+)*$/.test(segment)) return segment;
+      return segment.charAt(0).toUpperCase() + segment.slice(1);
+    })
+    .join(" ");
+}
+
+export function reasoningEfforts(
+  efforts: readonly string[],
+  options?: { noneEnabled?: boolean },
+): Record<string, string> {
+  const selected = fullestConsistentEfforts(
+    [efforts],
+    options?.noneEnabled === true,
+  );
+  return Object.fromEntries(selected.map((effort) => [effort, effort]));
+}
+
+export function effortProbeRequest(modelId: string, effort: "none" | "high") {
+  return {
+    model: modelId,
+    store: false,
+    stream: true,
+    instructions: "Reply with exactly the word ok.",
+    input: [
+      {
+        role: "user",
+        content: [{ type: "input_text", text: "Reply with exactly the word ok." }],
+      },
+    ],
+    text: { verbosity: "low" },
+    reasoning: { effort },
+  };
 }
 
 export class CatalogStore {
@@ -301,7 +391,17 @@ function parseAvailability(value: unknown): AvailabilityModel {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("catalog");
   const item = value as Record<string, unknown>;
-  const allowed = ["id", "available", "verifiedAt", "servedModel", "contextWindow"];
+  const allowed = [
+    "id",
+    "available",
+    "verifiedAt",
+    "name",
+    "efforts",
+    "noneEnabled",
+    "pendingProbe",
+    "servedModel",
+    "contextWindow",
+  ];
   if (Object.keys(item).some((key) => !allowed.includes(key)))
     throw new Error("catalog");
   const id = token(item.id, 128);
@@ -313,6 +413,16 @@ function parseAvailability(value: unknown): AvailabilityModel {
     available: item.available,
     verifiedAt: item.verifiedAt,
   };
+  if (item.name !== undefined) parsed.name = token(item.name, 128);
+  if (item.efforts !== undefined) parsed.efforts = effortList(item.efforts);
+  if (item.noneEnabled !== undefined) {
+    if (typeof item.noneEnabled !== "boolean") throw new Error("catalog");
+    parsed.noneEnabled = item.noneEnabled;
+  }
+  if (item.pendingProbe !== undefined) {
+    if (typeof item.pendingProbe !== "boolean") throw new Error("catalog");
+    parsed.pendingProbe = item.pendingProbe;
+  }
   if (item.servedModel !== undefined) parsed.servedModel = token(item.servedModel, 128);
   if (item.contextWindow !== undefined) parsed.contextWindow = positive(item.contextWindow);
   return parsed;
@@ -390,6 +500,15 @@ function specDocumentModel(item: Record<string, unknown>): SpecModel {
     input,
     ...(cost ? { cost } : {}),
   };
+}
+
+function effortList(value: unknown): string[] {
+  if (!Array.isArray(value)) throw new Error("catalog");
+  return value.map((effort) => {
+    if (!EFFORTS.includes(effort as (typeof EFFORTS)[number]))
+      throw new Error("catalog");
+    return effort as string;
+  });
 }
 
 function effortValues(value: unknown): string[] {

@@ -77,7 +77,7 @@ test("read failure has retry, then catalog and source; custom draft survives rel
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
   await screen.findByText("OpenCode Go");
   await openDetails();
-  await screen.findByText("fixture-model");
+  expect((await screen.findAllByText("fixture-model")).length).toBeGreaterThan(0);
   expect(screen.getByText("env")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: en.back }));
   await openAdd();
@@ -213,7 +213,7 @@ test("credential permission failure does not hide a successfully read model coun
     providers: [{ ...provider, error: "REF_NOT_ALLOWED" }],
   }));
   await openDetails();
-  await screen.findByText("fixture-model");
+  expect((await screen.findAllByText("fixture-model")).length).toBeGreaterThan(0);
   expect(screen.getByText("1 models")).toBeTruthy();
   expect(screen.queryByText("Model catalog unavailable")).toBeNull();
 });

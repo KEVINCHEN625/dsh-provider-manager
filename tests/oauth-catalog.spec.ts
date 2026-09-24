@@ -30,20 +30,35 @@ test("codex snapshots keep channel availability apart from models.dev specs", ()
       "gpt-6-astra",
       "gpt-6-sol",
       "gpt-6-luna",
-      "gpt-reserve",
       "gpt-5.6-sol",
       "gpt-5.6-terra",
       "gpt-5.6-luna",
       "gpt-5.5",
+      "gpt-reserve",
       "codex-auto-review",
     ]);
   expect(parsed.models.find((model) => model.id === "gpt-5.3-codex")).toMatchObject({
     available: false,
     verifiedAt: "2026-09-23",
   });
+  expect(parsed.models.find((model) => model.id === "gpt-5.6-luna")).toMatchObject({
+    name: "GPT-5.6 Luna",
+    efforts: ["low", "medium", "high", "xhigh", "max"],
+  });
   expect(parsed.models.find((model) => model.id === "gpt-5.6-luna")?.contextWindow).toBe(
     undefined,
   );
+  expect(parsed.models.find((model) => model.id === "gpt-5.5")?.efforts).not.toContain(
+    "none",
+  );
+  expect(parsed.models.find((model) => model.id === "gpt-reserve")).toMatchObject({
+    name: "GPT Reserve",
+    pendingProbe: true,
+  });
+  expect(parsed.models.find((model) => model.id === "codex-auto-review")).toMatchObject({
+    name: "Codex Auto Review",
+    pendingProbe: true,
+  });
   const specs = JSON.parse(
     readFileSync(
       new URL("../src/host/oauth-catalogs/models-dev-openai.json", import.meta.url),
@@ -60,7 +75,7 @@ test("codex snapshots keep channel availability apart from models.dev specs", ()
   );
   expect(joined.find((model) => model.id === "gpt-reserve")?.contextWindow).toBeUndefined();
   expect(joined.find((model) => model.id === "gpt-5.3-codex")?.available).toBe(false);
-  expect(reasoningEfforts(["none", "low"])).toEqual({ off: "none", low: "low" });
+  expect(reasoningEfforts(["none", "low"])).toEqual({ low: "low" });
   expect(modelsDevMirrors()[0]).toBe("https://models.dev/api.json");
   expect(catalogMirrors("openai-codex")[0]).toContain("dsh-provider-models");
 });
@@ -214,7 +229,7 @@ test("an empty signed-in profile becomes a managed selector and a handwritten ro
   await routes.onAuthorized("openai-codex", "OpenAI Codex", [row]);
   expect(user.providers["openai-codex"]).toEqual({
     displayName: "OpenAI Codex (Provider Manager)",
-    models: [{ id: "gpt-reserve" }],
+    models: [{ id: "gpt-reserve", name: "GPT Reserve" }],
   });
   expect(await routes.onAuthorized("foreign", "Foreign", [row])).toEqual({
     written: false,
@@ -303,12 +318,20 @@ test("login writes the catalog once, reset returns to {}, and logout keeps forei
   expect(models.find((model) => model.id === "gpt-5.3-codex")).toBeUndefined();
   expect(models.find((model) => model.id === "gpt-5.3-codex-spark")).toBeUndefined();
   expect(models.find((model) => model.id === "gpt-5.6-luna")).toMatchObject({
+    name: "GPT-5.6 Luna",
     contextWindow: 1_050_000,
-    reasoningEfforts: { off: "none", low: "low", max: "max" },
+    reasoningEfforts: {
+      low: "low",
+      medium: "medium",
+      high: "high",
+      xhigh: "xhigh",
+      max: "max",
+    },
   });
   expect(models).toHaveLength(9);
   expect(models.find((model) => model.id === "gpt-reserve")).toEqual({
     id: "gpt-reserve",
+    name: "GPT Reserve",
   });
   expect(providers(f)["openai-codex"].displayName).toBe(
     "ChatGPT Codex (Provider Manager)",

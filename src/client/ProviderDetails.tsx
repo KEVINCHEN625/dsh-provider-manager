@@ -59,7 +59,7 @@ function GoCatalogTable({ provider, t }: { provider: Provider; t: Translate }) {
         <table className="pm-catalog">
           <thead>
             <tr>
-              <th>{t("modelId")}</th>
+              <th>{t("modelColumn")}</th>
               <th>{t("catalogProtocol")}</th>
               <th>{t("catalogContext")}</th>
               <th>{t("catalogInputLimit")}</th>
@@ -302,7 +302,8 @@ export function ProviderDetails({
               <ul>
                 {provider.models.map((model) => (
                   <li key={model.id}>
-                    {model.id}
+                    <div>{model.name || model.id}</div>
+                    <code title={model.id}>{model.id}</code>
                     {model.api ? ` · ${model.api}` : ""}
                     {model.contextWindow
                       ? ` · ${formatContextWindow(model.contextWindow)}`
