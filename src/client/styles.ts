@@ -32,27 +32,25 @@ export const styles = `
   letter-spacing: -.5px;
 }
 .provider-manager .pm-header p { margin: 5px 0 0; color: var(--pm-muted); font-size: 12px; }
-.pm-banner {
+.pm-controls {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
-  border: 1px solid var(--pm-border);
-  border-radius: 11px;
-  padding: 14px 16px;
-  margin: 0 0 16px;
-  background: var(--dsw-alias-bg-module-platform, color-mix(in srgb, currentColor 4%, transparent));
+  margin: 0 0 12px;
 }
-.pm-count {
-  font-size: 27px;
-  line-height: 1;
-  font-weight: 550;
+.pm-status {
+  margin: 0;
+  color: var(--pm-muted);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -1px;
+  white-space: nowrap;
 }
-.pm-banner .pm-copy { flex: 1; min-width: 140px; }
-.pm-banner .pm-copy strong { display: block; font-size: 13px; }
-.pm-banner p { margin: 3px 0 0; color: var(--pm-muted); font-size: 11px; }
+.pm-status span {
+  margin-left: 8px;
+  color: var(--pm-faint);
+  font-size: 11px;
+}
 .pm-toolbar {
   display: flex;
   align-items: center;

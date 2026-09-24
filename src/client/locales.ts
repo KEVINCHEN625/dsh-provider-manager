@@ -1,12 +1,14 @@
 export const en = {
-  nav: "Provider manager",
+  nav: "Providers",
+  title: "Provider manager",
   loading: "Loading…",
   retry: "Retry",
   reload: "Reload metadata",
   intro:
     "Review account quota, then open an independent detail page to configure.",
-  connected: "Connected providers",
-  noMerge: "Quota belongs to each account. Totals are not merged.",
+  connected: "connected",
+  signedInCount: "signed in",
+  noMerge: "Quota stays on each account.",
   columnProvider: "Provider / connection",
   columnQuota: "Primary window · remaining",
   columnSetup: "Setup",
@@ -197,13 +199,15 @@ export const en = {
 };
 export type LocaleKey = keyof typeof en;
 export const zh: Record<LocaleKey, string> = {
-  nav: "Provider 管理",
+  nav: "服务商",
+  title: "Provider 管理",
   loading: "加载中…",
   retry: "重试",
   reload: "重新读取状态",
   intro: "先查看账户配额，再打开独立详情页进行配置。",
-  connected: "已连接的 provider",
-  noMerge: "配额按账户独立计算，不合并总额。",
+  connected: "已连接",
+  signedInCount: "已登录",
+  noMerge: "配额留在各个账号上。",
   columnProvider: "Provider / 连接",
   columnQuota: "主窗口 · 剩余",
   columnSetup: "设置",

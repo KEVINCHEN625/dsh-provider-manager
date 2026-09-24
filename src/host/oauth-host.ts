@@ -72,8 +72,13 @@ export class OAuthHost {
       (key) => this.credentials.readRecord(key),
     );
     const oauth: OAuthEntry[] = [];
-    for (const entry of listed.oauth)
+    for (const entry of listed.oauth) {
+      if (entry.configured && this.routes.state(entry.providerId) !== "custom") {
+        const hit = await this.catalogs.current(entry.providerId, signal);
+        await this.routes.writeManaged(entry.providerId, entry.label, hit.models);
+      }
       oauth.push(await this.decorate(entry, false, signal));
+    }
     return { oauth };
   }
   async quota(input: unknown, signal?: AbortSignal) {
@@ -112,9 +117,9 @@ export class OAuthHost {
   }
   async activateCatalog(input: unknown, signal?: AbortSignal) {
     const providerId = providerIdOf(input);
-    await this.requireEntry(providerId);
+    const entry = await this.requireEntry(providerId);
     const hit = await this.catalogs.current(providerId, signal);
-    await this.routes.activate(providerId, hit.models);
+    await this.routes.activate(providerId, entry.label, hit.models);
     return this.view(providerId, signal);
   }
   async resetCatalog(input: unknown, signal?: AbortSignal) {
@@ -124,12 +129,27 @@ export class OAuthHost {
     return this.view(providerId, signal);
   }
   private async afterAuthorized(providerId: string) {
+    const described = this.authorization.describe(
+      credentialKey(RECORD_SCOPE, providerId),
+    );
     const hit = await this.catalogs.current(providerId);
-    await this.routes.onAuthorized(providerId, hit.models);
+    await this.routes.onAuthorized(
+      providerId,
+      described?.label ?? providerId,
+      hit.models,
+    );
   }
   private async view(providerId: string, signal?: AbortSignal): Promise<OAuthCatalogView> {
+    const described = this.authorization.describe(
+      credentialKey(RECORD_SCOPE, providerId),
+    );
     const hit = await this.catalogs.current(providerId, signal);
-    if (hit.source === "remote") await this.routes.syncPinned(providerId, hit.models);
+    if (hit.source === "remote")
+      await this.routes.syncPinned(
+        providerId,
+        described?.label ?? providerId,
+        hit.models,
+      );
     const route = this.routes.state(providerId);
     return {
       providerId,

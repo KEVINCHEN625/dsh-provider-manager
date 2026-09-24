@@ -101,6 +101,14 @@ export function ProviderManager({
   const connected =
     state.snapshot?.providers.filter((item) => item.credential?.configured)
       .length ?? 0;
+  const signedIn =
+    state.snapshot?.oauth.filter((item) => item.configured).length ?? 0;
+  const statusLine =
+    filter === "oauth"
+      ? `${signedIn} ${t("signedInCount")}`
+      : filter === "llm"
+        ? `${connected} ${t("connected")}`
+        : `${connected} ${t("connected")} · ${signedIn} ${t("signedInCount")}`;
   const openProvider =
     view.kind === "detail"
       ? state.snapshot?.providers.find((item) => item.id === view.id)
@@ -120,7 +128,7 @@ export function ProviderManager({
         <>
           <div className="pm-header">
             <div>
-              <h2>{t("nav")}</h2>
+              <h2>{t("title")}</h2>
               <p>{t("intro")}</p>
             </div>
             {showAdd && (
@@ -129,13 +137,12 @@ export function ProviderManager({
               </button>
             )}
           </div>
-          <FilterTabs value={filter} onChange={setFilter} t={t} />
-          <div className="pm-banner">
-            <strong className="pm-count">{connected}</strong>
-            <div className="pm-copy">
-              <strong>{t("connected")}</strong>
-              <p>{t("noMerge")}</p>
-            </div>
+          <div className="pm-controls">
+            <FilterTabs value={filter} onChange={setFilter} t={t} />
+            <p className="pm-status">
+              {statusLine}
+              <span>{t("noMerge")}</span>
+            </p>
           </div>
           {state.status === "loading" && <p role="status">{t("loading")}</p>}
           {state.status === "error" && (

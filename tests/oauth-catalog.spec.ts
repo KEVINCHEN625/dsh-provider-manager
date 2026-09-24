@@ -13,7 +13,7 @@ import {
   reasoningEfforts,
   unwrapModelsDev,
 } from "../src/host/oauth-catalog.js";
-import { OAuthRoutes } from "../src/host/oauth-routes.js";
+import { OAuthRoutes, routeState } from "../src/host/oauth-routes.js";
 import { fixture } from "./fixtures/services.js";
 
 const snapshotPath = new URL(
@@ -179,6 +179,49 @@ test("a remote document carrying a token is discarded", async () => {
   ).toEqual({ openai: { models: {} } });
 });
 
+test("an empty signed-in profile becomes a managed selector and a handwritten route stays", async () => {
+  const user = {
+    providers: {
+      "openai-codex": {} as Record<string, unknown>,
+      foreign: { baseURL: "https://example.test/v1" },
+    },
+  };
+  const settings = {
+    describe: () => [{ ns: "llm-pi-ai", revision: 1, value: user, user }],
+    mutate: async (
+      _ns: string,
+      ops: { op: "set"; path: string[]; value?: unknown }[],
+    ) => {
+      for (const op of ops) {
+        if (op.path[0] !== "providers" || !op.path[1]) continue;
+        user.providers[op.path[1] as "openai-codex"] = op.value as Record<
+          string,
+          unknown
+        >;
+      }
+    },
+  };
+  const routes = new OAuthRoutes(settings);
+  expect(routeState(user.providers["openai-codex"], false)).toBe("empty");
+  expect(routeState(user.providers.foreign, false)).toBe("custom");
+  const row = {
+    id: "gpt-reserve",
+    name: "gpt-reserve",
+    available: true,
+    efforts: [],
+    input: [],
+  };
+  await routes.onAuthorized("openai-codex", "OpenAI Codex", [row]);
+  expect(user.providers["openai-codex"]).toEqual({
+    displayName: "OpenAI Codex (Provider Manager)",
+    models: [{ id: "gpt-reserve" }],
+  });
+  expect(await routes.onAuthorized("foreign", "Foreign", [row])).toEqual({
+    written: false,
+  });
+  expect(user.providers.foreign.baseURL).toBe("https://example.test/v1");
+});
+
 test("oauth entries put configured providers first, then labels", async () => {
   const result = await oauthEntries(
     {
@@ -258,11 +301,18 @@ test("login writes the catalog once, reset returns to {}, and logout keeps forei
     reasoningEfforts: Record<string, string>;
   }[];
   expect(models.find((model) => model.id === "gpt-5.3-codex")).toBeUndefined();
+  expect(models.find((model) => model.id === "gpt-5.3-codex-spark")).toBeUndefined();
   expect(models.find((model) => model.id === "gpt-5.6-luna")).toMatchObject({
     contextWindow: 1_050_000,
     reasoningEfforts: { off: "none", low: "low", max: "max" },
   });
-  expect(models.find((model) => model.id === "gpt-reserve")).toBeUndefined();
+  expect(models).toHaveLength(9);
+  expect(models.find((model) => model.id === "gpt-reserve")).toEqual({
+    id: "gpt-reserve",
+  });
+  expect(providers(f)["openai-codex"].displayName).toBe(
+    "ChatGPT Codex (Provider Manager)",
+  );
   expect(JSON.stringify(providers(f))).not.toMatch(/access_token|refresh_token|\bsk-|\beyJ/);
   const pinned = JSON.stringify(providers(f)["openai-codex"]);
   const again = host.logins.start({

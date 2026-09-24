@@ -73,9 +73,13 @@ with `available: true` and a complete spec. `gpt-reserve` and
 `codex-auto-review` stay visible but are not written, because models.dev has
 no spec for them. An unavailable row is not written.
 
-Sign-in writes `llm-pi-ai` `providers.<id>` only when that key is absent. No
-injectable models writes `{}`, which keeps the installed pi-ai catalog. An
-existing route, including a bare `{}`, is left alone.
+Sign-in writes `llm-pi-ai` `providers.<id>` when the catalog has available
+rows and the profile is missing, empty, or already marked with
+`displayName` containing `(Provider Manager)`. Each available row with a
+models.dev spec is written in full. An available row without a spec is written
+as `{ id }` only. A profile with any other fields is left alone. Logout
+removes a marked route. An existing `{}` is upgraded once the credential is
+configured.
 
 Details can activate an empty route on purpose, reset a route this plugin
 pinned by deleting `models`, and refresh a pinned list when a newer channel

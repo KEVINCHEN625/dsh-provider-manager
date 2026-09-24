@@ -50,12 +50,40 @@ export function routeState(
   if (!userProfile || typeof userProfile !== "object" || Array.isArray(userProfile))
     return "missing";
   const profile = userProfile as Record<string, unknown>;
+  const marked = hasManagedMark(profile);
   const models = profile.models;
   const pinned = Array.isArray(models) && models.length > 0;
-  const extra = Object.keys(profile).filter((key) => key !== "models");
-  if ((pinned || extra.length > 0) && !owned) return "custom";
-  if (pinned) return "pinned";
-  return "empty";
+  const foreign = Object.keys(profile).filter(
+    (key) => key !== "models" && key !== "displayName",
+  );
+  if (marked || (owned && foreign.length === 0))
+    return pinned ? "pinned" : "empty";
+  if (Object.keys(profile).length === 0) return "empty";
+  return "custom";
+}
+
+export const MANAGED_MARK = "(Provider Manager)";
+
+export function managedDisplayName(label: string) {
+  const name = label.trim();
+  if (!name) return `Provider ${MANAGED_MARK}`;
+  return name.includes(MANAGED_MARK) ? name : `${name} ${MANAGED_MARK}`;
+}
+
+export function hasManagedMark(profile: unknown) {
+  if (!profile || typeof profile !== "object" || Array.isArray(profile))
+    return false;
+  const displayName = (profile as { displayName?: unknown }).displayName;
+  return typeof displayName === "string" && displayName.includes(MANAGED_MARK);
+}
+
+/** Available rows become selector entries. A row without a models.dev spec keeps its id. */
+export function selectorModels(models: readonly OAuthCatalogModel[]) {
+  return models.flatMap((model) => {
+    if (!model.available) return [];
+    const full = modelProfiles([model]);
+    return full.length === 1 ? full : [{ id: model.id }];
+  });
 }
 
 export function modelProfiles(models: readonly OAuthCatalogModel[]) {
@@ -86,11 +114,20 @@ export function modelProfiles(models: readonly OAuthCatalogModel[]) {
 export class OAuthRoutes {
   private memoryOwned = new Set<string>();
   constructor(private settings: SettingsSurface | undefined) {}
-  async onAuthorized(providerId: string, models: readonly OAuthCatalogModel[]) {
-    return this.write(providerId, models, "login");
+  async onAuthorized(
+    providerId: string,
+    label: string,
+    models: readonly OAuthCatalogModel[],
+  ) {
+    return this.writeManaged(providerId, label, models);
   }
-  async activate(providerId: string, models: readonly OAuthCatalogModel[]) {
-    return this.write(providerId, models, "explicit");
+  async activate(
+    providerId: string,
+    label: string,
+    models: readonly OAuthCatalogModel[],
+  ) {
+    if (this.state(providerId) === "custom") throw new SafeError("UNSUPPORTED");
+    return this.writeManaged(providerId, label, models);
   }
   async reset(providerId: string) {
     if (!this.owned(providerId)) throw new SafeError("UNSUPPORTED");
@@ -127,18 +164,31 @@ export class OAuthRoutes {
       (routes as Record<string, unknown>)[providerId] === true
     );
   }
-  private async write(
+  async writeManaged(
     providerId: string,
+    label: string,
     models: readonly OAuthCatalogModel[],
-    mode: "login" | "explicit",
   ) {
     const state = this.state(providerId);
-    if (mode === "login" && state !== "missing") return { written: false };
-    if (mode === "explicit" && state === "custom")
-      throw new SafeError("UNSUPPORTED");
-    if (mode === "explicit" && state === "pinned") return { written: false };
-    const profiles = modelProfiles(models);
-    const value = profiles.length > 0 ? { models: profiles } : {};
+    if (state === "custom") return { written: false };
+    const nextModels = selectorModels(models);
+    if (nextModels.length < 1) return { written: false };
+    const current = this.userProfile(providerId);
+    const preserved =
+      current && typeof current === "object" && !Array.isArray(current)
+        ? Object.fromEntries(
+            Object.entries(current as Record<string, unknown>).filter(
+              ([key]) => key !== "models" && key !== "displayName",
+            ),
+          )
+        : {};
+    const value = {
+      ...preserved,
+      displayName: managedDisplayName(label),
+      models: nextModels,
+    };
+    if (JSON.stringify(current) === JSON.stringify(value))
+      return { written: false };
     await this.mutate("llm-pi-ai", [
       { op: "set", path: ["providers", providerId], value },
     ]);
@@ -153,20 +203,14 @@ export class OAuthRoutes {
       ]);
     return { written: true };
   }
-  async syncPinned(providerId: string, models: readonly OAuthCatalogModel[]) {
+  async syncPinned(
+    providerId: string,
+    label: string,
+    models: readonly OAuthCatalogModel[],
+  ) {
     if (this.state(providerId) !== "pinned") return false;
-    const next = modelProfiles(models);
-    if (next.length < 1) return false;
-    const current = this.userProfile(providerId);
-    const existing =
-      current && typeof current === "object" && !Array.isArray(current)
-        ? (current as { models?: unknown }).models
-        : undefined;
-    if (JSON.stringify(existing) === JSON.stringify(next)) return false;
-    await this.mutate("llm-pi-ai", [
-      { op: "set", path: ["providers", providerId], value: { models: next } },
-    ]);
-    return true;
+    const result = await this.writeManaged(providerId, label, models);
+    return result.written;
   }
   private userProfile(providerId: string): unknown {
     const section = this.section("llm-pi-ai");
