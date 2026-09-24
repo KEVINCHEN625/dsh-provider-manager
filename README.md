@@ -43,19 +43,31 @@ Channel reality is **probed, not assumed**: signing in triggers a lightweight ve
 
 ## Screenshots
 
-Settings → **Provider manager** — remaining quota on the list, details one click away:
+The promise, delivered: sign in once, the picker fills itself.
 
-![Provider manager list: OpenCode Go remaining quota, Command Code, custom API, Muse](docs/images/provider-manager-list.png)
+![Model picker after Codex sign-in: canonical names, and GPT-6 Sol efforts from Off through Max](docs/images/provider-manager-picker.png)
 
-OpenCode Go details — write the default key; Host reads 5-hour / weekly / monthly remaining:
+Settings → **Provider manager**. The ALL tab shows the brand marks and the remaining-quota column:
 
-![OpenCode Go account card](docs/images/provider-manager-opencode.png)
+![Provider manager list: ALL, LLM, and OAuth tabs, brand cards, and OpenCode Go remaining quota](docs/images/provider-manager-list.png)
 
-![OpenCode Go remaining quota windows](docs/images/provider-manager-quota.png)
+OAuth — Codex is signed in; the other providers stay signed out behind their own marks:
 
-Muse — device-code sign-in plus the Meta Model API fallback:
+![OAuth tab: Codex signed in, other providers signed out with their brand marks](docs/images/provider-manager-oauth-tab.png)
 
-![Muse details](docs/images/provider-manager-muse.png)
+Codex details — canonical names, context and output windows, effort levels including off, and unavailable rows:
+
+![Codex model table: canonical names, context windows, effort levels including off](docs/images/provider-manager-codex-models.png)
+
+OpenCode Go details — the key stays masked; Host reads the 5-hour, weekly, and monthly windows:
+
+![OpenCode Go account card with the key masked](docs/images/provider-manager-opencode.png)
+
+![OpenCode Go 5-hour, weekly, and monthly remaining quota](docs/images/provider-manager-quota.png)
+
+Muse — signed out, with the sign-in entry for the device-code flow:
+
+![Muse card signed out, showing the sign-in entry](docs/images/provider-manager-muse.png)
 
 One-click Meta Model API draft (`openai-responses` at `https://api.meta.ai/v1`):
 

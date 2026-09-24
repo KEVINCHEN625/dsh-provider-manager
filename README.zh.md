@@ -43,19 +43,31 @@ DeepSeek Harness 的理念是*万物皆插件*。本插件把这句话补完在 
 
 ## 截图
 
-设置 → **Provider 管理** —— 列表上就能看到剩余额度，点一下进详情：
+承诺已兑现：登录一次，选择器自己填好。
 
-![Provider 管理列表](docs/images/provider-manager-list.png)
+![登录 Codex 后的模型选择器：规范名，以及 GPT-6 Sol 从 Off 到 Max 的档位](docs/images/provider-manager-picker.png)
 
-OpenCode Go 详情 —— 写默认 key；Host 读取 5 小时 / 周 / 月剩余：
+设置 → **Provider 管理**。ALL 页能看到品牌厂标和剩余额度列：
 
-![OpenCode Go 账户卡片](docs/images/provider-manager-opencode.png)
+![Provider 管理列表：ALL、LLM、OAuth 三个分页，品牌卡片，以及 OpenCode Go 的剩余额度](docs/images/provider-manager-list.png)
 
-![OpenCode Go 剩余额度窗口](docs/images/provider-manager-quota.png)
+OAuth —— Codex 已登录；其余厂商保持未登录，各自带品牌厂标：
 
-Muse —— 设备码登录 + Meta Model API 回退入口：
+![OAuth 页：Codex 已登录，其余厂商为未登录态和品牌厂标](docs/images/provider-manager-oauth-tab.png)
 
-![Muse 详情](docs/images/provider-manager-muse.png)
+Codex 详情 —— 规范名、上下文和输出窗口、含 off 的 effort 档，以及不可用行：
+
+![Codex 模型表：规范名、上下文窗口、含 off 的 effort 档](docs/images/provider-manager-codex-models.png)
+
+OpenCode Go 详情 —— key 保持掩码；Host 读取 5 小时、周、月窗口：
+
+![OpenCode Go 账户卡片，key 为掩码](docs/images/provider-manager-opencode.png)
+
+![OpenCode Go 的 5 小时、周、月剩余额度](docs/images/provider-manager-quota.png)
+
+Muse —— 未登录，保留设备码流程的登录入口：
+
+![Muse 卡片未登录，显示登录入口](docs/images/provider-manager-muse.png)
 
 一键 Meta Model API 预填草稿（`openai-responses`，`https://api.meta.ai/v1`）：
 
