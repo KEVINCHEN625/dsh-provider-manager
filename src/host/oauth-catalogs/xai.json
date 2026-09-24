@@ -1,37 +1,45 @@
 {
-  "providerId": "kimi-coding",
+  "providerId": "xai",
   "models": [
     {
-      "id": "kimi-for-coding-highspeed",
+      "id": "grok-4.7",
       "available": false,
       "status": "unverified",
       "source": "models.dev",
       "verifiedAt": "2026-09-24",
-      "name": "Kimi For Coding HighSpeed"
+      "name": "Grok 4.7"
     },
     {
-      "id": "kimi-for-coding",
+      "id": "grok-4.3",
       "available": false,
       "status": "unverified",
       "source": "models.dev",
       "verifiedAt": "2026-09-24",
-      "name": "kimi-for-coding"
+      "name": "Grok 4.3"
     },
     {
-      "id": "k3-256k",
+      "id": "grok-4.5",
       "available": false,
       "status": "unverified",
       "source": "models.dev",
       "verifiedAt": "2026-09-24",
-      "name": "Kimi K3-256K"
+      "name": "Grok 4.5"
     },
     {
-      "id": "k3",
+      "id": "grok-4.20-multi-agent-0309",
       "available": false,
       "status": "unverified",
       "source": "models.dev",
       "verifiedAt": "2026-09-24",
-      "name": "Kimi K3"
+      "name": "Grok 4.20 Multi-Agent"
+    },
+    {
+      "id": "grok-4.6",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Grok 4.6"
     }
   ]
 }

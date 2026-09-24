@@ -1,0 +1,65 @@
+{
+  "providerId": "kimi-coding",
+  "models": [
+    {
+      "id": "kimi-for-coding",
+      "name": "kimi-for-coding",
+      "contextWindow": 1048576,
+      "maxTokens": 32768,
+      "efforts": [
+        "low",
+        "high",
+        "max"
+      ],
+      "input": [
+        "text",
+        "image"
+      ],
+      "cost": {
+        "input": 0,
+        "output": 0
+      },
+      "releaseDate": "2026-09-11"
+    },
+    {
+      "id": "k3-256k",
+      "name": "Kimi K3-256K",
+      "contextWindow": 262144,
+      "maxTokens": 131072,
+      "efforts": [
+        "low",
+        "high",
+        "max"
+      ],
+      "input": [
+        "text",
+        "image"
+      ],
+      "cost": {
+        "input": 0,
+        "output": 0
+      },
+      "releaseDate": "2026-07-16"
+    },
+    {
+      "id": "k3",
+      "name": "Kimi K3",
+      "contextWindow": 1048576,
+      "maxTokens": 131072,
+      "efforts": [
+        "low",
+        "high",
+        "max"
+      ],
+      "input": [
+        "text",
+        "image"
+      ],
+      "cost": {
+        "input": 0,
+        "output": 0
+      },
+      "releaseDate": "2026-07-16"
+    }
+  ]
+}

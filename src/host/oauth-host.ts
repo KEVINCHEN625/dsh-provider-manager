@@ -25,6 +25,12 @@ import {
   recordDigest,
 } from "./oauth-usage.js";
 import { CatalogStore } from "./oauth-catalog.js";
+import {
+  PROBE_COOLDOWN_MS,
+  classifyProbe,
+  nextProbeIds,
+  probeRequest,
+} from "./oauth-probe.js";
 import { OAuthRoutes, type SettingsSurface } from "./oauth-routes.js";
 import type { OAuthCatalogView } from "../shared/protocol.js";
 
@@ -37,6 +43,8 @@ export interface OAuthCredentialStore {
 export interface OAuthHostConfig {
   oauthQuotaTtlMs?: number;
   oauthCatalogTtlMs?: number;
+  probeFetch?: typeof fetch;
+  now?: () => number;
 }
 
 export class OAuthHost {
@@ -75,7 +83,7 @@ export class OAuthHost {
     const oauth: OAuthEntry[] = [];
     for (const entry of listed.oauth) {
       if (entry.configured && this.routes.state(entry.providerId) !== "custom") {
-        const hit = await this.catalogs.current(entry.providerId, signal);
+        const hit = await this.hit(entry.providerId, signal);
         await this.routes.writeManaged(entry.providerId, entry.label, hit.models);
       }
       oauth.push(await this.decorate(entry, false, signal));
@@ -121,7 +129,7 @@ export class OAuthHost {
   async activateCatalog(input: unknown, signal?: AbortSignal) {
     const providerId = providerIdOf(input);
     const entry = await this.requireEntry(providerId);
-    const hit = await this.catalogs.current(providerId, signal);
+    const hit = await this.hit(providerId, signal);
     await this.routes.activate(providerId, entry.label, hit.models);
     return this.view(providerId, signal);
   }
@@ -131,12 +139,39 @@ export class OAuthHost {
     await this.routes.reset(providerId);
     return this.view(providerId, signal);
   }
+  async probeCatalog(input: unknown, signal?: AbortSignal) {
+    const providerId = providerIdOf(input);
+    const entry = await this.requireEntry(providerId);
+    await this.probeProvider(providerId, false);
+    const hit = await this.hit(providerId, signal);
+    if (this.routes.state(providerId) !== "custom")
+      await this.routes.writeManaged(providerId, entry.label, hit.models);
+    return this.view(providerId, signal);
+  }
+  async selectCatalogModel(input: unknown, signal?: AbortSignal) {
+    const parsed = exact(input, ["providerId", "modelId"]);
+    const providerId = text(parsed.providerId);
+    const modelId = text(parsed.modelId);
+    if (!isCredentialKeySegment(providerId) || providerId !== "openrouter")
+      throw new SafeError("INVALID_INPUT");
+    if (!/^[A-Za-z0-9_.:/-]{1,128}$/.test(modelId))
+      throw new SafeError("INVALID_INPUT");
+    const entry = await this.requireEntry(providerId);
+    if (!this.catalogs.hasModel(providerId, modelId))
+      throw new SafeError("INVALID_INPUT");
+    await this.routes.addSelection(providerId, modelId);
+    const hit = await this.hit(providerId, signal);
+    if (this.routes.state(providerId) !== "custom")
+      await this.routes.writeManaged(providerId, entry.label, hit.models);
+    return this.view(providerId, signal);
+  }
   private async afterAuthorized(providerId: string, scope: string) {
     if (scope !== RECORD_SCOPE) return;
     const described = this.authorization.describe(
       credentialKey(RECORD_SCOPE, providerId),
     );
-    const hit = await this.catalogs.current(providerId);
+    await this.probeProvider(providerId, true);
+    const hit = await this.hit(providerId);
     await this.routes.onAuthorized(
       providerId,
       described?.label ?? providerId,
@@ -147,7 +182,7 @@ export class OAuthHost {
     const described = this.authorization.describe(
       credentialKey(RECORD_SCOPE, providerId),
     );
-    const hit = await this.catalogs.current(providerId, signal);
+    const hit = await this.hit(providerId, signal);
     if (hit.source === "remote")
       await this.routes.syncPinned(
         providerId,
@@ -155,15 +190,90 @@ export class OAuthHost {
         hit.models,
       );
     const route = this.routes.state(providerId);
+    const credential = this.routes.credentialState(providerId);
     return {
       providerId,
       source: hit.source,
       specSource: hit.specSource,
       route,
       models: hit.models,
+      probeRemaining: hit.models.filter((model) => model.status === "unverified").length,
+      ...(credential ? { credential } : {}),
       ...(hit.fetchedAt ? { fetchedAt: hit.fetchedAt } : {}),
       ...(hit.specFetchedAt ? { specFetchedAt: hit.specFetchedAt } : {}),
     };
+  }
+  private async hit(providerId: string, signal?: AbortSignal) {
+    return this.catalogs.current(
+      providerId,
+      signal,
+      this.routes.catalogOverlay(providerId),
+    );
+  }
+  private now() {
+    return this.config.now ? this.config.now() : Date.now();
+  }
+  private async probeProvider(providerId: string, freshLogin: boolean) {
+    if (freshLogin) await this.routes.rememberCredential(providerId, "ok");
+    else if (this.routes.credentialState(providerId) === "expired") return;
+    let record: unknown;
+    try {
+      record = await this.credentials.readRecord(
+        credentialKey(RECORD_SCOPE, providerId),
+      );
+    } catch {
+      return;
+    }
+    const token = accessTokenFromRecord(record);
+    if (!token) return;
+    const fetchImpl = this.config.probeFetch ?? fetch;
+    const hit = await this.hit(providerId);
+    const ids = nextProbeIds(
+      hit.models,
+      this.routes.cooledUntil(providerId),
+      this.now(),
+    );
+    for (const modelId of ids) {
+      const request = probeRequest(providerId, modelId, token);
+      if (!request) return;
+      let status = 0;
+      let body = "";
+      try {
+        const response = await fetchImpl(request.url, {
+          method: request.method,
+          headers: request.headers,
+          body: JSON.stringify(request.body),
+          signal: AbortSignal.timeout(8_000),
+        });
+        status = response.status;
+        body = (await response.text()).slice(0, 4_096);
+      } catch {
+        continue;
+      }
+      const classified = classifyProbe(status, body, modelId);
+      if (classified.kind === "credential") {
+        await this.routes.rememberCredential(providerId, "expired");
+        return;
+      }
+      const previous = hit.models.find((model) => model.id === modelId);
+      const nextStatus =
+        classified.kind === "available"
+          ? "available"
+          : classified.kind === "unavailable"
+            ? "unavailable"
+            : previous?.status === "available" || previous?.status === "unavailable"
+              ? previous.status
+              : "unverified";
+      await this.routes.rememberProbe(providerId, modelId, {
+        status: nextStatus,
+        verifiedAt: new Date(this.now()).toISOString().slice(0, 10),
+        cooledUntil: this.now() + PROBE_COOLDOWN_MS,
+        ...(classified.kind === "available" && classified.servedModel
+          ? { servedModel: classified.servedModel }
+          : {}),
+        ...(previous?.noneEnabled === true ? { noneEnabled: true } : {}),
+      });
+    }
   }
   private async requireEntry(providerId: string) {
     const listed = await oauthEntries(

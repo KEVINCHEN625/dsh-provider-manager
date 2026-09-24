@@ -39,6 +39,15 @@ models.dev spec; it is not a registry field. Local install for review is
 which also embeds the vendor marks that simple-icons does not ship. The
 recorded 0.3.2 artifact is unchanged.
 
+Executor (2026-09-24): **0.4.0** maps channel `none` to host key `off`
+(`reasoningEfforts.off = "none"`), adds the three-state catalog, sign-in
+probes, and the Muse Spark 1.1/1.2 rows. Gates: typecheck, host 365, client
+59, build. Artifact
+`dsh-provider-manager-0.4.0-664a895a3f1b.tgz`
+(`664a895a3f1bd7ca725fd05cd7a6af0f21c571c215167d09f9f5c61ef45fe1aa`),
+both profiles, `sameArtifact: true`. Host tests passed 10/10.
+Registry: https://github.com/KEVINCHEN625/dsh-provider-models/pull/1
+
 Executor (2026-09-24): **0.3.1** injects models.dev names and reasoning
 efforts. `none` stays out until a channel probe sets `noneEnabled`. Models
 with no models.dev row keep a normalized name. `pendingProbe` is computed

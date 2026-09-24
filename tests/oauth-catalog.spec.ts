@@ -52,7 +52,10 @@ test("codex snapshots keep channel availability apart from models.dev specs", ()
   expect(parsed.models.find((model) => model.id === "gpt-5.5")?.efforts).toContain(
     "none",
   );
-  expect(parsed.models.find((model) => model.id === "gpt-6-astra")?.noneEnabled).toBeUndefined();
+  expect(parsed.models.find((model) => model.id === "gpt-6-astra")?.noneEnabled).toBe(false);
+  expect(parsed.models.find((model) => model.id === "gpt-5.3-codex")?.status).toBe(
+    "unavailable",
+  );
   expect(parsed.models.find((model) => model.id === "gpt-reserve")?.pendingProbe).toBeUndefined();
   expect(parsed.models.find((model) => model.id === "codex-auto-review")?.pendingProbe).toBeUndefined();
   const specs = JSON.parse(
@@ -77,6 +80,36 @@ test("codex snapshots keep channel availability apart from models.dev specs", ()
   expect(reasoningEfforts(["none", "low"])).toEqual({ low: "low" });
   expect(modelsDevMirrors()[0]).toBe("https://models.dev/api.json");
   expect(catalogMirrors("openai-codex")[0]).toContain("dsh-provider-models");
+});
+
+test("oauth seeds follow the measured catalog and leave radius unpublished", () => {
+  const read = (name: string) =>
+    JSON.parse(
+      readFileSync(new URL(`../src/host/oauth-catalogs/${name}`, import.meta.url), "utf8"),
+    ) as { models: { id: string; status?: string }[] };
+  expect(read("anthropic.json").models).toHaveLength(15);
+  expect(read("anthropic.json").models.map((model) => model.id)).toContain(
+    "claude-opus-5-5",
+  );
+  expect(read("github-copilot.json").models).toHaveLength(32);
+  expect(read("kimi-coding.json").models.map((model) => model.id).sort()).toEqual([
+    "k3",
+    "k3-256k",
+    "kimi-for-coding",
+    "kimi-for-coding-highspeed",
+  ]);
+  expect(read("xai.json").models.map((model) => model.id).sort()).toEqual([
+    "grok-4.20-multi-agent-0309",
+    "grok-4.3",
+    "grok-4.5",
+    "grok-4.6",
+    "grok-4.7",
+  ]);
+  expect(read("openrouter.json").models.length).toBeLessThanOrEqual(50);
+  expect(read("openrouter.json").models.every((model) => model.status === "unverified")).toBe(
+    true,
+  );
+  expect(() => read("radius.json")).toThrow();
 });
 
 test("a zero-context models.dev row does not discard the provider", () => {
@@ -320,7 +353,7 @@ test("login writes the catalog once, reset returns to {}, and logout keeps forei
     name: "GPT-5.6 Luna",
     contextWindow: 1_050_000,
     reasoningEfforts: {
-      none: "none",
+      off: "none",
       low: "low",
       medium: "medium",
       high: "high",

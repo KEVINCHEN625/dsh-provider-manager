@@ -503,6 +503,27 @@ export class Controller {
       ),
     );
   }
+  async probeCatalog(providerId: string): Promise<OAuthCatalogView> {
+    return validateOAuthCatalog(
+      await this.request((signal) =>
+        this.transport.rpc("oauth/catalog/probe", { providerId }, signal),
+      ),
+    );
+  }
+  async selectCatalogModel(
+    providerId: string,
+    modelId: string,
+  ): Promise<OAuthCatalogView> {
+    return validateOAuthCatalog(
+      await this.request((signal) =>
+        this.transport.rpc(
+          "oauth/catalog/select",
+          { providerId, modelId },
+          signal,
+        ),
+      ),
+    );
+  }
   async logout(providerId: string) {
     if (this.disposed) return;
     this.operation("logout", { status: "loading" });

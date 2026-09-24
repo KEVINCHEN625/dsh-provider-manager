@@ -54,6 +54,8 @@ function model(
 
 export const MUSE_MODELS: Model<Api>[] = [
   model("muse-spark-1.3", displayModelName("muse-spark-1.3"), true),
+  model("muse-spark-1.2", displayModelName("muse-spark-1.2"), false),
+  model("muse-spark-1.1", displayModelName("muse-spark-1.1"), false),
   model(
     "muse-spark-1.3-contributor",
     displayModelName("muse-spark-1.3-contributor"),

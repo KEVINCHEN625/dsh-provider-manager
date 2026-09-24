@@ -50,6 +50,7 @@ export function OAuthDetails({
   const [copied, setCopied] = useState(false);
   const [catalog, setCatalog] = useState<OAuthCatalogView>();
   const [catalogError, setCatalogError] = useState<string>();
+  const [catalogPick, setCatalogPick] = useState("");
   useEffect(() => {
     let dead = false;
     setCatalog(undefined);
@@ -382,15 +383,17 @@ export function OAuthDetails({
                         <td>
                           {model.efforts.map((effort) => (
                             <span key={effort} className="pm-effort">
-                              {effort}
+                              {effort === "none" ? "off" : effort}
                             </span>
                           ))}
                         </td>
                         <td>{model.input.join(", ") || "—"}</td>
                         <td>
-                          {model.available
-                            ? t("catalogAvailable")
-                            : t("catalogUnavailable")}
+                          {model.status === "unverified"
+                            ? t("catalogUnverified")
+                            : model.status === "unavailable" || !model.available
+                              ? t("catalogUnavailable")
+                              : t("catalogAvailable")}
                           {model.verifiedAt ? <div>{model.verifiedAt}</div> : null}
                         </td>
                       </tr>
@@ -399,8 +402,57 @@ export function OAuthDetails({
                 </table>
               </div>
             ) : (
-              <p>{t("catalogEmpty")}</p>
+              <p>
+                {entry.providerId === "radius"
+                  ? t("catalogUnknown")
+                  : t("catalogEmpty")}
+              </p>
             )}
+            {catalog.credential === "expired" ? (
+              <p>{t("catalogCredential")}</p>
+            ) : null}
+            {entry.configured && (catalog.probeRemaining ?? 0) > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void controller
+                    .probeCatalog(entry.providerId)
+                    .then(setCatalog)
+                    .catch((error: unknown) =>
+                      setCatalogError(errorCode(error)),
+                    );
+                }}
+              >
+                {t("catalogProbe")}
+              </button>
+            ) : null}
+            {entry.providerId === "openrouter" ? (
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const modelId = catalogPick.trim();
+                  if (!modelId) return;
+                  void controller
+                    .selectCatalogModel(entry.providerId, modelId)
+                    .then((next) => {
+                      setCatalog(next);
+                      setCatalogPick("");
+                    })
+                    .catch((error: unknown) =>
+                      setCatalogError(errorCode(error)),
+                    );
+                }}
+              >
+                <input
+                  value={catalogPick}
+                  onChange={(event) => setCatalogPick(event.target.value)}
+                  placeholder={t("catalogAddPlaceholder")}
+                  aria-label={t("catalogAdd")}
+                />
+                <button type="submit">{t("catalogAdd")}</button>
+                <p>{t("catalogSuggest")}</p>
+              </form>
+            ) : null}
             {catalog.route === "pinned" && (
               <button
                 type="button"

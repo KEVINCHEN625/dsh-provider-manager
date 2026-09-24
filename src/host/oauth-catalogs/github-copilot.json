@@ -2,144 +2,260 @@
   "providerId": "github-copilot",
   "models": [
     {
-      "id": "claude-fable-5",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-fable-5.1",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-haiku-4.5",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-opus-4.7",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-opus-4.8",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-opus-5",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-sonnet-4.6",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-sonnet-5",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "gemini-3.5-flash",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "gemini-3.6-flash",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "gemini-3.7-flash",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "gemini-3.8-flash",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "gpt-6-astra",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "kimi-k2.7-code",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "kimi-k3",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "gpt-5-mini",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "gpt-5.3-codex",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
       "id": "gpt-5.4",
       "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "GPT-5.4"
     },
     {
-      "id": "gpt-5.4-mini",
+      "id": "grok-4.7",
       "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Grok 4.7"
     },
     {
       "id": "gpt-5.4-nano",
       "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "GPT-5.4 nano"
     },
     {
-      "id": "gpt-5.5",
+      "id": "claude-opus-4.7",
       "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Opus 4.7"
     },
     {
-      "id": "gpt-5.6-luna",
+      "id": "kimi-k3",
       "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Kimi K3"
     },
     {
-      "id": "gpt-5.6-sol",
+      "id": "gpt-5-mini",
       "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "GPT-5 Mini"
     },
     {
-      "id": "gpt-5.6-terra",
+      "id": "claude-opus-4.8",
       "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Opus 4.8"
     },
     {
-      "id": "grok-4.5",
+      "id": "gpt-5.3-codex",
       "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "GPT-5.3 Codex"
     },
     {
-      "id": "grok-4.6",
+      "id": "gemini-3.6-flash",
       "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Gemini 3.6 Flash"
     },
     {
       "id": "mai-code-1-flash-picker",
       "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "MAI-Code-1-Flash"
     },
     {
       "id": "mai-code-1.1-flash",
       "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "MAI-Code-1.1-Flash"
+    },
+    {
+      "id": "claude-haiku-4.5",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Haiku 4.5 (latest)"
+    },
+    {
+      "id": "gpt-6-astra",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "GPT-6 Astra"
+    },
+    {
+      "id": "grok-4.5",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Grok 4.5"
+    },
+    {
+      "id": "claude-opus-5",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Opus 5"
+    },
+    {
+      "id": "gemini-3.5-flash",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Gemini 3.5 Flash"
+    },
+    {
+      "id": "claude-fable-5.1",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Fable 5.1"
+    },
+    {
+      "id": "claude-fable-5",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Fable 5"
+    },
+    {
+      "id": "gpt-5.4-mini",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "GPT-5.4 mini"
+    },
+    {
+      "id": "gpt-5.6-luna",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "GPT-5.6 Luna"
+    },
+    {
+      "id": "gpt-5.5",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "GPT-5.5"
+    },
+    {
+      "id": "claude-sonnet-5",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Sonnet 5"
+    },
+    {
+      "id": "gemini-3.7-flash",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Gemini 3.7 Flash"
+    },
+    {
+      "id": "claude-sonnet-4.6",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Sonnet 4.6"
+    },
+    {
+      "id": "gemini-3.8-flash",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Gemini 3.8 Flash"
+    },
+    {
+      "id": "gpt-6-luna",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "GPT-6 Luna"
+    },
+    {
+      "id": "claude-opus-5.5",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Opus 5.5"
+    },
+    {
+      "id": "gpt-5.6-terra",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "GPT-5.6 Terra"
+    },
+    {
+      "id": "kimi-k2.7-code",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Kimi K2.7 Code"
+    },
+    {
+      "id": "grok-4.6",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Grok 4.6"
+    },
+    {
+      "id": "gpt-5.6-sol",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "GPT-5.6 Sol"
+    },
+    {
+      "id": "gpt-6-sol",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "GPT-6 Sol"
     }
   ]
 }

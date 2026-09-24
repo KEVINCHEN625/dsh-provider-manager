@@ -86,6 +86,12 @@ export function apply(ctx: Context, config: OAuthEntryConfig = {}) {
               case "oauth/catalog/reset":
                 value = await host.resetCatalog(payload, combined);
                 break;
+              case "oauth/catalog/probe":
+                value = await host.probeCatalog(payload, combined);
+                break;
+              case "oauth/catalog/select":
+                value = await host.selectCatalogModel(payload, combined);
+                break;
               case "login/start":
                 value = host.logins.start(payload);
                 break;

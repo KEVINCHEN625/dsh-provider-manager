@@ -2,74 +2,124 @@
   "providerId": "anthropic",
   "models": [
     {
-      "id": "claude-fable-5",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-fable-5-1",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
       "id": "claude-haiku-4-5",
       "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-haiku-4-5-20251001",
-      "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Haiku 4.5 (latest)"
     },
     {
       "id": "claude-opus-4-5",
       "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-opus-4-5-20251101",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-opus-4-6",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-opus-4-7",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-opus-4-8",
-      "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-opus-5",
-      "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Opus 4.5 (latest)"
     },
     {
       "id": "claude-sonnet-4-5",
       "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Sonnet 4.5 (latest)"
+    },
+    {
+      "id": "claude-opus-5-5",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Opus 5.5"
+    },
+    {
+      "id": "claude-fable-5-1",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Fable 5.1"
+    },
+    {
+      "id": "claude-opus-4-5-20251101",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Opus 4.5"
+    },
+    {
+      "id": "claude-opus-5",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Opus 5"
+    },
+    {
+      "id": "claude-fable-5",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Fable 5"
+    },
+    {
+      "id": "claude-opus-4-8",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Opus 4.8"
     },
     {
       "id": "claude-sonnet-4-5-20250929",
       "available": false,
-      "verifiedAt": "2026-09-24"
-    },
-    {
-      "id": "claude-sonnet-4-6",
-      "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Sonnet 4.5"
     },
     {
       "id": "claude-sonnet-5",
       "available": false,
-      "verifiedAt": "2026-09-24"
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Sonnet 5"
+    },
+    {
+      "id": "claude-opus-4-6",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Opus 4.6"
+    },
+    {
+      "id": "claude-haiku-4-5-20251001",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Haiku 4.5"
+    },
+    {
+      "id": "claude-sonnet-4-6",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Sonnet 4.6"
+    },
+    {
+      "id": "claude-opus-4-7",
+      "available": false,
+      "status": "unverified",
+      "source": "models.dev",
+      "verifiedAt": "2026-09-24",
+      "name": "Claude Opus 4.7"
     }
   ]
 }

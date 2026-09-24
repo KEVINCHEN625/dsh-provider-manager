@@ -253,6 +253,16 @@ export function validateOAuthCatalog(value: unknown): OAuthCatalogView {
   };
   if (data.fetchedAt !== undefined) view.fetchedAt = iso(data.fetchedAt);
   if (data.specFetchedAt !== undefined) view.specFetchedAt = iso(data.specFetchedAt);
+  if (data.probeRemaining !== undefined) {
+    if (!Number.isSafeInteger(data.probeRemaining) || (data.probeRemaining as number) < 0)
+      throw { code: "UNAVAILABLE" };
+    view.probeRemaining = data.probeRemaining as number;
+  }
+  if (data.credential !== undefined) {
+    if (data.credential !== "ok" && data.credential !== "expired")
+      throw { code: "UNAVAILABLE" };
+    view.credential = data.credential;
+  }
   const encoded = JSON.stringify(view);
   if (/access_token|refresh_token|\bsk-|\beyJ/.test(encoded))
     throw { code: "UNAVAILABLE" };
@@ -285,6 +295,29 @@ function validateCatalogModel(value: unknown): OAuthCatalogModel {
     parsed.verifiedAt = verifiedAt;
   }
   if (model.servedModel !== undefined) parsed.servedModel = string(model.servedModel);
+  if (model.pendingProbe !== undefined) {
+    if (model.pendingProbe !== true && model.pendingProbe !== false)
+      throw { code: "UNAVAILABLE" };
+    if (model.pendingProbe) parsed.pendingProbe = true;
+  }
+  if (model.noneEnabled !== undefined) {
+    if (typeof model.noneEnabled !== "boolean") throw { code: "UNAVAILABLE" };
+    parsed.noneEnabled = model.noneEnabled;
+  }
+  if (model.status !== undefined) {
+    if (
+      model.status !== "available" &&
+      model.status !== "unavailable" &&
+      model.status !== "unverified"
+    )
+      throw { code: "UNAVAILABLE" };
+    parsed.status = model.status;
+  }
+  if (model.source !== undefined) {
+    if (model.source !== "probe" && model.source !== "models.dev")
+      throw { code: "UNAVAILABLE" };
+    parsed.source = model.source;
+  }
   if (model.cost !== undefined) {
     const cost = record(model.cost);
     const inputCost = cost.input;
