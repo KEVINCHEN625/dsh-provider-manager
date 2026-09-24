@@ -4,6 +4,7 @@ import type {} from "@deepseek-ai/dsh-client-locale/client";
 import type {} from "@deepseek-ai/dsh-client-ui-settings/client";
 import type {} from "@deepseek-ai/dsh-client-ui-renderer/client";
 import { Controller } from "./controller.js";
+import { installConfigFormsCompat } from "./config-forms-compat.js";
 import { createTransport } from "./transport.js";
 import { ProviderManager } from "./ProviderManager.js";
 import { en, zh, type LocaleKey } from "./locales.js";
@@ -16,6 +17,7 @@ declare module "@deepseek-ai/dsh-client-ui-slots" {
 }
 export const inject = ["slots", "locale", "connection"];
 export function apply(ctx: Context & { connection: ConnectionHandle }) {
+  installConfigFormsCompat(ctx);
   ctx.effect(() => ctx.locale.register("provider-manager", { en, zh }));
   ctx.effect(() => {
     const style = document.createElement("style");

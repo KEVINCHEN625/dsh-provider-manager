@@ -19,6 +19,13 @@ themselves — an upstream harness gap this plugin closes. Do not re-trace the
 realm theory when investigating service visibility; start from "is anything
 mounting this service?".
 
+Executor (2026-09-24): **0.3.2** registers a client `configForms` service
+when the 0.1.5 host only provides `settingsScope`. Pet and Skin Center
+inject `configForms`, and web boot fails closed while those entries stay
+pending. The shim reads and writes through `settingsScope`. Installed
+artifact: `dsh-provider-manager-0.3.2-5f99539f14b1.tgz`
+(`5f99539f14b1ded79dbbdce712577b857d0312d8e290d8c61e590e1ab1f41fe1`).
+
 Executor (2026-09-24): **0.3.1** injects models.dev names and reasoning
 efforts. `none` stays out until a channel probe sets `noneEnabled`. Models
 with no models.dev row keep a normalized name and `pendingProbe`.
