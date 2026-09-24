@@ -21,8 +21,9 @@ mounting this service?".
 
 Executor (2026-09-24): **0.3.0** injects a managed selector after sign-in,
 adds an unofficial Muse device-code route, and embeds brand marks. Claude,
-Kimi, and Copilot availability snapshots are the pi-ai catalog crossed with
-models.dev on 2026-09-24. Their live probes stay behind `--confirm`.
+Kimi, and Copilot candidate lists are the installed client catalog crossed
+with models.dev on 2026-09-24. They are not injected until a confirmed probe
+passes.
 
 Executor (2026-09-23): **0.2.14 splits the OAuth catalog.** Model parameters
 come from models.dev. Channel availability stays in

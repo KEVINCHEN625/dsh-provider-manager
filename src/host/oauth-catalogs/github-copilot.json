@@ -3,142 +3,142 @@
   "models": [
     {
       "id": "claude-fable-5",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-fable-5.1",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-haiku-4.5",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-opus-4.7",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-opus-4.8",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-opus-5",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-sonnet-4.6",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-sonnet-5",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "gemini-3.5-flash",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "gemini-3.6-flash",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "gemini-3.7-flash",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "gemini-3.8-flash",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "gpt-6-astra",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "kimi-k2.7-code",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "kimi-k3",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "gpt-5-mini",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "gpt-5.3-codex",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "gpt-5.4",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "gpt-5.4-mini",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "gpt-5.4-nano",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "gpt-5.5",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "gpt-5.6-luna",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "gpt-5.6-sol",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "gpt-5.6-terra",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "grok-4.5",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "grok-4.6",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "mai-code-1-flash-picker",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "mai-code-1.1-flash",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     }
   ]

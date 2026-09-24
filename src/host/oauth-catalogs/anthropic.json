@@ -3,72 +3,72 @@
   "models": [
     {
       "id": "claude-fable-5",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-fable-5-1",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-haiku-4-5",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-haiku-4-5-20251001",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-opus-4-5",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-opus-4-5-20251101",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-opus-4-6",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-opus-4-7",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-opus-4-8",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-opus-5",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-sonnet-4-5",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-sonnet-4-5-20250929",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-sonnet-4-6",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "claude-sonnet-5",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     }
   ]

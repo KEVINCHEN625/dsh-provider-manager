@@ -3,22 +3,22 @@
   "models": [
     {
       "id": "k3",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "k3-256k",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "kimi-for-coding",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     },
     {
       "id": "kimi-for-coding-highspeed",
-      "available": true,
+      "available": false,
       "verifiedAt": "2026-09-24"
     }
   ]

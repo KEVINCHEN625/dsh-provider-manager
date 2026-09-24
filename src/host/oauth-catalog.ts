@@ -1,7 +1,4 @@
 import codexAvailability from "./oauth-catalogs/openai-codex.json" with { type: "json" };
-import anthropicAvailability from "./oauth-catalogs/anthropic.json" with { type: "json" };
-import kimiAvailability from "./oauth-catalogs/kimi-coding.json" with { type: "json" };
-import copilotAvailability from "./oauth-catalogs/github-copilot.json" with { type: "json" };
 import openaiSpecs from "./oauth-catalogs/models-dev-openai.json" with { type: "json" };
 import type { OAuthCatalogModel, OAuthCatalogSource } from "../shared/protocol.js";
 
@@ -22,9 +19,6 @@ const SECRET_VALUE = /^(sk-|eyJ)/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const MODELS_DEV_PROVIDER: Record<string, string> = {
   "openai-codex": "openai",
-  anthropic: "anthropic",
-  "kimi-coding": "kimi-code-plan-global",
-  "github-copilot": "github-copilot",
 };
 
 export interface SpecModel {
@@ -60,9 +54,6 @@ export interface CatalogHit {
 
 const AVAILABILITY: Record<string, unknown> = {
   "openai-codex": codexAvailability,
-  anthropic: anthropicAvailability,
-  "kimi-coding": kimiAvailability,
-  "github-copilot": copilotAvailability,
 };
 const SPECS: Record<string, unknown> = {
   openai: openaiSpecs,
