@@ -126,6 +126,7 @@ export class OAuthRoutes {
     label: string,
     models: readonly OAuthCatalogModel[],
   ) {
+    if (!this.settings) throw new SafeError("UNAVAILABLE");
     if (this.state(providerId) === "custom") throw new SafeError("UNSUPPORTED");
     return this.writeManaged(providerId, label, models);
   }
@@ -169,6 +170,7 @@ export class OAuthRoutes {
     label: string,
     models: readonly OAuthCatalogModel[],
   ) {
+    if (!this.settings) return { written: false };
     const state = this.state(providerId);
     if (state === "custom") return { written: false };
     const nextModels = selectorModels(models);

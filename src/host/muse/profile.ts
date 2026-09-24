@@ -12,8 +12,6 @@ import type { ResolvedPiAiProviderProfile } from "@deepseek-ai/dsh-llm-pi-ai";
 import { sanitizeMuseWire } from "../opencode/policies/responses.js";
 import {
   MUSE_ENDPOINT,
-  MUSE_KEY_ID,
-  MUSE_KEY_SCOPE,
   MUSE_MODEL_IDS,
   MUSE_MODELS,
   MUSE_NAME,
@@ -40,11 +38,12 @@ function wrapMuseApi(api: ProviderStreams): ProviderStreams {
 }
 
 export function createMuseProfile(): ResolvedPiAiProviderProfile {
-  const key = `${MUSE_KEY_SCOPE}/${MUSE_KEY_ID}`;
   return {
     provider: MUSE_ROUTE,
     displayName: MUSE_NAME,
-    apiKeyEnv: credentialRef(key),
+    // The store key is provider-manager/muse. credentialRef only accepts an
+    // env-style name, and the adapter reads the record itself.
+    apiKeyEnv: credentialRef("PROVIDER_MANAGER_MUSE"),
     streamIdleTimeoutMs: 300000,
     maxRequestImageBytes: 20 * 1024 * 1024,
     requestImagePixelBudget: 2048 * 2048,
