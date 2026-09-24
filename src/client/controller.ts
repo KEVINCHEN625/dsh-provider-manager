@@ -7,11 +7,13 @@ import {
   validateLoginEvents,
   validateOAuthSnapshot,
   validateOAuthEntry,
+  validateOAuthCatalog,
 } from "./validation.js";
 import type {
   IndexedLoginEvent,
   LoginPromptEvent,
   LoginResult,
+  OAuthCatalogView,
   Provider,
   QuotaSnapshot,
   Snapshot,
@@ -479,6 +481,27 @@ export class Controller {
     } catch (error) {
       this.operation(key, { status: "error", error: errorCode(error) });
     }
+  }
+  async loadCatalog(providerId: string): Promise<OAuthCatalogView> {
+    return validateOAuthCatalog(
+      await this.request((signal) =>
+        this.transport.rpc("oauth/catalog", { providerId }, signal),
+      ),
+    );
+  }
+  async activateCatalog(providerId: string): Promise<OAuthCatalogView> {
+    return validateOAuthCatalog(
+      await this.request((signal) =>
+        this.transport.rpc("oauth/catalog/activate", { providerId }, signal),
+      ),
+    );
+  }
+  async resetCatalog(providerId: string): Promise<OAuthCatalogView> {
+    return validateOAuthCatalog(
+      await this.request((signal) =>
+        this.transport.rpc("oauth/catalog/reset", { providerId }, signal),
+      ),
+    );
   }
   async logout(providerId: string) {
     if (this.disposed) return;

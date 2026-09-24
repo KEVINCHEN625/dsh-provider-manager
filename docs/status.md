@@ -1,19 +1,15 @@
 # Current status
 
-Executor (2026-09-23): **0.2.10 is installed on the local Web and headless
-profiles.** OAuth sign-in runs in the `provider-manager-oauth` row, which
-mounts the official authorization service and registers its browser route on
-the same `webServer` carrier as the main plugin. The OAuth tab lists llm-pi-ai
-flows. A required `authorization` inject is not shipped: it fails the whole
-boot. Content-hashed tarball
-`dsh-provider-manager-0.2.10-4098cd09b303.tgz`, SHA256
-`4098cd09b3036a882a6e3711d7be6c5763b43e806c5a4601cabdd67c7f7b3bbe`.
-`check-deploy-consistency` reports the same artifact on Web and headless.
-Host tests 340, client tests 58. Formal Muse Spark 1.3 stays on OpenCode Zen
-with effort `max`; it is not added to the legacy Muse sanitizer. No completed
-OAuth login and no live quota window: the credential store has no
-`llm-pi-ai/*` grant. See [oauth-r3-probe.md](oauth-r3-probe.md) and
-[deployment.md](deployment.md).
+Executor (2026-09-23): **0.2.14 splits the OAuth catalog.** Model parameters
+come from models.dev. Channel availability stays in
+<https://github.com/KEVINCHEN625/dsh-provider-models>. The Codex seed is the
+nine client-catalog models, verified 2026-09-23. Each model's context comes
+from its own models.dev entry.
+`gpt-5.3-codex` remains listed and unavailable. No background timer. Sign-in
+writes a route only when that provider key is absent. Shipped artifact
+`dsh-provider-manager-0.2.14-9dccad6703cb.tgz`, SHA-256
+`9dccad6703cb05e695a78f52c86664a88ee43c25cd616fa9065920179aade337`,
+installed on web and headless. See [oauth-catalog.md](oauth-catalog.md).
 
 Planning handoff (2026-09-23): user requested a plan for another executor to
 cover all OpenCode Go models and then remove the duplicate legacy card from

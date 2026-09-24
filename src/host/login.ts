@@ -143,6 +143,10 @@ export async function oauthEntries(
       inFlight: entry.inFlight === true,
     });
   }
+  oauth.sort((a, b) => {
+    if (a.configured !== b.configured) return a.configured ? -1 : 1;
+    return a.label.localeCompare(b.label, "en", { sensitivity: "base" });
+  });
   return { oauth };
 }
 
@@ -178,6 +182,7 @@ export class LoginSessionManager {
     private getAuthorization: () => AuthorizationSurface | undefined,
     private now: () => number = () => Date.now(),
     private id: () => string = () => randomBytes(16).toString("hex"),
+    private onAuthorized?: (providerId: string) => Promise<void>,
   ) {}
   start(input: unknown): LoginStartResult {
     this.sweep();
@@ -328,8 +333,14 @@ export class LoginSessionManager {
         interaction,
         signal: session.attempt.signal,
       });
-      if (outcome.status === "authorized") this.finish(session, "ok");
-      else this.finish(session, session.declined ? "declined" : "cancelled");
+      if (outcome.status === "authorized") {
+        try {
+          await this.onAuthorized?.(credentialKeyId(session.key));
+        } catch {
+          /* The credential is already stored. A route write must not fail login. */
+        }
+        this.finish(session, "ok");
+      } else this.finish(session, session.declined ? "declined" : "cancelled");
     } catch (error) {
       if (session.attempt.signal.aborted) {
         this.finish(session, session.declined ? "declined" : "cancelled");

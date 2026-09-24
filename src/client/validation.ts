@@ -5,6 +5,8 @@ import {
   type Snapshot,
   type QuotaSnapshot,
   type QuotaWindow,
+  type OAuthCatalogModel,
+  type OAuthCatalogView,
   type OAuthEntry,
   type OAuthKind,
   type OAuthQuota,
@@ -228,6 +230,80 @@ function validateOAuthQuota(value: unknown): OAuthQuota {
     quota.error = data.error as OAuthQuota["error"];
   }
   return quota;
+}
+const catalogSources = ["snapshot", "remote", "official"] as const;
+const routeStates = ["missing", "empty", "pinned", "custom"] as const;
+export function validateOAuthCatalog(value: unknown): OAuthCatalogView {
+  const data = record(value);
+  if (!catalogSources.includes(data.source as (typeof catalogSources)[number]))
+    throw { code: "UNAVAILABLE" };
+  if (!catalogSources.includes(data.specSource as (typeof catalogSources)[number]))
+    throw { code: "UNAVAILABLE" };
+  if (!routeStates.includes(data.route as (typeof routeStates)[number]))
+    throw { code: "UNAVAILABLE" };
+  if (!Array.isArray(data.models) || data.models.length > 200)
+    throw { code: "UNAVAILABLE" };
+  const view: OAuthCatalogView = {
+    providerId: string(data.providerId),
+    source: data.source as OAuthCatalogView["source"],
+    specSource: data.specSource as OAuthCatalogView["specSource"],
+    route: data.route as OAuthCatalogView["route"],
+    models: data.models.map((item) => validateCatalogModel(item)),
+  };
+  if (data.fetchedAt !== undefined) view.fetchedAt = iso(data.fetchedAt);
+  if (data.specFetchedAt !== undefined) view.specFetchedAt = iso(data.specFetchedAt);
+  const encoded = JSON.stringify(view);
+  if (/access_token|refresh_token|\bsk-|\beyJ/.test(encoded))
+    throw { code: "UNAVAILABLE" };
+  return view;
+}
+function validateCatalogModel(value: unknown): OAuthCatalogModel {
+  const model = record(value);
+  if (!Array.isArray(model.efforts) || !Array.isArray(model.input))
+    throw { code: "UNAVAILABLE" };
+  const input = model.input.map((modality) => {
+    const next = string(modality);
+    if (next !== "text" && next !== "image") throw { code: "UNAVAILABLE" };
+    return next;
+  });
+  const parsed: OAuthCatalogModel = {
+    id: string(model.id),
+    name: string(model.name),
+    available: boolean(model.available),
+    efforts: model.efforts.map((effort) => string(effort)),
+    input,
+  };
+  if (model.contextWindow !== undefined)
+    parsed.contextWindow = positive(model.contextWindow);
+  if (model.specContextWindow !== undefined)
+    parsed.specContextWindow = positive(model.specContextWindow);
+  if (model.maxTokens !== undefined) parsed.maxTokens = positive(model.maxTokens);
+  if (model.verifiedAt !== undefined) {
+    const verifiedAt = string(model.verifiedAt);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(verifiedAt)) throw { code: "UNAVAILABLE" };
+    parsed.verifiedAt = verifiedAt;
+  }
+  if (model.servedModel !== undefined) parsed.servedModel = string(model.servedModel);
+  if (model.cost !== undefined) {
+    const cost = record(model.cost);
+    const inputCost = cost.input;
+    const outputCost = cost.output;
+    if (
+      typeof inputCost !== "number" ||
+      typeof outputCost !== "number" ||
+      !Number.isFinite(inputCost) ||
+      !Number.isFinite(outputCost) ||
+      inputCost < 0 ||
+      outputCost < 0
+    )
+      throw { code: "UNAVAILABLE" };
+    parsed.cost = { input: inputCost, output: outputCost };
+  }
+  return parsed;
+}
+function positive(value: unknown): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 1) throw { code: "UNAVAILABLE" };
+  return value as number;
 }
 export function validateOAuthSnapshot(value: unknown): {
   oauth: OAuthEntry[];

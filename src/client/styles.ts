@@ -407,6 +407,15 @@ export const styles = `
 .pm-catalog th { color: var(--pm-muted); font-weight: 550; white-space: nowrap; }
 .pm-catalog code { font-size: 11px; color: var(--pm-muted); }
 .pm-catalog-blocked td { color: var(--pm-muted); }
+.pm-effort {
+  display: inline-block;
+  margin: 0 4px 4px 0;
+  padding: 0 7px;
+  border: 1px solid var(--pm-border);
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 18px;
+}
 .pm-page { min-width: 0; }
 .pm-page-head {
   display: flex;

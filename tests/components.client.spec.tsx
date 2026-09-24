@@ -534,6 +534,54 @@ test("FilterTabs show ALL LLM OAuth and hide the other groups", async () => {
   expect(screen.queryByRole("button", { name: en.addProvider })).toBeNull();
 });
 
+test("oauth details show the codex catalog windows and effort pills", async () => {
+  setup(en, async (endpoint: string) => {
+    if (endpoint === "oauth/catalog")
+      return {
+        providerId: "openai-codex",
+        source: "snapshot",
+        route: "empty",
+        specSource: "snapshot",
+        models: [
+          {
+            id: "gpt-5.6-luna",
+            name: "GPT-5.6 Luna",
+            available: true,
+            contextWindow: 272_000,
+            specContextWindow: 1_050_000,
+            maxTokens: 128_000,
+            efforts: ["none", "low", "medium", "high", "xhigh", "max"],
+            input: ["text", "image"],
+            verifiedAt: "2026-09-23",
+          },
+          {
+            id: "gpt-5.3-codex",
+            name: "GPT-5.3 Codex",
+            available: false,
+            contextWindow: 272_000,
+            maxTokens: 128_000,
+            efforts: ["low", "medium", "high", "xhigh"],
+            input: ["text", "image"],
+            servedModel: "gpt-5.6-luna",
+            verifiedAt: "2026-09-23",
+          },
+        ],
+      };
+    return { ...snapshot, oauth: [oauthEntry] };
+  });
+  fireEvent.click(await screen.findByRole("tab", { name: "OAuth" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: `${en.details}: ChatGPT Codex` }),
+  );
+  expect(await screen.findByText("gpt-5.6-luna")).toBeTruthy();
+  expect(screen.getAllByText("272K").length).toBeGreaterThan(0);
+  expect(screen.getByText(/1\.05M/)).toBeTruthy();
+  expect(screen.getByText(en.catalogUnavailable)).toBeTruthy();
+  expect(screen.getByText(`${en.catalogServed} gpt-5.6-luna${en.catalogServedSuffix}`)).toBeTruthy();
+  expect(screen.getAllByText(en.catalogSourceSnapshot).length).toBeGreaterThan(0);
+  expect(screen.getByRole("button", { name: en.catalogActivate })).toBeTruthy();
+});
+
 test("oauthUnavailable empty state does not crash", async () => {
   setup(en, async () => ({
     ...snapshot,

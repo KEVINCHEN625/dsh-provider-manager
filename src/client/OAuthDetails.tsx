@@ -1,11 +1,33 @@
 import { useEffect, useId, useState } from "react";
-import { PROMPT_WITHDRAWN, type OAuthEntry } from "../shared/protocol.js";
+import {
+  PROMPT_WITHDRAWN,
+  type OAuthCatalogView,
+  type OAuthEntry,
+} from "../shared/protocol.js";
+import { formatContextWindow } from "../shared/api-presets.js";
 import type { Controller, State } from "./controller.js";
 import type { Translate, LocaleKey } from "./locales.js";
+import { errorCode } from "./controller.js";
 import { oauthBrandColor, oauthQuotaView, oauthStatus } from "./OAuthCard.js";
 import { QuotaSummary } from "./QuotaSummary.js";
 import { Result } from "./Result.js";
 import { RoleBadge } from "./ProviderIcon.js";
+
+function formatTokens(value: number | undefined) {
+  if (value === undefined) return "—";
+  if (value === 1_050_000) return "1.05M";
+  return formatContextWindow(value);
+}
+
+function canActivate(model: OAuthCatalogView["models"][number]) {
+  return (
+    model.available &&
+    model.contextWindow !== undefined &&
+    model.maxTokens !== undefined &&
+    model.efforts.length > 0 &&
+    model.input.length > 0
+  );
+}
 
 export function OAuthDetails({
   entry,
@@ -26,6 +48,24 @@ export function OAuthDetails({
   const [method, setMethod] = useState(entry.methods[0]?.id || "");
   const [answer, setAnswer] = useState("");
   const [copied, setCopied] = useState(false);
+  const [catalog, setCatalog] = useState<OAuthCatalogView>();
+  const [catalogError, setCatalogError] = useState<string>();
+  useEffect(() => {
+    let dead = false;
+    setCatalog(undefined);
+    setCatalogError(undefined);
+    void controller
+      .loadCatalog(entry.providerId)
+      .then((view) => {
+        if (!dead) setCatalog(view);
+      })
+      .catch((error: unknown) => {
+        if (!dead) setCatalogError(errorCode(error));
+      });
+    return () => {
+      dead = true;
+    };
+  }, [controller, entry.providerId]);
   useEffect(() => {
     setAnswer("");
   }, [login?.pendingPrompt?.seq, state.clearEpoch]);
@@ -244,6 +284,155 @@ export function OAuthDetails({
           {t("loginRetry")}
         </button>
       )}
+      <section className="pm-card">
+        <h3>{t("models")}</h3>
+        {catalog ? (
+          <>
+            <p className="pm-meter-detail">
+              <span>{t("catalogSpec")}</span>
+              <span>{" · "}</span>
+              <span>
+                {t(
+                  catalog.specSource === "remote"
+                    ? "catalogSourceRemote"
+                    : catalog.specSource === "snapshot"
+                      ? "catalogSourceSnapshot"
+                      : "catalogSourceOfficial",
+                )}
+              </span>
+              {catalog.specFetchedAt ? (
+                <span>
+                  {" · "}
+                  {t("catalogFetched")} {catalog.specFetchedAt}
+                </span>
+              ) : null}
+            </p>
+            <p className="pm-meter-detail">
+              <span>{t("catalogChannel")}</span>
+              <span>{" · "}</span>
+              <span>
+                {t(
+                  catalog.source === "remote"
+                    ? "catalogSourceRemote"
+                    : catalog.source === "snapshot"
+                      ? "catalogSourceSnapshot"
+                      : "catalogSourceOfficial",
+                )}
+              </span>
+              {catalog.fetchedAt ? (
+                <span>
+                  {" · "}
+                  {t("catalogFetched")} {catalog.fetchedAt}
+                </span>
+              ) : null}
+              <span>
+                {" · "}
+                {t(
+                  catalog.route === "pinned"
+                    ? "catalogRoutePinned"
+                    : catalog.route === "custom"
+                      ? "catalogRouteCustom"
+                      : catalog.route === "missing"
+                        ? "catalogRouteMissing"
+                        : "catalogRouteEmpty",
+                )}
+              </span>
+            </p>
+            {catalog.models.length > 0 ? (
+              <div className="pm-catalog-wrap">
+                <table className="pm-catalog">
+                  <thead>
+                    <tr>
+                      <th>{t("modelId")}</th>
+                      <th>{t("catalogContext")}</th>
+                      <th>{t("catalogMaxOutput")}</th>
+                      <th>{t("catalogReasoning")}</th>
+                      <th>{t("catalogInput")}</th>
+                      <th>{t("catalogStatus")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {catalog.models.map((model) => (
+                      <tr key={model.id}>
+                        <td>
+                          <div>{model.name}</div>
+                          <code>{model.id}</code>
+                          {model.servedModel ? (
+                            <div>
+                              {t("catalogServed")} {model.servedModel}
+                              {t("catalogServedSuffix")}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td>
+                          <span>{formatTokens(model.contextWindow)}</span>
+                          {model.specContextWindow !== undefined &&
+                          model.specContextWindow !== model.contextWindow ? (
+                            <div>
+                              {t("catalogSpec")} {formatTokens(model.specContextWindow)}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td>{formatTokens(model.maxTokens)}</td>
+                        <td>
+                          {model.efforts.map((effort) => (
+                            <span key={effort} className="pm-effort">
+                              {effort}
+                            </span>
+                          ))}
+                        </td>
+                        <td>{model.input.join(", ") || "—"}</td>
+                        <td>
+                          {model.available
+                            ? t("catalogAvailable")
+                            : t("catalogUnavailable")}
+                          {model.verifiedAt ? <div>{model.verifiedAt}</div> : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p>{t("catalogEmpty")}</p>
+            )}
+            {catalog.route === "pinned" && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!window.confirm(t("catalogResetConfirm"))) return;
+                  void controller
+                    .resetCatalog(entry.providerId)
+                    .then(setCatalog)
+                    .catch((error: unknown) =>
+                      setCatalogError(errorCode(error)),
+                    );
+                }}
+              >
+                {t("catalogReset")}
+              </button>
+            )}
+            {(catalog.route === "missing" || catalog.route === "empty") &&
+              catalog.models.some(canActivate) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void controller
+                      .activateCatalog(entry.providerId)
+                      .then(setCatalog)
+                      .catch((error: unknown) =>
+                        setCatalogError(errorCode(error)),
+                      );
+                  }}
+                >
+                  {t("catalogActivate")}
+                </button>
+              )}
+          </>
+        ) : (
+          <p>{catalogError ? t(catalogError as LocaleKey) : t("loading")}</p>
+        )}
+      </section>
       {entry.quota?.status === "unsupported" ? (
         <p>{t("oauthQuotaUnsupported")}</p>
       ) : (

@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { CredentialKey } from "@deepseek-ai/dsh-credentials";
 import { credentialKey, isCredentialKeySegment } from "@deepseek-ai/dsh-credentials";
 import {
@@ -22,6 +23,9 @@ import {
   oauthUsageAdapters,
   recordDigest,
 } from "./oauth-usage.js";
+import { CatalogStore } from "./oauth-catalog.js";
+import { OAuthRoutes, type SettingsSurface } from "./oauth-routes.js";
+import type { OAuthCatalogView } from "../shared/protocol.js";
 
 export interface OAuthCredentialStore {
   describeRecord(key: CredentialKey): Promise<RecordInfo>;
@@ -31,17 +35,31 @@ export interface OAuthCredentialStore {
 
 export interface OAuthHostConfig {
   oauthQuotaTtlMs?: number;
+  oauthCatalogTtlMs?: number;
 }
 
 export class OAuthHost {
   readonly logins: LoginSessionManager;
+  private routes: OAuthRoutes;
+  private catalogs: CatalogStore;
   constructor(
     private authorization: AuthorizationSurface,
     private credentials: OAuthCredentialStore,
     private quotaReader: QuotaReader = new QuotaReader(),
     private config: OAuthHostConfig = {},
+    settings?: SettingsSurface,
+    catalogs?: CatalogStore,
   ) {
-    this.logins = new LoginSessionManager(() => this.authorization);
+    this.catalogs =
+      catalogs ??
+      new CatalogStore({ ttlMs: config.oauthCatalogTtlMs });
+    this.routes = new OAuthRoutes(settings);
+    this.logins = new LoginSessionManager(
+      () => this.authorization,
+      () => Date.now(),
+      () => randomBytes(16).toString("hex"),
+      (providerId) => this.afterAuthorized(providerId),
+    );
   }
   dispose() {
     this.logins.dispose();
@@ -84,7 +102,44 @@ export class OAuthHost {
       throw new SafeError("INVALID_INPUT");
     await this.credentials.deleteRecord(credentialKey(RECORD_SCOPE, providerId));
     this.quotaReader.invalidate(`oauth:${providerId}`);
+    await this.routes.removeOwned(providerId);
     return { removed: true };
+  }
+  async catalog(input: unknown, signal?: AbortSignal): Promise<OAuthCatalogView> {
+    const providerId = providerIdOf(input);
+    await this.requireEntry(providerId);
+    return this.view(providerId, signal);
+  }
+  async activateCatalog(input: unknown, signal?: AbortSignal) {
+    const providerId = providerIdOf(input);
+    await this.requireEntry(providerId);
+    const hit = await this.catalogs.current(providerId, signal);
+    await this.routes.activate(providerId, hit.models);
+    return this.view(providerId, signal);
+  }
+  async resetCatalog(input: unknown, signal?: AbortSignal) {
+    const providerId = providerIdOf(input);
+    await this.requireEntry(providerId);
+    await this.routes.reset(providerId);
+    return this.view(providerId, signal);
+  }
+  private async afterAuthorized(providerId: string) {
+    const hit = await this.catalogs.current(providerId);
+    await this.routes.onAuthorized(providerId, hit.models);
+  }
+  private async view(providerId: string, signal?: AbortSignal): Promise<OAuthCatalogView> {
+    const hit = await this.catalogs.current(providerId, signal);
+    if (hit.source === "remote") await this.routes.syncPinned(providerId, hit.models);
+    const route = this.routes.state(providerId);
+    return {
+      providerId,
+      source: hit.source,
+      specSource: hit.specSource,
+      route,
+      models: hit.models,
+      ...(hit.fetchedAt ? { fetchedAt: hit.fetchedAt } : {}),
+      ...(hit.specFetchedAt ? { specFetchedAt: hit.specFetchedAt } : {}),
+    };
   }
   private async requireEntry(providerId: string) {
     const listed = await oauthEntries(
@@ -175,6 +230,13 @@ export class OAuthHost {
       ? value
       : OAUTH_QUOTA_TTL_MS;
   }
+}
+
+function providerIdOf(input: unknown) {
+  const parsed = exact(input, ["providerId"]);
+  const providerId = text(parsed.providerId);
+  if (!isCredentialKeySegment(providerId)) throw new SafeError("INVALID_INPUT");
+  return providerId;
 }
 
 function quotaOf(snapshot: QuotaSnapshot): OAuthQuota {

@@ -45,17 +45,54 @@ same carrier the main plugin uses. Without that carrier, `connection.rpc.handle`
 does not attach a browser route: the row is active, the client call fails, and
 the OAuth tab shows the absent-service copy even though `list()` works.
 
-Real Web profile (`~/.dsh`, port 3080) after installing
-`dsh-provider-manager-0.2.10-4098cd09b303.tgz` on Web and headless:
+## Probe B form (shipped)
 
-- Boot reached the local URL. The OAuth tab listed the same llm-pi-ai cards,
-  all "Not signed in".
-- OpenAI Codex Sign in reached the public device-login page. Cancel returned
-  the card to "Not signed in". The login was not completed.
+This is not a cross-realm proxy and not a second package. `cordis.patch.yml`
+inserts two rows from one tarball:
+
+- `id: provider-manager`, `name: dsh-provider-manager` (main ledger, quota, custom API, built-in Go)
+- `id: provider-manager-oauth`, `name: dsh-provider-manager/oauth`
+
+The oauth entry's exported `inject` is only `["credentials"]`. `apply` calls
+`ctx.plugin(AuthorizationService)` when that service is absent. Login RPC is
+registered later from the nested, optional
+`ctx.inject(["authorization", "connection", "webServer"], ...)`. The row does
+not set `isolate`, so the mounted service is visible to `llm-pi-ai` in the
+same tree. If the mount throws, the catch leaves the row quiet. If
+`webServer` is absent, the nested inject never runs and the main row still
+mounts. Updating either row is one `dsh plugin add` of the content-hashed
+tarball; both entries come from that package.
+
+## Decline chain (isolated, 0.2.11)
+
+Markers in `artifacts/oauth-chain-markers.txt`. No URL, code, or token was
+written there.
+
+```
+OAUTH_NOTIFY {"hasUrl":true,"hasCode":false}
+OAUTH_PROMPT {"kind":"text"}
+OAUTH_BEGIN {"serviceStatus":"cancelled","declinedFlag":true,"mapped":"declined"}
+```
+
+The page showed a `claude.ai` link, then Decline. The official service
+settled `cancelled`; this plugin mapped that decline to session result
+`declined`, and the page read "Sign-in declined." The login was not
+finished, so no grant record was committed and the main snapshot could not
+observe a configured change.
+
+Real Web profile (`~/.dsh`, port 3080) after installing
+`dsh-provider-manager-0.2.11-527df6c3686c.tgz` on Web and headless:
+
+- Boot reached the local URL. The OAuth tab listed the llm-pi-ai cards
+  (39 detail buttons), all "Not signed in". Screenshot:
+  `artifacts/oauth-r3-real-cards.png`.
+- Anthropic Sign in reached a `claude.ai` authorize link. Cancel returned
+  "Sign-in cancelled." and "Not signed in". The login was not completed.
 - `~/.dsh/.credentials.yaml` has no `llm-pi-ai/*` record, so a live remaining
   window was not requested.
-- Launchd stdout and stderr contain none of the markers `access_token`,
-  `refresh_token`, or `Bearer `.
+- Launchd stdout and stderr contain none of the markers `sk-`, `eyJ`,
+  `access_token`, `refresh_token`, or `Bearer `. Host and client test output
+  (340 and 58 passed) match that.
 - `node scripts/check-deploy-consistency.mjs` reported `sameArtifact: true`
   for `cordis.patch.yml`, `lib/client.js`, `lib/index.js`, `lib/oauth.js`,
   and `lib/quota-0E4Xaz5G.js`.

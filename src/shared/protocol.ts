@@ -106,6 +106,34 @@ export interface OAuthEntry {
   quota?: OAuthQuota;
   quotaFetchedAt?: string;
 }
+export type OAuthCatalogSource = "snapshot" | "remote" | "official";
+export type OAuthRouteState = "missing" | "empty" | "pinned" | "custom";
+export interface OAuthCatalogCost {
+  input: number;
+  output: number;
+}
+export interface OAuthCatalogModel {
+  id: string;
+  name: string;
+  available: boolean;
+  efforts: string[];
+  input: Array<"text" | "image">;
+  contextWindow?: number;
+  specContextWindow?: number;
+  maxTokens?: number;
+  cost?: OAuthCatalogCost;
+  verifiedAt?: string;
+  servedModel?: string;
+}
+export interface OAuthCatalogView {
+  providerId: string;
+  source: OAuthCatalogSource;
+  specSource: OAuthCatalogSource;
+  route: OAuthRouteState;
+  models: OAuthCatalogModel[];
+  fetchedAt?: string;
+  specFetchedAt?: string;
+}
 export type LoginPromptKind = "text" | "secret" | "select";
 export type LoginNoticeEvent = {
   kind: "notice";

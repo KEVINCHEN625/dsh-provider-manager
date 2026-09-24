@@ -1,10 +1,12 @@
 import type { Context } from "@deepseek-ai/cordis";
+import type {} from "@deepseek-ai/dsh-settings";
 import AuthorizationService from "@deepseek-ai/dsh-authorization";
 import type {} from "@deepseek-ai/dsh-client-connection";
 import type {} from "@deepseek-ai/dsh-host-webserver";
 import { exact, SafeError } from "../shared/protocol.js";
 import { authorizationOf } from "./login.js";
 import { OAuthHost, type OAuthCredentialStore, type OAuthHostConfig } from "./oauth-host.js";
+import { installOwnedRoutes, type SettingsSurface } from "./oauth-routes.js";
 
 export const inject = ["credentials"];
 export interface OAuthEntryConfig extends OAuthHostConfig {
@@ -27,10 +29,16 @@ export function apply(ctx: Context, config: OAuthEntryConfig = {}) {
   const credentials = credentialStore(ctx);
   // webServer stays a nested inject. A required export inject would leave this
   // row pending on headless and fail the whole boot.
-  ctx.inject(["authorization", "connection", "webServer"], (scope) => {
+  ctx.inject(["authorization", "connection", "webServer", "settings"], (scope) => {
     const authorization = authorizationOf(scope.get("authorization"));
     if (!authorization || !credentials) return;
-    const host = new OAuthHost(authorization, credentials, undefined, config);
+    const settings = scope.settings as SettingsSurface;
+    try {
+      installOwnedRoutes(settings, ctx);
+    } catch {
+      /* The section is already installed on this provider. */
+    }
+    const host = new OAuthHost(authorization, credentials, undefined, config, settings);
     const lifetime = new AbortController();
     scope.effect(() => () => {
       lifetime.abort();
@@ -59,6 +67,15 @@ export function apply(ctx: Context, config: OAuthEntryConfig = {}) {
                 break;
               case "oauth/logout":
                 value = await host.logout(payload);
+                break;
+              case "oauth/catalog":
+                value = await host.catalog(payload, combined);
+                break;
+              case "oauth/catalog/activate":
+                value = await host.activateCatalog(payload, combined);
+                break;
+              case "oauth/catalog/reset":
+                value = await host.resetCatalog(payload, combined);
                 break;
               case "login/start":
                 value = host.logins.start(payload);
