@@ -70,7 +70,7 @@ Muse Code —— 仅 CLI，附一键添加 Meta Model API：
 
 ```sh
 dsh plugin --profile web add --ignore-scripts --force \
-  https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.2.9/dsh-provider-manager-0.2.9.tgz
+  https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.3.3/dsh-provider-manager-0.3.3.tgz
 dsh --profile web --dump-config   # 应出现 "# == dsh-provider-manager"
 dsh web
 ```
@@ -81,7 +81,7 @@ dsh web
 
 ```sh
 dsh plugin --profile web add --workspace-root --ignore-scripts --force \
-  ./dsh-provider-manager-0.2.9.tgz
+  ./dsh-provider-manager-0.3.3.tgz
 ```
 
 命令成功和页面真实可用是两回事。装完请重启 Web。
