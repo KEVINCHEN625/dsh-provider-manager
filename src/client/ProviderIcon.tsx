@@ -1,4 +1,47 @@
 import type { ReactNode } from "react";
+import { brandIcons } from "./brand-icons.js";
+
+const brandAliases: Record<string, string> = {
+  anthropic: "anthropic",
+  claude: "anthropic",
+  github: "github",
+  "github-copilot": "githubcopilot",
+  copilot: "githubcopilot",
+  google: "google",
+  vertex: "google",
+  xai: "x",
+  meta: "meta",
+  muse: "meta",
+  cloudflare: "cloudflare",
+  huggingface: "huggingface",
+  nvidia: "nvidia",
+  deepseek: "deepseek",
+  qwen: "qwen",
+  kimi: "kimi",
+  moonshot: "moonshot",
+  openrouter: "openrouter",
+  mistral: "mistral",
+};
+
+export function brandMark(id: string, name = "") {
+  const blob = `${id} ${name}`.toLowerCase();
+  const direct = brandAliases[id.toLowerCase()];
+  if (direct && brandIcons[direct]) return brandIcons[direct];
+  for (const [needle, slug] of Object.entries(brandAliases)) {
+    if (blob.includes(needle) && brandIcons[slug]) return brandIcons[slug];
+  }
+  return undefined;
+}
+
+function BrandGlyph({ id, name }: { id: string; name: string }) {
+  const brand = brandMark(id, name);
+  if (!brand) return undefined;
+  return (
+    <Svg viewBox="0 0 24 24">
+      <path fill={brand.hex || "currentColor"} d={brand.path} />
+    </Svg>
+  );
+}
 
 function Svg({ viewBox, children }: { viewBox: string; children: ReactNode }) {
   return (
@@ -64,6 +107,13 @@ export function ProviderIcon({ id, name }: { id: string; name: string }) {
                 : key.includes("openrouter")
                   ? "openrouter"
                   : "generic";
+  const glyph = BrandGlyph({ id, name });
+  if (glyph)
+    return (
+      <span className="pm-icon" data-mark="brand" aria-hidden="true" title={name}>
+        {glyph}
+      </span>
+    );
   return (
     <span className="pm-icon" data-mark={kind} aria-hidden="true" title={name}>
       {kind === "opencode" && (

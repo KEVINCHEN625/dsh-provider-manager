@@ -2,7 +2,7 @@ import type { OAuthEntry } from "../shared/protocol.js";
 import type { LoginState, QuotaView } from "./controller.js";
 import type { Translate } from "./locales.js";
 import { QuotaSummary } from "./QuotaSummary.js";
-import { RoleBadge } from "./ProviderIcon.js";
+import { RoleBadge, brandMark } from "./ProviderIcon.js";
 
 const BRANDS: Record<string, string> = {
   anthropic: "#d97757",
@@ -74,7 +74,8 @@ export function OAuthCard({
 }) {
   const status = oauthStatus(entry, login);
   const letter = [...entry.label][0]?.toUpperCase() || "?";
-  const brand = oauthBrandColor(entry.providerId);
+  const mark = brandMark(entry.providerId, entry.label);
+  const brand = mark?.hex || oauthBrandColor(entry.providerId);
   const signedIn =
     status === "oauthSignedIn" && entry.account
       ? `${t("oauthSignedIn")} · ${entry.account}`
@@ -87,7 +88,13 @@ export function OAuthCard({
           aria-hidden="true"
           style={brand ? { background: brand, color: "#fff" } : undefined}
         >
-          {letter}
+          {mark ? (
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d={mark.path} />
+            </svg>
+          ) : (
+            letter
+          )}
         </span>
         <div>
           <div className="pm-title">

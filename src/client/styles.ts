@@ -84,6 +84,7 @@ export const styles = `
   background: var(--dsw-alias-accent, #4D6BFE);
   color: #fff;
 }
+.pm-oauth-mark svg { width: 16px; height: 16px; display: block; }
 .pm-oauth-mark {
   width: 32px;
   height: 32px;

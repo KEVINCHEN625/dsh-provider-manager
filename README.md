@@ -13,6 +13,10 @@ Whatever you bring — an OpenCode Go subscription, a Command Code GOAT plan, a 
 
 Verified on **DSH `0.1.5-rc.2`**.
 
+Brand marks on the cards come from [simple-icons](https://simpleicons.org).
+Each mark is a trademark of its owner and is shown only to identify the
+provider. Providers without a mark keep the letter badge.
+
 ## The idea: providers are the scarce resource, so manage them like one
 
 Model quality today is table stakes; what actually shapes your day is **which providers you can reach, with which credentials, at what remaining quota**. dsh-provider-manager treats that as a first-class surface:
