@@ -9,7 +9,7 @@ export * from "./profile.js";
 export * from "./adapter.js";
 const Settings = z.object({ apiKeyEnv: z.const(GO_KEY).default(GO_KEY) });
 export function installBuiltInGo(ctx: Context) {
-  ensureSection(ctx.settings, ctx, GO_ROUTE, Settings, { apiKeyEnv: GO_KEY });
+  ensureSection(ctx.settings, ctx, GO_ROUTE, Settings, { apiKeyEnv: GO_KEY }, { declarativeAlias: "dsh-provider-manager" });
   ctx.llm.registerAdapter([GO_ROUTE], createBuiltInGoAdapter(ctx));
   ctx.llm.registerConfigurableProviders([
     {

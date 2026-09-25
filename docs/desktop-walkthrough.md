@@ -11,7 +11,7 @@
 
    ```sh
    dsh plugin add --ignore-scripts --force \
-     https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.4.1/dsh-provider-manager-0.4.1-6937d01c9255.tgz
+     https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.4.1/dsh-provider-manager-0.4.1-2bed172c3592.tgz
    ```
 
 5. 托盘 → **Restart DSH Desktop**（插件变更需重启进入 Loader 组合）。

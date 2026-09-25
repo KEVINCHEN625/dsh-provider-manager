@@ -40,6 +40,7 @@ export function ensureSection(
   ns: string,
   schema: z,
   entry: unknown,
+  options?: { declarativeAlias?: string },
 ): void {
   if (hostInstallsSections(settings)) {
     (settings as SectionInstallTarget).installSection!(owner, ns, schema, entry, {
@@ -47,14 +48,30 @@ export function ensureSection(
       onChange: () => {},
     });
   }
-  // 0.1.7: declarative — the Loader collected the exported Config. Verify it
-  // actually listed the section instead of assuming: a schema without volatile
-  // fields, or a wrong ns, must fail loudly here rather than degrade silently.
+  // 0.1.7: declarative — the Loader collects the exported Config once this
+  // very plugin's fiber activates. Verifying visibility from inside apply()
+  // would deadlock on our own activation (describe only lists fibers whose
+  // state is already active), so the runtime check lives on the read side:
+  // section() resolves the host-shaped namespace and missing sections
+  // surface as explicit not-found, never as a pretend write. The volatile
+  // requirement itself is enforced statically by tests/compat.spec.ts.
+}
+
+/**
+ * The settings namespace differs by host: 0.1.5 installSection used the
+ * package name ("dsh-provider-manager"), while 0.1.7 derives it from the
+ * profile entry id ("provider-manager" in our patch). Resolve which one the
+ * running host actually lists, preferring the primary; undefined when the
+ * host lists neither (callers treat that as a missing section).
+ */
+export function hostSectionNs(
+  settings: unknown,
+  primary: string,
+  entryId: string,
+): string | undefined {
   const forms = (settings as { describe?: () => { ns: string }[] })?.describe?.() ?? [];
-  if (!forms.some((form) => form?.ns === ns)) {
-    throw new Error(
-      `compat: settings section "${ns}" is not visible on this host; ` +
-        "on dsh 0.1.7 the exported Config needs volatile fields for the section to appear",
-    );
-  }
+  const listed = new Set(forms.map((form) => form?.ns));
+  if (listed.has(primary)) return primary;
+  if (listed.has(entryId)) return entryId;
+  return undefined;
 }

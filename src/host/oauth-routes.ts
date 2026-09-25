@@ -1,5 +1,5 @@
 import z from "@deepseek-ai/schemastery";
-import { ensureSection } from "./compat.js";
+import { ensureSection, hostSectionNs } from "./compat.js";
 import { SafeError } from "../shared/protocol.js";
 import {
   HOST_THINKING_LEVELS,
@@ -358,14 +358,21 @@ export class OAuthRoutes {
     return (providers as Record<string, unknown>)[providerId];
   }
   private section(ns: string) {
-    return this.settings
-      ?.describe({ redactSecrets: true })
-      .find((item) => item.ns === ns);
+    const listed = this.settings?.describe({ redactSecrets: true }) ?? [];
+    const direct = listed.find((item) => item.ns === ns);
+    if (direct) return direct;
+    // 0.1.7 derives the namespace from the profile entry id instead of the
+    // package name ("dsh-provider-manager" -> "provider-manager").
+    const entryId = ns.replace(/^dsh-/, "");
+    return listed.find((item) => item.ns === entryId);
   }
   private async mutate(
-    ns: string,
+    requestedNs: string,
     ops: { op: "set" | "unset"; path: string[]; value?: unknown }[],
   ) {
+    const ns =
+      hostSectionNs(this.settings, requestedNs, requestedNs.replace(/^dsh-/, "")) ??
+      requestedNs;
     const settings = this.settings;
     if (!settings) throw new SafeError("UNAVAILABLE");
     for (let attempt = 0; attempt < 2; attempt += 1) {

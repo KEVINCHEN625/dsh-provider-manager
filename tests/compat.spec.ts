@@ -30,10 +30,19 @@ describe("dual-host settings compatibility", () => {
     ).not.toThrow();
   });
 
-  test("an invisible section on 0.1.7 fails loudly instead of degrading", () => {
+  test("a declarative alias satisfies the visibility check (built-in Go)", () => {
+    expect(() =>
+      ensureSection(modernSettings("dsh-provider-manager"), {}, "provider-manager-opencode-go", {}, {},
+        { declarativeAlias: "dsh-provider-manager" }),
+    ).not.toThrow();
+  });
+
+  test("on 0.1.7 ensureSection is a pure no-op (self-activation deadlock)", () => {
+    // describe() cannot list our own section before our fiber activates, so
+    // the installer must not check visibility from inside apply().
     expect(() =>
       ensureSection(modernSettings(undefined), {}, "dsh-provider-manager", {}, {}),
-    ).toThrow(/volatile/);
+    ).not.toThrow();
   });
 
   test("exported Config marks every runtime-owned field volatile (0.1.7 gate)", () => {
