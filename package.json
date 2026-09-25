@@ -32,7 +32,6 @@
       "default": "./lib/client.js"
     },
     "./oauth": {
-      "types": "./lib/types/host/oauth-entry.d.ts",
       "default": "./lib/oauth.js"
     }
   },
