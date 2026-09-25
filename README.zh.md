@@ -95,6 +95,10 @@ dsh plugin --profile web add --workspace-root --ignore-scripts --force \
 
 装完重启 Web，设置页就在那里。
 
+### DSH Desktop
+
+[DSH Desktop](https://github.com/anywhere-labs/dsh-desktop)（v2.0.14+，内置 dsh 0.1.7-rc.1）从 0.4.1 起与本插件兼容。托盘打开 **Open DSH Terminal**，执行同样的 `dsh plugin add` 命令，然后重启应用即可。Desktop 使用独立的 dsh home，凭据与路由按安装各自管理。完整走查清单：[docs/desktop-walkthrough.md](docs/desktop-walkthrough.md)。注意：Desktop 首次启动会把 `~/.dsh/settings.yaml` 导入自己的 profile 并把原文件改名为 `.imported`——CLI/Web 用户请复制回来（一条命令，见走查清单）。
+
 ### 聊天由哪个适配器承载
 
 | Provider | 聊天运行在 |

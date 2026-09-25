@@ -1,4 +1,5 @@
 import type { Context } from "@deepseek-ai/cordis";
+import { ensureSection } from "../compat.js";
 import z from "@deepseek-ai/schemastery";
 import { GO_ROUTE, GO_NAME, GO_KEY } from "./catalog.js";
 import { createBuiltInGoAdapter } from "./adapter.js";
@@ -8,13 +9,7 @@ export * from "./profile.js";
 export * from "./adapter.js";
 const Settings = z.object({ apiKeyEnv: z.const(GO_KEY).default(GO_KEY) });
 export function installBuiltInGo(ctx: Context) {
-  ctx.settings.installSection(
-    ctx,
-    GO_ROUTE,
-    Settings,
-    { apiKeyEnv: GO_KEY },
-    { setSource: () => {}, onChange: () => {} },
-  );
+  ensureSection(ctx.settings, ctx, GO_ROUTE, Settings, { apiKeyEnv: GO_KEY });
   ctx.llm.registerAdapter([GO_ROUTE], createBuiltInGoAdapter(ctx));
   ctx.llm.registerConfigurableProviders([
     {

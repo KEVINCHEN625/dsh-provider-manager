@@ -1,4 +1,5 @@
 import z from "@deepseek-ai/schemastery";
+import { ensureSection } from "./compat.js";
 import { SafeError } from "../shared/protocol.js";
 import {
   HOST_THINKING_LEVELS,
@@ -12,7 +13,7 @@ import {
 } from "./oauth-catalog.js";
 
 export const OWNED_OAUTH_NS = "dsh-provider-manager";
-const ProbeRowSchema = z.object({
+export const ProbeRowSchema: any = z.object({
   status: z.union([
     z.const("available"),
     z.const("unavailable"),
@@ -31,14 +32,11 @@ const OwnedOAuthSchema = z.object({
 });
 
 export function installOwnedRoutes(settings: SettingsSurface, owner: unknown) {
-  settings.installSection?.(owner, OWNED_OAUTH_NS, OwnedOAuthSchema, {
+  ensureSection(settings, owner, OWNED_OAUTH_NS, OwnedOAuthSchema, {
     ownedOauthRoutes: {},
     probe: {},
     selections: {},
     credential: {},
-  }, {
-    setSource: () => {},
-    onChange: () => {},
   });
 }
 

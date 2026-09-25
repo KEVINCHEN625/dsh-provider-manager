@@ -14,11 +14,13 @@ export {
 import type { Context } from "@deepseek-ai/cordis";
 import type {} from "@deepseek-ai/dsh-client-connection";
 import type {} from "@deepseek-ai/dsh-host-webserver";
-import { Manager, type Config } from "./providers.js";
+import { Manager, ConfigSchema, type Config as ConfigType } from "./providers.js";
 import { createRevealHandler } from "./http.js";
 import { exact, text, SafeError } from "../shared/protocol.js";
 export const inject = ["settings", "credentials", "llm"];
-export function apply(ctx: Context, config: Config = {}) {
+/** Declarative settings section on dsh 0.1.7; imperatively installed on 0.1.5. */
+export const Config: any = ConfigSchema;
+export function apply(ctx: Context, config: ConfigType = {}) {
   installBuiltInGo(ctx);
   installMuseAdapter(ctx);
   const manager = new Manager(ctx, config);

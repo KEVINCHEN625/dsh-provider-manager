@@ -6,6 +6,8 @@ import {
   catalogModelDto,
 } from "./opencode/catalog.js";
 import { createHmac, randomBytes } from "node:crypto";
+import z from "@deepseek-ai/schemastery";
+import { ProbeRowSchema } from "./oauth-routes.js";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import type { Context } from "@deepseek-ai/cordis";
 import type {} from "@deepseek-ai/dsh-settings";
@@ -37,6 +39,35 @@ export interface Config {
   authorizedExistingRefs?: Record<string, string>;
   revealTimeoutMs?: number;
 }
+
+/**
+ * The full plugin Config schema. On dsh 0.1.7 the Loader collects this
+ * declaratively as the `dsh-provider-manager` settings section; on 0.1.5 the
+ * same shape is installed imperatively via `ensureSection`. The four owned
+ * OAuth fields mirror `OwnedOAuthSchema` so both hosts read one section.
+ */
+/**
+ * Mark a schema field volatile on hosts whose schemastery supports it.
+ * dsh 0.1.7 requires volatile fields for the declarative settings section;
+ * 0.1.5's schemastery predates the method and the imperative install path
+ * there never reads the flag — returning the field unmarked is correct.
+ */
+function vol(field: any): any {
+  return typeof field?.volatile === "function" ? field.volatile() : field;
+}
+
+export const ConfigSchema: any = z.object({
+  authorizedExistingRefs: z.dict(z.string()).default({}),
+  revealTimeoutMs: z.number().step(1).min(1).default(30_000),
+  // volatile: dsh 0.1.7 only collects volatile fields into the settings form
+  // (volatileForm in dsh-settings); without it the section never appears and
+  // describe()/mutate() reject the entry. 0.1.5 ignores the flag harmlessly.
+  ownedOauthRoutes: vol(z.dict(z.boolean()).default({})),
+  probe: vol(z.dict(ProbeRowSchema).default({})),
+  selections: vol(z.dict(z.array(z.string())).default({})),
+  credential: vol(z.dict(z.string()).default({})),
+  goApiKeyEnv: vol(z.string().role("credential-ref").default("OPENCODE_API_KEY")),
+});
 const fixed: Record<string, { ns: string; ref: string; name: string }> = {
   "opencode-go": {
     ns: "llm-opencode-go",

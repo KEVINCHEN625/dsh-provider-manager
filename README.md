@@ -95,6 +95,10 @@ dsh plugin --profile web add --workspace-root --ignore-scripts --force \
 
 After installing, restart Web and open Settings — the page is there.
 
+### DSH Desktop
+
+[DSH Desktop](https://github.com/anywhere-labs/dsh-desktop) (v2.0.14+, bundling dsh 0.1.7-rc.1) works with this plugin as of 0.4.1. Open **Open DSH Terminal** from the tray and run the same `dsh plugin add` command, then restart the app. Desktop keeps its own dsh home, so credentials and routes are managed per installation. Full walkthrough: [docs/desktop-walkthrough.md](docs/desktop-walkthrough.md). Note: the first Desktop launch imports `~/.dsh/settings.yaml` into its own profile and renames the original to `.imported` — CLI/Web users should copy it back (one command, see the walkthrough).
+
 ### Which adapter runs the chat
 
 | Provider | Chat runs on |
