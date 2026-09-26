@@ -26,6 +26,16 @@
 - [ ] Show key：loopback 校验在 Desktop 环境同样生效（显示/隐藏正常）。
 - [ ] Logout：凭据清除，卡片回到未登录态。
 
+## 不要手动注入 desktop profile
+
+CLI 的 plugin 命令拒绝 desktop profile（"managed exclusively by the Electron
+application"）不是障碍而是契约：Desktop 启动时的 profile materializer 只认它自己
+安装语义的依赖（registry 形态的包名/URL）。手动写入 file: 本地路径依赖会通过
+第一次启动（Loader 直接读文件系统）然后在依赖迁移阶段失败，把应用送进 Recovery
+Mode。装插件只有一条路：上面的托盘终端命令（GitHub Release URL）。若已注入并
+进入 Recovery：删除 ~/.dsh/profiles/desktop 并从备份恢复（或用恢复界面的重置
+流程）。
+
 ## 已知边界（重要）
 
 - **首次启动 Desktop 会把 `~/.dsh/settings.yaml` 导入它自己的 `desktop` profile，
