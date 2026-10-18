@@ -13,7 +13,7 @@ Your models come from a dozen places — a Codex subscription, Claude Pro, an Op
 
 This page ends that. **Sign in or paste a key once — you see what's left of your quota, and your models appear in the picker by themselves: right names, real context windows, effort levels that work.** Everything lives in one Settings page, in the official stores DSH already uses.
 
-Works with **DSH `0.1.5-rc.2`**. Current release: **v0.4.0**.
+Works with **DSH 0.1.5 → 0.2.0**. Current release: **v0.4.2**.
 
 ## If your provider needs a sign-in
 
@@ -79,7 +79,7 @@ Install the **release tarball** (it already contains `lib/`). We do not ship a `
 
 ```sh
 dsh plugin --profile web add --ignore-scripts --force \
-  https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.4.0/dsh-provider-manager-0.4.0-664a895a3f1b.tgz
+  https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.4.2/dsh-provider-manager-0.4.2-3edd36016644.tgz
 dsh --profile web --dump-config   # look for "# == dsh-provider-manager"
 dsh web
 ```
@@ -90,7 +90,7 @@ If the web profile is itself a pnpm workspace (`packages: [.]`), pass pnpm's boo
 
 ```sh
 dsh plugin --profile web add --workspace-root --ignore-scripts --force \
-  ./dsh-provider-manager-0.4.0-664a895a3f1b.tgz
+  ./dsh-provider-manager-0.4.2-3edd36016644.tgz
 ```
 
 After installing, restart Web and open Settings — the page is there.

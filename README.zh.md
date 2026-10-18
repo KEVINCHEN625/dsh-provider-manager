@@ -13,7 +13,7 @@
 
 这个页面把这一切终结掉。**登录一次或贴一次 key——额度一目了然，模型自己出现在选择器里：名字是对的、上下文是真的、effort 档是真的能用的。** 全部收在一个设置页里，凭据存进 DSH 的官方凭据库。
 
-适配 **DSH `0.1.5-rc.2`**。当前版本：**v0.4.0**。
+适配 **DSH 0.1.5 → 0.2.0**。当前版本：**v0.4.2**。
 
 ## 需要 OAuth 登录的 provider
 
@@ -79,7 +79,7 @@ Muse——想用的时候设备码登录即可：
 
 ```sh
 dsh plugin --profile web add --ignore-scripts --force \
-  https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.4.0/dsh-provider-manager-0.4.0-664a895a3f1b.tgz
+  https://github.com/KEVINCHEN625/dsh-provider-manager/releases/download/v0.4.2/dsh-provider-manager-0.4.2-3edd36016644.tgz
 dsh --profile web --dump-config   # 应出现 "# == dsh-provider-manager"
 dsh web
 ```
@@ -90,7 +90,7 @@ dsh web
 
 ```sh
 dsh plugin --profile web add --workspace-root --ignore-scripts --force \
-  ./dsh-provider-manager-0.4.0-664a895a3f1b.tgz
+  ./dsh-provider-manager-0.4.2-3edd36016644.tgz
 ```
 
 装完重启 Web，设置页就在那里。
