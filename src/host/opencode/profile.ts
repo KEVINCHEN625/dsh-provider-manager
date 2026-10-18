@@ -6,6 +6,7 @@ import {
   type ProviderStreams,
   type StreamOptions,
 } from "@earendil-works/pi-ai";
+import { normalizeContext } from "@earendil-works/pi-ai";
 import { openAIResponsesApi } from "@earendil-works/pi-ai/api/openai-responses.lazy";
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
 import { anthropicMessagesApi } from "@earendil-works/pi-ai/api/anthropic-messages.lazy";
@@ -87,13 +88,13 @@ export function wrapGoApi(api: ProviderStreams): ProviderStreams {
     stream: (model, context, options) =>
       api.stream(
         model,
-        normalizeReasoningContentContext(context, model),
+        normalizeContext(normalizeReasoningContentContext(context, model)),
         optionsFor(model, options),
       ),
     streamSimple: (model, context, options) =>
       api.streamSimple(
         model,
-        normalizeReasoningContentContext(context, model),
+        normalizeContext(normalizeReasoningContentContext(context, model)),
         {
           ...options,
           ...optionsFor(model, options),

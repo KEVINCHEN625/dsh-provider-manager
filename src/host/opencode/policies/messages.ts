@@ -6,6 +6,7 @@ import type {
   ProviderStreams,
   SimpleStreamOptions,
 } from "@earendil-works/pi-ai";
+import { normalizeContext } from "@earendil-works/pi-ai";
 import { goEntry } from "../catalog.js";
 const ANSWER_ROOM = 1024;
 function messagesOptions(
@@ -51,7 +52,7 @@ export function wrapMessagesApi(api: ProviderStreams): ProviderStreams {
       model: Model<Api>,
       context: Context,
       options?: ProviderStreamOptions,
-    ) => api.stream(model, context, options),
+    ) => api.stream(model, normalizeContext(context), options),
     streamSimple: (
       model: Model<Api>,
       context: Context,
@@ -62,8 +63,8 @@ export function wrapMessagesApi(api: ProviderStreams): ProviderStreams {
         entry?.compatPolicy === "anthropic-toggle" ||
         entry?.compatPolicy === "anthropic-budget"
       )
-        return api.stream(model, context, messagesOptions(model, options));
-      return api.streamSimple(model, context, options);
+        return api.stream(model, normalizeContext(context), messagesOptions(model, options));
+      return api.streamSimple(model, normalizeContext(context), options);
     },
   };
 }
