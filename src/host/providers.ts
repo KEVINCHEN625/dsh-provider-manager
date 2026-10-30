@@ -369,7 +369,38 @@ export class Manager {
     if (!f && !id.startsWith("custom:")) throw new SafeError("REF_NOT_ALLOWED");
     const route = id.startsWith("custom:") ? id.slice(7) : id;
     const ns = f?.ns ?? "llm-pi-ai";
-    const d = defs.find((d) => d.ns === ns);
+    let d = defs.find((d) => d.ns === ns);
+    let effectiveNs = ns;
+    // 0.2.x hosts: the Go section lives inside the main plugin's declarative
+    // Config (goApiKeyEnv field), not as a separate provider-manager-opencode-go
+    // entry. Fall back to the main section and read the field from there.
+    if (!d && f?.ns === GO_ROUTE) {
+      d = defs.find(
+        (d) => d.ns === "dsh-provider-manager" || d.ns === "provider-manager",
+      );
+      if (d) {
+        effectiveNs = d.ns;
+        const mainValue = object(d.value);
+        const goEnv =
+          typeof mainValue.goApiKeyEnv === "string"
+            ? mainValue.goApiKeyEnv
+            : GO_KEY;
+        const goEnv2 =
+          typeof mainValue.goApiKeyEnv2 === "string"
+            ? mainValue.goApiKeyEnv2
+            : "OPENCODE_API_KEY_2";
+        return {
+          ref: goEnv,
+          token: createHmac("sha256", this.salt)
+            .update(JSON.stringify([id, effectiveNs, goEnv, d.revision]))
+            .digest("hex"),
+          d,
+          profile: { apiKeyEnv: goEnv, apiKeyEnv2: goEnv2 },
+          route,
+          ns: effectiveNs,
+        };
+      }
+    }
     if (!d) throw new SafeError("UNAVAILABLE");
     const v = object(d.value);
     const profile = f ? v : object(object(v.providers)[route]);
