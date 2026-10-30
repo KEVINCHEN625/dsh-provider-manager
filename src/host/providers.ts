@@ -67,6 +67,7 @@ export const ConfigSchema: any = z.object({
   selections: vol(z.dict(z.array(z.string())).default({})),
   credential: vol(z.dict(z.string()).default({})),
   goApiKeyEnv: vol(z.string().role("credential-ref").default("OPENCODE_API_KEY")),
+  goApiKeyEnv2: vol(z.string().role("credential-ref").default("OPENCODE_API_KEY_2")),
 });
 const fixed: Record<string, { ns: string; ref: string; name: string }> = {
   "opencode-go": {

@@ -5,7 +5,8 @@ import {
   assertUsableApiKey,
   resolveImageAttachmentAccess,
 } from "@deepseek-ai/dsh-llm";
-import { GO_ROUTE, GO_KEY } from "./catalog.js";
+import { GO_ROUTE, GO_KEY, GO_KEY_2 } from "./catalog.js";
+import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import { createBuiltInGoProfile } from "./profile.js";
 export function createBuiltInGoAdapter(ctx: Context): PiAiAdapter {
   const profiles = new Map([[GO_ROUTE, createBuiltInGoProfile()]]);
@@ -29,13 +30,19 @@ export function createBuiltInGoAdapter(ctx: Context): PiAiAdapter {
       },
     },
     resolveApiKey: async (_provider, profile) => {
-      const hit = await ctx.credentials.resolve(profile.apiKeyEnv!);
-      if (!hit?.value)
-        throw new LlmError(
-          `Provider Manager: store ${GO_KEY} before using OpenCode Go`,
-          "MISSING_CREDENTIAL",
-        );
-      return assertUsableApiKey(hit.value, GO_ROUTE, GO_KEY);
+      const primary = await ctx.credentials.resolve(profile.apiKeyEnv!);
+      if (primary?.value)
+        return assertUsableApiKey(primary.value, GO_ROUTE, GO_KEY);
+      // Key-pool fallback: when the primary ref is absent or its quota is
+      // marked exhausted (the settings layer writes an empty string after a
+      // terminal 429/403), try the second ref before giving up.
+      const secondary = await ctx.credentials.resolve(credentialRef(GO_KEY_2));
+      if (secondary?.value)
+        return assertUsableApiKey(secondary.value, GO_ROUTE, GO_KEY_2);
+      throw new LlmError(
+        `Provider Manager: store ${GO_KEY} (or ${GO_KEY_2}) before using OpenCode Go`,
+        "MISSING_CREDENTIAL",
+      );
     },
     resolveAttachments: () => ctx.get("attachments"),
     resolveImageAccess: (attachments, ref) =>

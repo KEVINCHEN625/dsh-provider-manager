@@ -24,6 +24,7 @@ export const GO_ANTHROPIC_BASE = "https://opencode.ai/zen/go";
 /** Formal Muse Spark lives on OpenCode Zen, not the Go catalog. */
 export const ZEN_ENDPOINT = "https://opencode.ai/zen/v1";
 export const GO_KEY = "OPENCODE_API_KEY";
+export const GO_KEY_2 = "OPENCODE_API_KEY_2";
 export const GO_MANAGER_VERSION = "0.2.9";
 export const GO_CATALOG = validateGoCatalog(catalogJson);
 const byId = new Map(GO_CATALOG.models.map((entry) => [entry.id, entry]));
