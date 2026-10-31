@@ -1,4 +1,5 @@
 import { installBuiltInGo } from "./opencode/index.js";
+import { installBuiltInCc } from "./commandcode/index.js";
 import { installMuseAdapter } from "./muse/index.js";
 export {
   createBuiltInGoProfile,
@@ -22,6 +23,7 @@ export const inject = ["settings", "credentials", "llm"];
 export const Config: any = ConfigSchema;
 export function apply(ctx: Context, config: ConfigType = {}) {
   installBuiltInGo(ctx);
+  installBuiltInCc(ctx);
   installMuseAdapter(ctx);
   const manager = new Manager(ctx, config);
   ctx.effect(() => () => manager.dispose());

@@ -124,6 +124,7 @@ const quotaDefinitions: Record<
 const retiredCards = new Set(["opencode-go"]);
 const reserved = new Set([
   GO_ROUTE,
+  "provider-manager-commandcode",
   "provider-manager-muse",
   "opencode-go",
   "commandcode",
