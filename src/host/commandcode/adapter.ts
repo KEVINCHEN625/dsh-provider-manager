@@ -16,12 +16,12 @@ import type { ResolvedPiAiProviderProfile } from "@deepseek-ai/dsh-llm-pi-ai";
 import {
   CC_ENDPOINT,
   CC_KEY,
-  CC_KEY_2,
   CC_NAME,
   CC_ROUTE,
   fetchCcCatalog,
   type CcCatalogEntry,
 } from "./catalog.js";
+import { CC_SEED } from "./seed.js";
 import { createProvider } from "@earendil-works/pi-ai";
 
 /** Command Code never documents Anthropic beta features. Null suppresses pi-ai defaults. */
@@ -59,14 +59,25 @@ function wrapCcApi(api: ProviderStreams): ProviderStreams {
 
 /**
  * Effort levels proven against the live Command Code endpoint (2026-10-31,
- * key-authenticated probes): chat/completions accepts OpenAI-style
- * `reasoning_effort` for deepseek/* and z-ai/* models, including "none",
- * which fully suppresses reasoning_content. `thinking: {type:"disabled"}` is
- * ignored by the endpoint, so "none" is the only working off switch.
- * "minimal" behaves as an off alias there, so it stays hidden (null).
+ * key-authenticated streaming probes that checked the response content, not
+ * just the status code). The gateway validates `reasoning_effort` against
+ * off|low|medium|high|xhigh|max — "none" is a hard 400. Per family:
+ * deepseek/* honors "off" (reasoning stops, content flows); z-ai/* accepts
+ * "off" at the gateway but returns a silently empty stream, so GLM gets no
+ * off level. `thinking: {type:"disabled"}` is ignored by the endpoint, and
+ * "minimal" is not in the gateway vocabulary, so it stays hidden (null).
  */
-const CC_EFFORTS: Record<string, string | null> = {
-  off: "none",
+const CC_EFFORTS_DEEPSEEK: Record<string, string | null> = {
+  off: "off",
+  minimal: null,
+  low: "low",
+  medium: "medium",
+  high: "high",
+  xhigh: "xhigh",
+  max: "max",
+};
+const CC_EFFORTS_ZAI: Record<string, string | null> = {
+  off: null,
   minimal: null,
   low: "low",
   medium: "medium",
@@ -75,22 +86,24 @@ const CC_EFFORTS: Record<string, string | null> = {
   max: "max",
 };
 
-/** Vendor prefixes whose reasoning_effort support is probe-verified. */
-function ccReasoning(id: string): boolean {
-  return id.startsWith("deepseek/") || id.startsWith("z-ai/");
+/** Per-vendor effort map for probe-verified families, else undefined. */
+function ccEfforts(id: string): Record<string, string | null> | undefined {
+  if (id.startsWith("deepseek/")) return CC_EFFORTS_DEEPSEEK;
+  if (id.startsWith("z-ai/")) return CC_EFFORTS_ZAI;
+  return undefined;
 }
 
 /** Convert one live catalog entry into a pi-ai Model on this route. */
 export function toCcModel(entry: CcCatalogEntry): Model<Api> {
-  const reasoning = ccReasoning(entry.id);
+  const efforts = ccEfforts(entry.id);
   return {
     id: entry.id,
     name: entry.name,
     provider: CC_ROUTE,
     baseUrl: CC_ENDPOINT,
     api: entry.api,
-    reasoning,
-    ...(reasoning ? { thinkingLevelMap: CC_EFFORTS } : {}),
+    reasoning: efforts !== undefined,
+    ...(efforts ? { thinkingLevelMap: efforts } : {}),
     input: ["text"],
     contextWindow: entry.contextWindow,
     maxTokens: Math.min(entry.contextWindow, 128_000),
@@ -101,12 +114,14 @@ export function toCcModel(entry: CcCatalogEntry): Model<Api> {
 }
 
 /**
- * Built-in Command Code adapter. The catalog is pulled live from
- * GET /provider/v1/models (95 entries at authoring time) and cached for the
- * process lifetime; a refresh failure keeps the previous list.
+ * Built-in Command Code adapter. The process starts from a static seed of
+ * the provider catalog (see seed.ts) so synchronous model lookups succeed on
+ * the very first headless run; the first authenticated stream then refreshes
+ * the list live from GET /provider/v1/models, and a refresh failure keeps
+ * the previous list.
  */
 export function createBuiltInCcAdapter(ctx: Context): PiAiAdapter {
-  let models: Model<Api>[] = [];
+  let models: Model<Api>[] = CC_SEED.map(toCcModel);
   let catalogError: string | undefined;
 
   async function refreshCatalog(apiKey: string): Promise<void> {
@@ -194,22 +209,6 @@ export function createBuiltInCcAdapter(ctx: Context): PiAiAdapter {
       }),
     };
   }
-
-  // Keep the profile's model list in sync with the catalog after the first
-  // authenticated refresh.
-  const originalResolveModel = adapter.resolveModel.bind(adapter);
-  adapter.resolveModel = (provider, model, signal) => {
-    if (models.length === 0) {
-      const ref = credentialRef(CC_KEY).toString();
-      return Promise.reject(
-        new LlmError(
-          `Command Code: catalog not loaded yet (store ${CC_KEY} and retry)`,
-          "CATALOG_PENDING",
-        ),
-      );
-    }
-    return originalResolveModel(provider, model, signal);
-  };
 
   return adapter;
 }

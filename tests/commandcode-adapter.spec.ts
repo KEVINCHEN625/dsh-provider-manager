@@ -34,22 +34,22 @@ describe("Command Code catalog → pi-ai model", () => {
     }
   });
 
-  test("probe-verified families get reasoning with none as the off switch", () => {
-    for (const id of ["deepseek/deepseek-v4.1-flash", "z-ai/glm-5.3-flash"]) {
-      const model = toCcModel(entry({ id }));
-      expect(model.reasoning).toBe(true);
-      const levels = model.thinkingLevelMap as Record<string, string | null>;
-      // Live probes 2026-10-31: reasoning_effort "none" suppresses
-      // reasoning_content; "minimal" acts as an off alias so it stays hidden;
-      // low..max are all accepted by the endpoint.
-      expect(levels.off).toBe("none");
-      expect(levels.minimal).toBeNull();
-      expect(levels.low).toBe("low");
-      expect(levels.medium).toBe("medium");
-      expect(levels.high).toBe("high");
-      expect(levels.xhigh).toBe("xhigh");
-      expect(levels.max).toBe("max");
-    }
+  test("probe-verified families get reasoning; only deepseek gets a working off", () => {
+    // Content-checked probes 2026-10-31: the gateway vocabulary is
+    // off|low|medium|high|xhigh|max ("none" is a 400). deepseek honors "off";
+    // z-ai accepts "off" but returns a silently empty stream, so it hides off.
+    const deepseek = toCcModel(entry({ id: "deepseek/deepseek-v4.1-flash" }));
+    expect(deepseek.reasoning).toBe(true);
+    const ds = deepseek.thinkingLevelMap as Record<string, string | null>;
+    expect(ds.off).toBe("off");
+    expect(ds.minimal).toBeNull();
+    expect(ds.max).toBe("max");
+    const glm = toCcModel(entry({ id: "z-ai/glm-5.3-flash" }));
+    expect(glm.reasoning).toBe(true);
+    const zai = glm.thinkingLevelMap as Record<string, string | null>;
+    expect(zai.off).toBeNull();
+    expect(zai.low).toBe("low");
+    expect(zai.max).toBe("max");
   });
 
   test("unprobed vendors stay non-reasoning with no effort map", () => {
@@ -68,5 +68,26 @@ describe("Command Code catalog → pi-ai model", () => {
     expect(
       toCcModel(entry({ contextWindow: 65_536, id: "x/old" })).maxTokens,
     ).toBe(65_536);
+  });
+});
+
+describe("Command Code static seed", () => {
+  test("seed is non-empty and the adapter boots from it without any network", async () => {
+    const { CC_SEED } = await import("../src/host/commandcode/seed.js");
+    expect(CC_SEED.length).toBeGreaterThanOrEqual(90);
+    const ids = new Set(CC_SEED.map((entry) => entry.id));
+    // The two families the headless workflow drives first.
+    expect(ids.has("deepseek/deepseek-v4.1-flash")).toBe(true);
+    expect(ids.has("z-ai/glm-5.3-flash")).toBe(true);
+    // Claude-only models map to anthropic-messages; the rest to completions.
+    expect(CC_SEED.filter((e) => e.api === "anthropic-messages").length).toBe(
+      11,
+    );
+    // Every seed entry is directly convertible into a valid pi-ai model.
+    for (const entry of CC_SEED) {
+      const model = toCcModel(entry);
+      expect(model.cost).toBeDefined();
+      expect(model.contextWindow).toBeGreaterThan(0);
+    }
   });
 });
