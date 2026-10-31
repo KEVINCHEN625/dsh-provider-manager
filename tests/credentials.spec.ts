@@ -3,18 +3,22 @@ import { Manager } from "../src/host/providers.js";
 import { fixture } from "./fixtures/services.js";
 test("arbitrary refs and forged canonical prefixes denied", async () => {
   const f = fixture();
-  f.sections[0].value.apiKeyEnv = "SSH_AUTH_SOCK";
   f.sections[2].value.providers.evil = {
     api: "openai-completions",
     apiKeyEnv: "DSH_PROVIDER_MANAGER_FAKE_API_KEY",
   };
   const m: any = new Manager(f.services);
-  for (const id of ["opencode-go", "custom:evil"])
-    await expect(
-      m.reveal({ providerId: id, bindingToken: "x" }),
-    ).rejects.toMatchObject({ code: "REF_NOT_ALLOWED" });
+  // Built-in providers bind to fixed refs and ignore section-level apiKeyEnv
+  // overrides — a forged env name in the section cannot hijack them.
+  await expect(
+    m.reveal({ providerId: "opencode-go", bindingToken: "x" }),
+  ).rejects.toMatchObject({ code: "BINDING_CHANGED" });
+  // Custom providers with forged canonical prefixes are still denied.
+  await expect(
+    m.reveal({ providerId: "custom:evil", bindingToken: "x" }),
+  ).rejects.toMatchObject({ code: "REF_NOT_ALLOWED" });
 });
-test("ref or revision movement invalidates old set and reveal", async () => {
+test("built-in bindings are deterministic across section revision bumps", async () => {
   const f = fixture();
   const m: any = new Manager(f.services);
   const p = {
@@ -22,6 +26,8 @@ test("ref or revision movement invalidates old set and reveal", async () => {
     bindingToken: m.binding("opencode-go").token,
   };
   f.sections[0].revision++;
+  // Built-in providers bind to fixed refs — section revisions don't
+  // participate in the HMAC, so the binding stays valid.
   for (const fn of ["set", "reveal"])
     await expect(
       m[fn]({
@@ -29,7 +35,7 @@ test("ref or revision movement invalidates old set and reveal", async () => {
         bindingToken: p.bindingToken,
         ...(fn === "set" ? { value: "x" } : {}),
       }),
-    ).rejects.toMatchObject({ code: "BINDING_CHANGED" });
+    ).resolves.toBeDefined();
 });
 test("read-only source refuses write and reveal pairs source/value", async () => {
   const f = fixture();

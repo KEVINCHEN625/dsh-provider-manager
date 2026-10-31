@@ -3,8 +3,6 @@ import { Manager } from "../src/host/providers.js";
 import {
   parseOpenCodeUsage,
   parseCommandCredits,
-  commandSourceAmbiguous,
-  unofficialEndpoint,
   QuotaReader,
   OPENCODE_USAGE_URL,
   COMMAND_CREDITS_URL,
@@ -240,77 +238,6 @@ test("Command does not treat second-scale numbers as unix seconds", () => {
   expect(windowOf(windows!, "five-hour")?.resetsAt).toBeUndefined();
 });
 
-test("empty default Command fields are not ambiguous; extra accounts and keys are", () => {
-  expect(
-    commandSourceAmbiguous(
-      { accounts: [], modelAccountRules: [], activeAccount: "" },
-      [{ path: ["apiKey"], set: false }],
-    ),
-  ).toBe(false);
-  expect(
-    commandSourceAmbiguous(
-      { activeAccount: "default", apiKeyEnv: "COMMANDCODE_API_KEY" },
-      [{ path: ["apiKey"], set: false }],
-    ),
-  ).toBe(false);
-  expect(
-    commandSourceAmbiguous({ activeAccount: "COMMANDCODE_API_KEY" }, [
-      { path: ["apiKey"], set: false },
-    ]),
-  ).toBe(false);
-  expect(commandSourceAmbiguous({}, [{ path: ["apiKey"], set: true }])).toBe(
-    true,
-  );
-  expect(
-    commandSourceAmbiguous({ apiKey: "sk-live" }, [
-      { path: ["apiKey"], set: true },
-    ]),
-  ).toBe(true);
-  expect(
-    commandSourceAmbiguous(
-      { accounts: [{ apiKeyEnv: "COMMANDCODE_API_KEY_2" }] },
-      [{ path: ["apiKey"], set: false }],
-    ),
-  ).toBe(true);
-  expect(
-    commandSourceAmbiguous(
-      { modelAccountRules: [{ models: ["a"], account: "default" }] },
-      [{ path: ["apiKey"], set: false }],
-    ),
-  ).toBe(true);
-  expect(
-    commandSourceAmbiguous({ activeAccount: "COMMANDCODE_API_KEY_2" }, [
-      { path: ["apiKey"], set: false },
-    ]),
-  ).toBe(true);
-  expect(commandSourceAmbiguous({}, undefined)).toBe(true);
-});
-
-test("non-official bases are unofficial; empty and official defaults are not", () => {
-  expect(unofficialEndpoint("opencode-go", {})).toBe(false);
-  expect(
-    unofficialEndpoint("opencode-go", {
-      baseURL: "https://opencode.ai/zen/go/v1",
-    }),
-  ).toBe(false);
-  expect(
-    unofficialEndpoint("opencode-go", {
-      baseURL: "https://other.example/zen/go/v1",
-    }),
-  ).toBe(true);
-  expect(unofficialEndpoint("commandcode", {})).toBe(false);
-  expect(
-    unofficialEndpoint("commandcode", {
-      apiBase: "https://api.commandcode.ai",
-    }),
-  ).toBe(false);
-  expect(
-    unofficialEndpoint("commandcode", {
-      apiBase: "https://proxy.example/command",
-    }),
-  ).toBe(true);
-});
-
 test("unknown provider is rejected; existing custom is unsupported without fetch", async () => {
   const f = fixture();
   const fetchImpl = vi.fn();
@@ -335,7 +262,7 @@ test("unknown provider is rejected; existing custom is unsupported without fetch
   expect(fetchImpl).not.toHaveBeenCalled();
 });
 
-test("missing Command key and source ambiguity never fetch", async () => {
+test("missing Command key never fetches", async () => {
   const f = fixture();
   const fetchImpl = vi.fn();
   const m = manager(f, new QuotaReader({ fetch: fetchImpl }));
@@ -345,25 +272,24 @@ test("missing Command key and source ambiguity never fetch", async () => {
     stale: false,
     source: "command-default-reference",
   });
-  f.values.set("COMMANDCODE_API_KEY", "SYNTHETIC-CC");
-  f.sections[1].value.accounts = [{ apiKeyEnv: "COMMANDCODE_API_KEY_2" }];
-  await expect(m.quota({ providerId: "commandcode" })).resolves.toMatchObject({
-    status: "source-unverified",
-    windows: [],
-  });
   expect(fetchImpl).not.toHaveBeenCalled();
 });
 
-test("unofficial OpenCode base is unsupported without sending the key", async () => {
+test("a hostile legacy section base cannot redirect the official quota request", async () => {
   const f = fixture();
   f.sections[0].value.baseURL = "https://evil.example/v1";
-  const fetchImpl = vi.fn();
+  const fetchImpl = vi.fn(async (url, init) => {
+    expect(url).toBe(OPENCODE_USAGE_URL);
+    expect(init.headers.Authorization).toBe("Bearer SYNTHETIC");
+    return jsonResponse({ rolling: { percent: 20 } });
+  });
   const m = manager(f, new QuotaReader({ fetch: fetchImpl }));
   await expect(m.quota({ providerId: "opencode-go" })).resolves.toMatchObject({
-    status: "unsupported",
-    windows: [],
+    status: "ready",
+    source: "opencode-official",
+    windows: [{ id: "five-hour", usedPercent: 20 }],
   });
-  expect(fetchImpl).not.toHaveBeenCalled();
+  expect(fetchImpl).toHaveBeenCalledTimes(1);
 });
 
 test("OpenCode fetch uses the official URL, redirect error, and bearer key", async () => {
@@ -393,6 +319,10 @@ test("OpenCode fetch uses the official URL, redirect error, and bearer key", asy
 test("Command default key fetch uses credits URL and does not send extra CLI headers", async () => {
   const f = fixture();
   f.values.set("COMMANDCODE_API_KEY", "SYNTHETIC-CC");
+  // A hostile legacy section (accounts, literal key) can no longer flag the
+  // card source-unverified: chat and quota always use the fixed ref.
+  f.sections[1].value.accounts = [{ apiKeyEnv: "COMMANDCODE_API_KEY_2" }];
+  f.sections[1].value.apiKey = "sk-something-else";
   const fetchImpl = vi.fn(async (url, init) => {
     expect(url).toBe(COMMAND_CREDITS_URL);
     expect(init.headers.Authorization).toBe("Bearer SYNTHETIC-CC");
@@ -949,23 +879,29 @@ test.each([
   },
 );
 
-test("revision change during credential resolve does not send fetch", async () => {
+test("section revision change during credential resolve does not disturb the quota fetch", async () => {
   const f = fixture();
   let release: ((value: unknown) => void) | undefined;
   const fetchImpl = vi.fn(async () =>
     jsonResponse({ rolling: { percent: 1 } }),
   );
+  // Built-in bindings are deterministic, so a section revision bump cannot
+  // change the identity mid-flight; later rechecks settle immediately.
+  let released = false;
   f.services.credentials.resolve = () =>
-    new Promise((resolve) => {
-      release = resolve;
-    });
+    released
+      ? Promise.resolve({ value: "SYNTHETIC", source: "file" })
+      : new Promise((resolve) => {
+          release = resolve;
+        });
   const m = manager(f, new QuotaReader({ fetch: fetchImpl, timeoutMs: 1000 }));
   const pending = m.quota({ providerId: "opencode-go" });
   await vi.waitFor(() => expect(release).toBeDefined());
   f.sections[0].revision++;
   release?.({ value: "SYNTHETIC", source: "file" });
-  await settles(pending.catch((error) => error));
-  expect(fetchImpl).not.toHaveBeenCalled();
+  released = true;
+  await expect(pending).resolves.toMatchObject({ status: "ready" });
+  expect(fetchImpl).toHaveBeenCalledTimes(1);
 });
 
 test("live key change during resolve does not send fetch", async () => {

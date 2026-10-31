@@ -33,7 +33,7 @@
 ## 使用 API key 的 provider
 
 - **OpenCode Go，内置。** 不用再装任何插件。连接直接承载官方 Go 目录——41 个模型，每个说自己该说的协议，含 `max` 档的 Muse Spark 1.3。[配置、限制与回滚](docs/opencode-integrated.md) · [目录证据](docs/opencode-all-models-evidence.md)
-- **Command Code GOAT** —— 管 key、看官方额度；聊天走 [Command Code provider 插件](https://github.com/Mars-Sea/dsh-commandcode-provider)。
+- **Command Code GOAT 内置。** 管 key、看官方额度，聊天直接走内置 `provider-manager-commandcode` 适配器——目录里的每个模型都按它实际支持的协议发请求。
 - **只显示真数字。** OpenCode Go 和 Command Code 直读 provider 官方的用量接口；自定义端点就老实显示**不支持**，不编进度条。
 - **16 家预设，一卡一家。** **ZCode**（GLM 编程套餐）、**MiMo**（小米 Token Plan）、**MiniMax**——中国 / 海外端点同卡切换——另有 **OpenRouter、SiliconFlow、Moonshot、DeepSeek、OpenAI、Anthropic、Groq、Together、Fireworks、DashScope、Google Gemini、Mistral**，以及一键 **Meta Model API**。OpenRouter 在这页两边都有：这里是 API key，上面是登录。
 - **其他一切都能变成自定义路由。** 任何 OpenAI-Completions、OpenAI-Responses 或 Anthropic-Messages 端点，命名和管理方式与内置的一模一样——且永远不会与保留名冲突。
@@ -105,7 +105,7 @@ dsh plugin --profile web add --workspace-root --ignore-scripts --force \
 | --- | --- |
 | OpenCode Go / Spark | **内置** —— `provider-manager-opencode-go`，无需第三方插件 |
 | Muse | **内置** —— 设备码登录后的 `provider-manager-muse`（5 个模型；仅 Spark 1.3 带 `max`） |
-| Command Code GOAT | [Command Code provider 插件](https://github.com/Mars-Sea/dsh-commandcode-provider) |
+| Command Code GOAT | **内置** —— `provider-manager-commandcode`，无需第三方插件 |
 | 登录型（Codex、Claude…） | 宿主 `llm-pi-ai` 的同名路由 |
 | 自定义网关 | 你创建的 `llm-pi-ai` 自定义路由 |
 
@@ -115,7 +115,7 @@ dsh plugin --profile web add --workspace-root --ignore-scripts --force \
 
 **OpenCode Go** —— key 引用 `OPENCODE_API_KEY`。额度来自官方 usage 端点。
 
-**Command Code GOAT** —— key 引用 `COMMANDCODE_API_KEY`。如果你的环境里有字面 key、多账户或 `auth.json` 优先生效，卡片会标 **source-unverified**，绝不瞎猜。
+**Command Code GOAT** —— key 引用 `COMMANDCODE_API_KEY`。对话与额度读的是同一个引用，额度请求只发官方 credits 端点。
 
 **自定义 API** —— 选预设或从零开始。ZCode、MiMo、MiniMax、SiliconFlow、Moonshot 中国 / 海外同卡；key 必须与签发它的控制台对应。
 
@@ -128,7 +128,7 @@ dsh plugin --profile web add --workspace-root --ignore-scripts --force \
 | SiliconFlow / Moonshot | 中国与海外 URL 同卡切换 |
 | DeepSeek、OpenAI、Anthropic、Groq、Together、Fireworks、DashScope、Google Gemini、Mistral、Meta Model API | 官方 baseURL 预填 |
 
-先保存配置，再保存 key。每个模型行有 **1M 上下文** 复选框；环境变量名由路由派生（`DSH_PROVIDER_MANAGER_<hex(route)>_API_KEY`）。保留路由：`opencode-go`、`commandcode`、`deepseek-official`、`cliproxy`、`muse-code`、`provider-manager-opencode-go`、`provider-manager-muse`。
+先保存配置，再保存 key。每个模型行有 **1M 上下文** 复选框；环境变量名由路由派生（`DSH_PROVIDER_MANAGER_<hex(route)>_API_KEY`）。保留路由：`opencode-go`、`commandcode`、`deepseek-official`、`cliproxy`、`muse-code`、`provider-manager-opencode-go`、`provider-manager-commandcode`、`provider-manager-muse`。
 
 ## 安全
 

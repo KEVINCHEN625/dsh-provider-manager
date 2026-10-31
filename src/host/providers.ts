@@ -25,8 +25,6 @@ import {
 import { detectMuse } from "./muse.js";
 import {
   QuotaReader,
-  commandSourceAmbiguous,
-  unofficialEndpoint,
   untilAborted,
   OPENCODE_USAGE_URL,
   COMMAND_CREDITS_URL,
@@ -68,7 +66,9 @@ export const ConfigSchema: any = z.object({
   credential: vol(z.dict(z.string()).default({})),
   goApiKeyEnv: vol(z.string().role("credential-ref").default("OPENCODE_API_KEY")),
   goApiKeyEnv2: vol(z.string().role("credential-ref").default("OPENCODE_API_KEY_2")),
+  ccApiKeyEnv: vol(z.string().role("credential-ref").default("COMMANDCODE_API_KEY")),
 });
+const COMMANDCODE_API_KEY_REF = "COMMANDCODE_API_KEY";
 const fixed: Record<string, { ns: string; ref: string; name: string }> = {
   "opencode-go": {
     ns: "llm-opencode-go",
@@ -76,7 +76,7 @@ const fixed: Record<string, { ns: string; ref: string; name: string }> = {
     name: "OpenCode Go (legacy plugin)",
   },
   commandcode: {
-    ns: "llm-commandcode",
+    ns: "dsh-provider-manager",
     ref: "COMMANDCODE_API_KEY",
     name: "Command Code GOAT",
   },
@@ -240,29 +240,9 @@ export class Manager {
     }
     if (p.bindingToken && p.bindingToken !== binding.token)
       throw new SafeError("BINDING_CHANGED");
-    const profile = binding.profile as Record<string, unknown>;
-    if (unofficialEndpoint(quota.endpointKind, profile))
-      return {
-        providerId,
-        source,
-        status: "unsupported",
-        windows: [],
-        stale: false,
-      };
-    if (
-      providerId === "commandcode" &&
-      commandSourceAmbiguous(
-        profile,
-        binding.d.secrets as { path: string[]; set: boolean }[] | undefined,
-      )
-    )
-      return {
-        providerId,
-        source,
-        status: "source-unverified",
-        windows: [],
-        stale: false,
-      };
+    // The quota URL is a hardcoded official constant and the binding profile
+    // is fixed for built-in providers, so chat and quota always resolve the
+    // same credential ref — there is no source ambiguity to guard against.
     const bound = this.quotaReader.bindDeadline(signal);
     try {
       const resolve = () =>
@@ -365,50 +345,39 @@ export class Manager {
     return this.services.settings.describe({ redactSecrets: true });
   }
   binding(id: string) {
-    const defs = this.descriptors();
     const f = fixed[id];
     if (!f && !id.startsWith("custom:")) throw new SafeError("REF_NOT_ALLOWED");
     const route = id.startsWith("custom:") ? id.slice(7) : id;
-    const ns = f?.ns ?? "llm-pi-ai";
-    let d = defs.find((d) => d.ns === ns);
-    let effectiveNs = ns;
-    // 0.2.x hosts: the Go section lives inside the main plugin's declarative
-    // Config (goApiKeyEnv field), not as a separate provider-manager-opencode-go
-    // entry. Fall back to the main section and read the field from there.
-    if (!d && f?.ns === GO_ROUTE) {
-      d = defs.find(
-        (d) => d.ns === "dsh-provider-manager" || d.ns === "provider-manager",
-      );
-      if (d) {
-        effectiveNs = d.ns;
-        const mainValue = object(d.value);
-        const goEnv =
-          typeof mainValue.goApiKeyEnv === "string"
-            ? mainValue.goApiKeyEnv
-            : GO_KEY;
-        const goEnv2 =
-          typeof mainValue.goApiKeyEnv2 === "string"
-            ? mainValue.goApiKeyEnv2
-            : "OPENCODE_API_KEY_2";
-        return {
-          ref: goEnv,
-          token: createHmac("sha256", this.salt)
-            .update(JSON.stringify([id, effectiveNs, goEnv, d.revision]))
-            .digest("hex"),
-          d,
-          profile: { apiKeyEnv: goEnv, apiKeyEnv2: goEnv2 },
-          route,
-          ns: effectiveNs,
-        };
-      }
+
+    // Built-in providers bind directly to their fixed credential ref — no
+    // settings section lookup. This works identically on every host version
+    // (0.1.5 through 0.2.x) because the credentials service is
+    // version-independent, and it sidesteps the 0.2.x declarative-section
+    // visibility gap entirely.
+    if (f) {
+      return {
+        ref: f.ref,
+        token: createHmac("sha256", this.salt)
+          .update(JSON.stringify([id, f.ns, f.ref, 0]))
+          .digest("hex"),
+        d: { ns: f.ns, revision: 0, value: { apiKeyEnv: f.ref } } as never,
+        profile: { apiKeyEnv: f.ref } as Record<string, unknown>,
+        route,
+        ns: f.ns,
+      };
     }
+
+    // Custom providers: existing path — llm-pi-ai section lookup, catalog
+    // check, canonical ref validation. Unchanged from before.
+    const defs = this.descriptors();
+    const d = defs.find((d) => d.ns === "llm-pi-ai");
     if (!d) throw new SafeError("UNAVAILABLE");
     const v = object(d.value);
-    const profile = f ? v : object(object(v.providers)[route]);
+    const profile = object(object(v.providers)[route]);
     const ref =
-      typeof profile.apiKeyEnv === "string" ? profile.apiKeyEnv : f?.ref;
-    let allowed = f ? ref === f.ref : false;
-    if (!f) {
+      typeof profile.apiKeyEnv === "string" ? profile.apiKeyEnv : undefined;
+    let allowed = false;
+    {
       const catalog = this.services.llm.listConfigurableProviders();
       const entry = catalog.find((p) => p.provider === route);
       if (
@@ -432,9 +401,9 @@ export class Manager {
       this.config.authorizedExistingRefs?.[id] === ref;
     if (!allowed || !ref) throw new SafeError("REF_NOT_ALLOWED");
     const token = createHmac("sha256", this.salt)
-      .update(JSON.stringify([id, ns, ref, d.revision]))
+      .update(JSON.stringify([id, "llm-pi-ai", ref, d.revision]))
       .digest("hex");
-    return { ref, token, d, profile, route, ns };
+    return { ref, token, d, profile, route, ns: "llm-pi-ai" };
   }
   check(input: unknown, save = false) {
     const p = exact(

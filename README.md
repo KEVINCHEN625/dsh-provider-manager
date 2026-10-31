@@ -33,7 +33,7 @@ When you sign in, the plugin quietly checks each model against the provider — 
 ## If your provider uses an API key
 
 - **OpenCode Go, built in.** No extra plugin to install. The connection serves the official Go catalog — 41 models, each talking the protocol it actually needs, including Muse Spark 1.3 with `max`. [Setup, limits, rollback](docs/opencode-integrated.md) · [Catalog evidence](docs/opencode-all-models-evidence.md)
-- **Command Code GOAT** — manage the key and watch the official quota; chat runs on the [Command Code provider plugin](https://github.com/Mars-Sea/dsh-commandcode-provider).
+- **Command Code GOAT, built in.** Manage the key, watch the official quota, and chat runs on the built-in `provider-manager-commandcode` adapter — every catalog model talks the protocol it actually needs.
 - **Honest numbers only.** OpenCode Go and Command Code read the providers' own usage endpoints. Anything custom shows **unsupported** rather than a made-up progress bar.
 - **16 presets, one card each.** **ZCode** (GLM Coding Plan), **MiMo** (Xiaomi Token Plan), **MiniMax** — each with China / Overseas endpoints on one card — plus **OpenRouter, SiliconFlow, Moonshot, DeepSeek, OpenAI, Anthropic, Groq, Together, Fireworks, DashScope, Google Gemini, Mistral**, and one-click **Meta Model API**. OpenRouter is on both sides of this page: API key here, sign-in above.
 - **Anything else becomes a custom route.** Any OpenAI-Completions, OpenAI-Responses, or Anthropic-Messages endpoint, named and managed like a built-in — and it can never collide with the reserved ones.
@@ -105,7 +105,7 @@ After installing, restart Web and open Settings — the page is there.
 | --- | --- |
 | OpenCode Go / Spark | **Built in** — `provider-manager-opencode-go`, no third-party plugin required |
 | Muse | **Built in** — `provider-manager-muse` after a device-code sign-in (5 models; only Spark 1.3 carries `max`) |
-| Command Code GOAT | [Command Code provider plugin](https://github.com/Mars-Sea/dsh-commandcode-provider) |
+| Command Code GOAT | **Built in** — `provider-manager-commandcode`, no third-party plugin required |
 | Sign-in providers (Codex, Claude, …) | The harness `llm-pi-ai` route named after the provider |
 | Custom gateways | The `llm-pi-ai` custom route you created |
 
@@ -115,7 +115,7 @@ The list shows brand mark, name, LLM/Agent badge, key status, remaining quota, a
 
 **OpenCode Go** — key ref `OPENCODE_API_KEY`. Quota from the official usage endpoint.
 
-**Command Code GOAT** — key ref `COMMANDCODE_API_KEY`. If a literal key, an extra account, or `auth.json` takes precedence in your setup, the card says **source-unverified** instead of guessing.
+**Command Code GOAT** — key ref `COMMANDCODE_API_KEY`. Chat and quota read the same ref, and the quota request always goes to the official credits endpoint.
 
 **Custom API** — pick a preset or start from scratch. ZCode, MiMo, MiniMax, SiliconFlow, and Moonshot keep China / Overseas on one card; the key must match the console that issued it.
 
@@ -128,7 +128,7 @@ The list shows brand mark, name, LLM/Agent badge, key status, remaining quota, a
 | SiliconFlow / Moonshot | China and Overseas URLs on the same card |
 | DeepSeek, OpenAI, Anthropic, Groq, Together, Fireworks, DashScope, Google Gemini, Mistral, Meta Model API | Official base URL prefilled |
 
-Save the configuration, then save the key. Each model row has the **1M context** checkbox; the env name is derived from the route (`DSH_PROVIDER_MANAGER_<hex(route)>_API_KEY`). Reserved routes: `opencode-go`, `commandcode`, `deepseek-official`, `cliproxy`, `muse-code`, `provider-manager-opencode-go`, `provider-manager-muse`.
+Save the configuration, then save the key. Each model row has the **1M context** checkbox; the env name is derived from the route (`DSH_PROVIDER_MANAGER_<hex(route)>_API_KEY`). Reserved routes: `opencode-go`, `commandcode`, `deepseek-official`, `cliproxy`, `muse-code`, `provider-manager-opencode-go`, `provider-manager-commandcode`, `provider-manager-muse`.
 
 ## Security
 

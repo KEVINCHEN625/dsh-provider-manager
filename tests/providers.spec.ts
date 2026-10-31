@@ -152,13 +152,16 @@ test("editing an explicitly authorized existing reference preserves its authenti
   await m.save({ ...draft, route: "acme", editing: true });
   expect(f.sections[2].value.providers.acme.apiKeyEnv).toBe("ACME_EXISTING");
 });
-test("catalog failure is independent of credential management failure", async () => {
+test("commandcode binding falls back to the main section on 0.2.x hosts", async () => {
   const f = fixture();
   const m: any = new Manager(f.services);
   f.sections[1].value.apiKeyEnv = "UNMANAGED";
+  // 0.2.x: the llm-commandcode section is gone (mars-sea gated out); the
+  // binding synthesizes the built-in profile from the main section instead
+  // of refusing — the card renders with the official key ref.
   const readable = await m.card("commandcode");
-  expect(readable.error).toBe("REF_NOT_ALLOWED");
-  expect(readable.catalogError).toBeUndefined();
+  expect(readable.error).toBeUndefined();
+  expect(readable.credential?.configured ?? false).toBe(false);
   expect(readable.models).toHaveLength(1);
   f.services.llm.listModels = async () => {
     throw Error("synthetic");

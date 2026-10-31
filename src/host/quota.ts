@@ -12,9 +12,6 @@ export const COMMAND_CREDITS_URL =
 export const QUOTA_TIMEOUT_MS = 10000;
 export const QUOTA_MAX_BYTES = 1048576;
 export const QUOTA_TTL_MS = 60000;
-const OPENCODE_OFFICIAL = "https://opencode.ai/zen/go/v1";
-const COMMAND_OFFICIAL = "https://api.commandcode.ai";
-const DEFAULT_COMMAND_REF = "COMMANDCODE_API_KEY";
 
 export interface QuotaReaderOptions {
   fetch?: typeof fetch;
@@ -157,58 +154,6 @@ export function parseCommandCredits(value: unknown): QuotaWindow[] | undefined {
   if (isRecord(limits.monthly))
     windows.push({ id: "monthly", ...parseCommandWindow(limits.monthly) });
   return windows.length ? windows : undefined;
-}
-
-export function commandSourceAmbiguous(
-  profile: Record<string, unknown>,
-  secrets?: { path: string[]; set: boolean }[],
-): boolean {
-  if (!secrets) return true;
-  const apiKeySecret = secrets.find(
-    (item) => item.path.length === 1 && item.path[0] === "apiKey",
-  );
-  if (!apiKeySecret || apiKeySecret.set) return true;
-  if (typeof profile.apiKey === "string" && profile.apiKey.trim() !== "")
-    return true;
-  const accounts = profile.accounts;
-  if (accounts !== undefined) {
-    if (!Array.isArray(accounts) || accounts.length > 0) return true;
-  }
-  const rules = profile.modelAccountRules;
-  if (rules !== undefined) {
-    if (!Array.isArray(rules) || rules.length > 0) return true;
-  }
-  const active = profile.activeAccount;
-  if (active === undefined || active === "") return false;
-  if (typeof active !== "string") return true;
-  const trimmed = active.trim();
-  const defaultRef =
-    typeof profile.apiKeyEnv === "string" && profile.apiKeyEnv.trim()
-      ? profile.apiKeyEnv.trim()
-      : DEFAULT_COMMAND_REF;
-  return trimmed !== "default" && trimmed !== defaultRef;
-}
-
-function normalizeBase(value: string) {
-  return value.replace(/\/+$/, "");
-}
-
-export function unofficialEndpoint(
-  kind: "opencode-go" | "commandcode",
-  profile: Record<string, unknown>,
-): boolean {
-  const definition = {
-    "opencode-go": {
-      official: OPENCODE_OFFICIAL,
-      fields: ["baseURL", "apiBase"],
-    },
-    commandcode: { official: COMMAND_OFFICIAL, fields: ["apiBase", "baseURL"] },
-  }[kind];
-  const official = definition.official;
-  const raw = profile[definition.fields[0]] ?? profile[definition.fields[1]];
-  if (raw === undefined || raw === "") return false;
-  if (typeof raw !== "string") return true;
-  return normalizeBase(raw) !== official;
 }
 
 export async function untilAborted<T>(
