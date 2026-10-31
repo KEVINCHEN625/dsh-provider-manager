@@ -64,11 +64,7 @@ export const ConfigSchema: any = z.object({
   probe: vol(z.dict(ProbeRowSchema).default({})),
   selections: vol(z.dict(z.array(z.string())).default({})),
   credential: vol(z.dict(z.string()).default({})),
-  goApiKeyEnv: vol(z.string().role("credential-ref").default("OPENCODE_API_KEY")),
-  goApiKeyEnv2: vol(z.string().role("credential-ref").default("OPENCODE_API_KEY_2")),
-  ccApiKeyEnv: vol(z.string().role("credential-ref").default("COMMANDCODE_API_KEY")),
 });
-const COMMANDCODE_API_KEY_REF = "COMMANDCODE_API_KEY";
 const fixed: Record<string, { ns: string; ref: string; name: string }> = {
   "opencode-go": {
     ns: "llm-opencode-go",
@@ -88,7 +84,6 @@ const quotaDefinitions: Record<
     source: NonNullable<QuotaSnapshot["source"]>;
     url: string;
     kind: "opencode" | "command";
-    endpointKind: "opencode-go" | "commandcode";
   }
 > = Object.fromEntries([
   [
@@ -97,8 +92,7 @@ const quotaDefinitions: Record<
       source: "opencode-official",
       url: OPENCODE_USAGE_URL,
       kind: "opencode",
-      endpointKind: "opencode-go",
-    },
+      },
   ],
   [
     GO_ROUTE,
@@ -106,8 +100,7 @@ const quotaDefinitions: Record<
       source: "opencode-official",
       url: OPENCODE_USAGE_URL,
       kind: "opencode",
-      endpointKind: "opencode-go",
-    },
+      },
   ],
   [
     "commandcode",
@@ -115,8 +108,7 @@ const quotaDefinitions: Record<
       source: "command-default-reference",
       url: COMMAND_CREDITS_URL,
       kind: "command",
-      endpointKind: "commandcode",
-    },
+      },
   ],
 ]);
 // The legacy management card is retired. The route stays reserved and the
@@ -360,7 +352,11 @@ export class Manager {
         token: createHmac("sha256", this.salt)
           .update(JSON.stringify([id, f.ns, f.ref, 0]))
           .digest("hex"),
-        d: { ns: f.ns, revision: 0, value: { apiKeyEnv: f.ref } } as never,
+        d: {
+          ns: f.ns,
+          revision: 0,
+          value: { apiKeyEnv: f.ref },
+        } as unknown as ReturnType<Manager["descriptors"]>[number],
         profile: { apiKeyEnv: f.ref } as Record<string, unknown>,
         route,
         ns: f.ns,

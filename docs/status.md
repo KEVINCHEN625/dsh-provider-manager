@@ -1,5 +1,26 @@
 # Current status
 
+Executor (2026-10-31, `binding-fix`): 0.2.x hosts stopped collecting our
+settings section (sub-field volatile no longer honored), so `binding()` could
+not find `llm-commandcode` and the Command Code card failed with "This
+credential binding is not managed". Built-in providers (opencode-go,
+commandcode, provider-manager-opencode-go) now return early from `binding()`
+with a deterministic fixed-ref binding — the same ref the built-in chat
+adapters resolve — and never read settings sections. Consequence: the quota
+guards `unofficialEndpoint`/`commandSourceAmbiguous` became structurally
+unreachable (quota URLs are hardcoded official constants; chat and quota read
+the same fixed ref) and were removed along with the README source-unverified
+claim; READMEs now mark Command Code chat as built in
+(`provider-manager-commandcode`). Cross-review (independent agent): PASS, no
+P1; fixed its P2 (tautological revision-bump assertion now bumps for real)
+and P3s (dead `goApiKeyEnv`/`goApiKeyEnv2`/`ccApiKeyEnv` config knobs and
+`endpointKind` removed, honest descriptor cast, stale test names, result
+annotation on docs/fix-commandcode-binding-prompt.md). Gates: host 372 /
+client 59 / typecheck / build / pack. Deferred follow-up: the commandcode
+card still lists models via `listModels("commandcode")` (the legacy
+third-party route id) — on hosts with only the built-in adapter the model
+table stays empty; switch it to the built-in catalog like the Go card does.
+
 Controller review + commit (2026-09-23, `4d1bb7c`): workspace reviewed end to end
 (gates green: host 346 / client 59 / typecheck / build / pack; no secrets in
 source, tests, or the published registry) and committed. Committed in `4d1bb7c`:

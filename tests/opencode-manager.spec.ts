@@ -60,8 +60,14 @@ test("built-in card shares key but has independent binding and quota destination
     "Bearer UPDATED",
   );
   // Built-in bindings are deterministic (no settings revision in the HMAC) —
-  // a section bump no longer invalidates them.
-  expect(m.binding(route).token).toBe(m.binding(route).token);
+  // a section bump must neither change the token nor disturb the quota path.
+  f.sections[0].revision++;
+  expect(m.binding(route).token).toBe(c.bindingToken);
+  await expect(m.quota({ providerId: "opencode-go" })).resolves.toMatchObject({
+    status: "ready",
+  });
+  // Still inside the success TTL — the bump must not force a refetch either.
+  expect(calls).toHaveLength(4);
   expect(
     (
       await m.reveal({

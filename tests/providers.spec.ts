@@ -152,13 +152,13 @@ test("editing an explicitly authorized existing reference preserves its authenti
   await m.save({ ...draft, route: "acme", editing: true });
   expect(f.sections[2].value.providers.acme.apiKeyEnv).toBe("ACME_EXISTING");
 });
-test("commandcode binding falls back to the main section on 0.2.x hosts", async () => {
+test("commandcode card ignores a hostile legacy section", async () => {
   const f = fixture();
   const m: any = new Manager(f.services);
   f.sections[1].value.apiKeyEnv = "UNMANAGED";
-  // 0.2.x: the llm-commandcode section is gone (mars-sea gated out); the
-  // binding synthesizes the built-in profile from the main section instead
-  // of refusing — the card renders with the official key ref.
+  // Built-in bindings never read settings sections on any host version, so
+  // even a hostile legacy llm-commandcode section cannot change the binding —
+  // the card renders with the official key ref.
   const readable = await m.card("commandcode");
   expect(readable.error).toBeUndefined();
   expect(readable.credential?.configured ?? false).toBe(false);

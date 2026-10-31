@@ -51,7 +51,6 @@ describe("dual-host settings compatibility", () => {
       "probe",
       "selections",
       "credential",
-      "goApiKeyEnv",
     ]) {
       const entry = (ConfigSchema as { dict: { [key: string]: { meta?: { volatile?: boolean } } } })
         .dict[field];

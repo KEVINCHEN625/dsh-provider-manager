@@ -1,5 +1,14 @@
 # 任务：修复 dsh-provider-manager 内置 provider 的 Command Code 卡 "This credential binding is not managed" 错误
 
+> **结果（已执行，commit 0ad2ea8）**：按本提示词完成 binding() 重写，两处与提示词
+> 的偏差记录如下。① 提示词称 Muse 也走固定 ref 绑定——实际 Muse 走自研设备码
+> record（`provider-manager/muse` scope），不经过 `binding()`，固定表只含
+> opencode-go / commandcode / provider-manager-opencode-go。② 提示词假设合成
+> descriptor 缺 `secrets` 时 `commandSourceAmbiguous()` 返回 false——实际该函数
+> `if (!secrets) return true`，会让每张 Command Code 卡永久 source-unverified；
+> 因此额度侧的 ambiguity/unofficial-base 两个守卫整体删除（quota URL 已是硬编码
+> 官方常量，结构性不可重定向），配套更新测试与 README。
+
 ## 根因（已完全定位，不需要重新诊断）
 
 错误链路：用户在 Web UI 的 Command Code 卡粘贴 key → 客户端调 `credential/set` RPC →
