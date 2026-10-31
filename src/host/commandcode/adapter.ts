@@ -57,18 +57,46 @@ function wrapCcApi(api: ProviderStreams): ProviderStreams {
   };
 }
 
+/**
+ * Effort levels proven against the live Command Code endpoint (2026-10-31,
+ * key-authenticated probes): chat/completions accepts OpenAI-style
+ * `reasoning_effort` for deepseek/* and z-ai/* models, including "none",
+ * which fully suppresses reasoning_content. `thinking: {type:"disabled"}` is
+ * ignored by the endpoint, so "none" is the only working off switch.
+ * "minimal" behaves as an off alias there, so it stays hidden (null).
+ */
+const CC_EFFORTS: Record<string, string | null> = {
+  off: "none",
+  minimal: null,
+  low: "low",
+  medium: "medium",
+  high: "high",
+  xhigh: "xhigh",
+  max: "max",
+};
+
+/** Vendor prefixes whose reasoning_effort support is probe-verified. */
+function ccReasoning(id: string): boolean {
+  return id.startsWith("deepseek/") || id.startsWith("z-ai/");
+}
+
 /** Convert one live catalog entry into a pi-ai Model on this route. */
-function toCcModel(entry: CcCatalogEntry): Model<Api> {
+export function toCcModel(entry: CcCatalogEntry): Model<Api> {
+  const reasoning = ccReasoning(entry.id);
   return {
     id: entry.id,
     name: entry.name,
     provider: CC_ROUTE,
     baseUrl: CC_ENDPOINT,
     api: entry.api,
-    reasoning: false,
+    reasoning,
+    ...(reasoning ? { thinkingLevelMap: CC_EFFORTS } : {}),
     input: ["text"],
     contextWindow: entry.contextWindow,
     maxTokens: Math.min(entry.contextWindow, 128_000),
+    // pi-ai's calculateCost() dereferences model.cost on every completed
+    // stream; a subscription channel reports zero-cost accounting.
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   } as unknown as Model<Api>;
 }
 
