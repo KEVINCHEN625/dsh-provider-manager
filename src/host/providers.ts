@@ -467,6 +467,63 @@ export class Manager {
       source: info.source,
     };
   }
+  /**
+   * OpenCode Go key-pool slot 2. The adapter falls back to this ref when the
+   * primary OPENCODE_API_KEY is absent or depleted; it is a fixed, dedicated
+   * reference — not routed through the per-provider binding, so it cannot be
+   * hijacked by editing another provider's config.
+   */
+  static SECOND_GO_REF = "OPENCODE_API_KEY_2";
+
+  async setSecondGoKey(input: unknown, signal?: AbortSignal): Promise<{
+    configured: boolean;
+    writable: boolean;
+    source: string | undefined;
+  }> {
+    const p = exact(input, ["value"]);
+    const value = text(p.value, 16384);
+    signal?.throwIfAborted();
+    const ref = credentialRef(Manager.SECOND_GO_REF);
+    if (!(await this.services.credentials.describe(ref)).writable)
+      throw new SafeError("READ_ONLY");
+    signal?.throwIfAborted();
+    await this.services.credentials.set(ref, value);
+    const info = await this.services.credentials.describe(ref);
+    return {
+      configured: info.configured,
+      writable: info.writable,
+      source: info.source,
+    };
+  }
+
+  async revealSecondGoKey(): Promise<{
+    value: string;
+    source: string | undefined;
+    revealTTL: number;
+  }> {
+    const result = await this.services.credentials.resolve(
+      credentialRef(Manager.SECOND_GO_REF),
+    );
+    if (!result) throw new SafeError("UNAVAILABLE");
+    return {
+      value: result.value,
+      source: result.source,
+      revealTTL: Math.min(
+        30000,
+        Math.max(1000, this.config.revealTimeoutMs ?? 30000),
+      ),
+    };
+  }
+
+  async clearSecondGoKey(): Promise<{ configured: boolean }> {
+    const ref = credentialRef(Manager.SECOND_GO_REF);
+    if (!(await this.services.credentials.describe(ref)).writable)
+      throw new SafeError("READ_ONLY");
+    await this.services.credentials.unset(ref);
+    const info = await this.services.credentials.describe(ref);
+    return { configured: info.configured };
+  }
+
   async reveal(input: unknown, signal?: AbortSignal) {
     const { b } = this.check(input);
     signal?.throwIfAborted();
@@ -574,8 +631,12 @@ export class Manager {
         providers && typeof providers === "object" ? providers : {},
       ).map((r) => "custom:" + r),
     ];
+    const secondGo = await this.services.credentials.describe(
+      credentialRef(Manager.SECOND_GO_REF),
+    );
     return {
       settingsWritable: this.services.settings.writable,
+      secondGoKeyConfigured: secondGo.configured,
       providers: await Promise.all(
         ids.map(async (id) => {
           try {

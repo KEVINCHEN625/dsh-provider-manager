@@ -64,6 +64,18 @@ export function apply(ctx: Context, config: ConfigType = {}) {
                 value = await manager.card(text(p.providerId));
                 break;
               }
+              case "credential/set-second-go":
+                value = await manager.setSecondGoKey(
+                  payload,
+                  AbortSignal.any([signal, lifetime.signal]),
+                );
+                break;
+              case "credential/reveal-second-go":
+                value = await manager.revealSecondGoKey();
+                break;
+              case "credential/clear-second-go":
+                value = await manager.clearSecondGoKey();
+                break;
               case "quota/read":
                 value = await manager.quota(
                   payload,

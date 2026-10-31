@@ -75,6 +75,9 @@ export interface Provider {
   catalogError?: string;
 }
 export interface Snapshot {
+  /** OpenCode Go key-pool slot 2 is configured (read-only flag). */
+  secondGoKeyConfigured?: boolean;
+
   settingsWritable: boolean;
   providers: Provider[];
   customRevision: number;
