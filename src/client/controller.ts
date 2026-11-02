@@ -111,6 +111,8 @@ export class Controller {
   private disposed = false;
   private timer?: ReturnType<typeof setTimeout>;
   private secondTimer?: ReturnType<typeof setTimeout>;
+  private retryTimer?: ReturnType<typeof setTimeout>;
+  private retryDelay = 5000;
   private revealAbort?: AbortController;
   constructor(
     private transport: Transport,
@@ -168,13 +170,28 @@ export class Controller {
           ),
         ),
       );
-      if (generation === this.loadGeneration)
+      if (generation === this.loadGeneration) {
+        this.retryDelay = 5000;
         this.update({ status: "ready", snapshot, quotas: {} });
+      }
       if (generation === this.loadGeneration) this.readVisibleQuotas();
     } catch (error) {
-      if (generation === this.loadGeneration)
+      if (generation === this.loadGeneration) {
         this.update({ status: "error", error: errorCode(error) });
+        // A host restart orphans the page's RPC channel; keep retrying with
+        // backoff so the page recovers on its own once the connection does.
+        this.scheduleRetry();
+      }
     }
+  }
+
+  private scheduleRetry() {
+    clearTimeout(this.retryTimer);
+    this.retryTimer = setTimeout(() => {
+      if (this.disposed || this.state.status !== "error") return;
+      this.retryDelay = Math.min(this.retryDelay * 2, 30000);
+      void this.load();
+    }, this.retryDelay);
   }
   async refresh(provider: Provider) {
     const generation = this.loadGeneration;
@@ -427,6 +444,8 @@ export class Controller {
   connectionChanged(connected: boolean) {
     this.hide();
     this.hideSecond();
+    clearTimeout(this.retryTimer);
+    if (connected) this.retryDelay = 5000;
     ++this.loadGeneration;
     this.abortQuotas();
     this.stopPoll();
@@ -678,6 +697,7 @@ export class Controller {
   dispose() {
     this.hide();
     this.hideSecond();
+    clearTimeout(this.retryTimer);
     ++this.loadGeneration;
     this.abortQuotas();
     this.stopPoll();
