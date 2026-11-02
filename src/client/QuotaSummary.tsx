@@ -86,12 +86,15 @@ export function QuotaSummary({
   name,
   onRefresh,
   variant = "headline",
+  heading,
 }: {
   view?: QuotaView;
   t: Translate;
   name: string;
   onRefresh?: () => void;
   variant?: "headline" | "all";
+  /** Overrides the default "Remaining quota" heading (variant="all"). */
+  heading?: string;
 }) {
   const snapshot: QuotaSnapshot | undefined = view?.snapshot;
   const status = view?.status ?? "loading";
@@ -120,7 +123,7 @@ export function QuotaSummary({
     >
       {variant === "all" && (
         <div className="pm-quota-head">
-          <h3>{t("quotaHeading")}</h3>
+          <h3>{heading ?? t("quotaHeading")}</h3>
           {onRefresh && (
             <button
               type="button"

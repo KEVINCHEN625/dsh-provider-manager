@@ -455,4 +455,28 @@ export const styles = `
   }
   .pm-setup { justify-self: start; }
 }
+
+.pm-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+}
+.pm-modal-card {
+  background: var(--dsw-alias-fill-primary, color-mix(in srgb, currentColor 6%, transparent));
+  color: inherit;
+  border-radius: 10px;
+  padding: 16px;
+  width: min(420px, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+}
+.pm-modal-card h4 {
+  margin: 0;
+}
 `;
