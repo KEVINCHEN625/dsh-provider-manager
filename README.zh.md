@@ -113,7 +113,7 @@ dsh plugin --profile web add --workspace-root --ignore-scripts --force \
 
 列表显示品牌厂标、名称、LLM/Agent 标记、key 状态、剩余额度，每张卡片点进详情。
 
-**OpenCode Go** —— key 引用 `OPENCODE_API_KEY`。额度来自官方 usage 端点。
+**OpenCode Go** —— key 池：主引用 `OPENCODE_API_KEY` + 可选备用（`OPENCODE_API_KEY_2`）。详情页分别显示两把 key 各自的官方额度，并有按钮选择聊天优先用哪把；仅当优先 key 不可用时才回退到另一把。
 
 **Command Code GOAT** —— key 引用 `COMMANDCODE_API_KEY`。对话与额度读的是同一个引用，额度请求只发官方 credits 端点。
 
