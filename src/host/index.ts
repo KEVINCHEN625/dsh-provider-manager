@@ -76,6 +76,12 @@ export function apply(ctx: Context, config: ConfigType = {}) {
               case "credential/clear-second-go":
                 value = await manager.clearSecondGoKey();
                 break;
+              case "go/set-preference":
+                value = await manager.setGoPreference(
+                  payload,
+                  AbortSignal.any([signal, lifetime.signal]),
+                );
+                break;
               case "quota/read":
                 value = await manager.quota(
                   payload,

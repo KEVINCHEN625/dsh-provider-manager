@@ -124,6 +124,154 @@ function endpoint(provider: Provider) {
   return provider.baseURL;
 }
 
+/**
+ * OpenCode Go key pool: per-slot credential state, per-slot quota, and the
+ * preference toggle. Chat reads the preferred slot first and falls back to
+ * the other when it has no usable key.
+ */
+function GoKeyPoolCard({
+  provider,
+  controller,
+  state,
+  t,
+  id,
+}: {
+  provider: Provider;
+  controller: Controller;
+  state: State;
+  t: Translate;
+  id: string;
+}) {
+  const [second, setSecond] = useState("");
+  useEffect(() => {
+    setSecond("");
+  }, [state.clearEpoch]);
+  const snapshot = state.snapshot;
+  const preferred = snapshot?.goPreferredSlot ?? "primary";
+  const slots = snapshot?.goKeySlots ?? [];
+  const secondSlot = slots.find((slot) => slot.slot === "second");
+  const secondQuota = state.quotas[`${provider.id}:second`];
+  useEffect(() => {
+    // Nothing in the global quota loop reads the second slot; fetch it once
+    // when the details page opens so the card never sits in loading forever.
+    void controller.refreshQuota(provider, false, "second");
+    // The details page is mounted per provider; id is the only needed dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provider.id]);
+  return (
+    <section className="pm-card">
+      <h3>{t("goPoolHeading")}</h3>
+      <p className="pm-meter-detail">{t("goPoolHelp")}</p>
+      {slots.map((slot) => (
+        <div key={slot.slot} className="pm-keyrow">
+          <p>
+            <span
+              className={slot.configured ? "pm-dot pm-dot-on" : "pm-dot"}
+            />
+            <strong>{t(`goSlot_${slot.slot}` as LocaleKey)}</strong>{" "}
+            <code>{slot.ref}</code>
+            {slot.slot === preferred && (
+              <span className="pm-badge">{t("goPreferredBadge")}</span>
+            )}
+          </p>
+          <p>
+            {slot.configured ? t("configured") : t("missing")}
+            {slot.source ? ` · ${t("source")}: ${slot.source}` : ""}
+          </p>
+          <button
+            type="button"
+            disabled={
+              slot.slot === preferred ||
+              state.operations["go-preference"]?.status === "loading"
+            }
+            onClick={() => void controller.setGoPreferred(slot.slot)}
+          >
+            {slot.slot === preferred
+              ? t("goPreferredNow")
+              : t("goPreferThis")}
+          </button>
+        </div>
+      ))}
+      <Result operation={state.operations["go-preference"]} t={t} />
+      <div className="pm-keyrow">
+        <h4>{t("goQuotaSecond")}</h4>
+        <QuotaSummary
+          view={secondQuota}
+          t={t}
+          name={`${provider.name} · ${t("goSlot_second")}`}
+          variant="all"
+          onRefresh={() => void controller.refreshQuota(provider, true, "second")}
+        />
+      </div>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void controller.saveSecondGoKey(second);
+        }}
+      >
+        <label htmlFor={`${id}-second`}>{t("goSecondNew")}</label>
+        <input
+          id={`${id}-second`}
+          type="password"
+          autoComplete="off"
+          value={second}
+          onChange={(e) => setSecond(e.target.value)}
+          disabled={!snapshot?.settingsWritable}
+        />
+        <button
+          type="submit"
+          disabled={
+            !second.trim() ||
+            !snapshot?.settingsWritable ||
+            state.operations["go-second:save"]?.status === "loading"
+          }
+        >
+          {t("goSecondSave")}
+        </button>
+      </form>
+      <Result operation={state.operations["go-second:save"]} success={t("keySaved")} t={t} />
+      <button
+        type="button"
+        disabled={
+          !secondSlot?.configured ||
+          state.operations["go-second:reveal"]?.status === "loading"
+        }
+        onClick={() => void controller.revealSecondGo()}
+      >
+        {t("show")}
+      </button>
+      <button type="button" onClick={controller.hideSecond}>
+        {t("hide")}
+      </button>
+      {state.revealedSecond && (
+        <div>
+          <label htmlFor={`${id}-second-shown`}>{t("shown")}</label>
+          <textarea
+            id={`${id}-second-shown`}
+            readOnly
+            value={state.revealedSecond.value}
+            autoComplete="off"
+          />
+          <p>
+            {t("source")}: {state.revealedSecond.source || t("unknown")}
+          </p>
+        </div>
+      )}
+      <Result operation={state.operations["go-second:reveal"]} t={t} />
+      <button
+        type="button"
+        disabled={
+          !secondSlot?.configured || !snapshot?.settingsWritable
+        }
+        onClick={() => void controller.clearSecondGo()}
+      >
+        {t("goSecondClear")}
+      </button>
+      <Result operation={state.operations["go-second:clear"]} success={t("goSecondCleared")} t={t} />
+    </section>
+  );
+}
+
 export function ProviderDetails({
   provider,
   controller,
@@ -279,6 +427,15 @@ export function ProviderDetails({
         variant="all"
         onRefresh={() => void controller.refreshQuota(provider, true)}
       />
+      {provider.id === "provider-manager-opencode-go" && (
+        <GoKeyPoolCard
+          provider={provider}
+          controller={controller}
+          state={state}
+          t={t}
+          id={id}
+        />
+      )}
       {provider.id.startsWith("custom:") && (
         <CustomProviderForm
           controller={controller}

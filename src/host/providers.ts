@@ -2,9 +2,12 @@ import {
   GO_ROUTE,
   GO_NAME,
   GO_KEY,
+  GO_KEY_2,
   GO_CATALOG,
+  GO_PREFERENCE_REF,
   catalogModelDto,
 } from "./opencode/catalog.js";
+import { goSlotOrder, readGoPreferred, type GoSlot } from "./opencode/pool.js";
 import { createHmac, randomBytes } from "node:crypto";
 import z from "@deepseek-ai/schemastery";
 import { ProbeRowSchema } from "./oauth-routes.js";
@@ -187,12 +190,16 @@ export class Manager {
   }
   async quota(input: unknown, signal?: AbortSignal): Promise<QuotaSnapshot> {
     signal?.throwIfAborted();
-    const p = exact(input, ["providerId", "bindingToken", "refresh"]);
+    const p = exact(input, ["providerId", "bindingToken", "refresh", "keySlot"]);
     const providerId = text(p.providerId);
     if (p.refresh !== undefined && typeof p.refresh !== "boolean")
       throw new SafeError("INVALID_INPUT");
     if (p.bindingToken !== undefined && typeof p.bindingToken !== "string")
       throw new SafeError("INVALID_INPUT");
+    const rawSlot: unknown = p.keySlot;
+    if (rawSlot !== undefined && rawSlot !== "primary" && rawSlot !== "second")
+      throw new SafeError("INVALID_INPUT");
+    const keySlot: GoSlot = rawSlot === "second" ? "second" : "primary";
     if (providerId.startsWith("custom:")) {
       if (!this.customExists(providerId.slice(7)))
         throw new SafeError("INVALID_INPUT");
@@ -216,9 +223,32 @@ export class Manager {
       windows: [],
       stale: false,
     });
+    const isGo = providerId === "opencode-go" || providerId === GO_ROUTE;
+    if (keySlot === "second" && !isGo)
+      throw new SafeError("INVALID_INPUT");
+    // The second pool slot has no settings binding; its token is derived the
+    // same deterministic way over the fixed second ref.
+    const currentBinding = (): ReturnType<Manager["binding"]> => {
+      if (keySlot !== "second") return this.binding(providerId);
+      const ns = "dsh-provider-manager";
+      return {
+        ref: GO_KEY_2,
+        token: createHmac("sha256", this.salt)
+          .update(JSON.stringify([providerId + ":second", ns, GO_KEY_2, 0]))
+          .digest("hex"),
+        d: {
+          ns,
+          revision: 0,
+          value: { apiKeyEnv: GO_KEY_2 },
+        } as unknown as ReturnType<Manager["descriptors"]>[number],
+        profile: { apiKeyEnv: GO_KEY_2 } as Record<string, unknown>,
+        route: providerId,
+        ns,
+      };
+    };
     let binding: ReturnType<Manager["binding"]>;
     try {
-      binding = this.binding(providerId);
+      binding = currentBinding();
     } catch (error) {
       if (error instanceof SafeError && error.code === "REF_NOT_ALLOWED")
         return {
@@ -260,7 +290,7 @@ export class Manager {
         typeof resolved?.source === "string" ? resolved.source : undefined;
       let latest: ReturnType<Manager["binding"]>;
       try {
-        latest = this.binding(providerId);
+        latest = currentBinding();
       } catch (error) {
         if (error instanceof SafeError && error.code === "REF_NOT_ALLOWED")
           return {
@@ -304,8 +334,8 @@ export class Manager {
           stale: false,
         };
       }
-      return await this.quotaReader.load({
-        providerId,
+      const load = await this.quotaReader.load({
+        providerId: keySlot === "second" ? providerId + ":second" : providerId,
         source,
         url: quota.url,
         kind: quota.kind,
@@ -317,7 +347,7 @@ export class Manager {
         timedOut: bound.timedOut,
         stillCurrent: async () => {
           bound.signal.throwIfAborted();
-          const live = this.binding(providerId);
+          const live = currentBinding();
           if (live.token !== binding.token) return false;
           const now = await untilAborted(
             this.services.credentials.resolve(credentialRef(live.ref)),
@@ -326,6 +356,7 @@ export class Manager {
           return now?.value === key && now?.source === credentialSource;
         },
       });
+      return keySlot === "second" ? { ...load, providerId } : load;
     } catch (error) {
       if (bound.timedOut()) return timeoutSnapshot();
       throw error;
@@ -489,6 +520,58 @@ export class Manager {
     return { configured: info.configured };
   }
 
+  /** Both OpenCode Go key-pool slots with their credential state. */
+  async goKeyPool(): Promise<{
+    preferred: GoSlot;
+    slots: {
+      slot: GoSlot;
+      ref: string;
+      configured: boolean;
+      source?: string;
+    }[];
+  }> {
+    const preferred = await readGoPreferred((ref) =>
+      this.services.credentials.resolve(ref),
+    );
+    const other: GoSlot = preferred === "primary" ? "second" : "primary";
+    const slots = await Promise.all(
+      goSlotOrder(preferred).map(async (ref, index) => {
+        const info = await this.services.credentials.describe(
+          credentialRef(ref),
+        );
+        return {
+          slot: index === 0 ? preferred : other,
+          ref,
+          configured: info.configured,
+          ...(info.source ? { source: info.source } : {}),
+        };
+      }),
+    );
+    return { preferred, slots };
+  }
+
+  /** Persist the preferred key-pool slot and return the refreshed pool. */
+  async setGoPreference(input: unknown, signal?: AbortSignal): Promise<{
+    preferred: GoSlot;
+    slots: {
+      slot: GoSlot;
+      ref: string;
+      configured: boolean;
+      source?: string;
+    }[];
+  }> {
+    const p = exact(input, ["slot"]);
+    const slot = p.slot;
+    if (slot !== "primary" && slot !== "second")
+      throw new SafeError("INVALID_INPUT");
+    signal?.throwIfAborted();
+    const ref = credentialRef(GO_PREFERENCE_REF);
+    if (!(await this.services.credentials.describe(ref)).writable)
+      throw new SafeError("READ_ONLY");
+    await this.services.credentials.set(ref, slot);
+    return await this.goKeyPool();
+  }
+
   async reveal(input: unknown, signal?: AbortSignal) {
     const { b } = this.check(input);
     signal?.throwIfAborted();
@@ -596,12 +679,11 @@ export class Manager {
         providers && typeof providers === "object" ? providers : {},
       ).map((r) => "custom:" + r),
     ];
-    const secondGo = await this.services.credentials.describe(
-      credentialRef(Manager.SECOND_GO_REF),
-    );
+    const pool = await this.goKeyPool();
     return {
       settingsWritable: this.services.settings.writable,
-      secondGoKeyConfigured: secondGo.configured,
+      goPreferredSlot: pool.preferred,
+      goKeySlots: pool.slots,
       providers: await Promise.all(
         ids.map(async (id) => {
           try {

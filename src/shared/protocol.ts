@@ -74,9 +74,18 @@ export interface Provider {
   error?: string;
   catalogError?: string;
 }
+/** One OpenCode Go key-pool slot as shown on the details page. */
+export interface GoKeySlot {
+  slot: "primary" | "second";
+  ref: string;
+  configured: boolean;
+  source?: string;
+}
 export interface Snapshot {
-  /** OpenCode Go key-pool slot 2 is configured (read-only flag). */
-  secondGoKeyConfigured?: boolean;
+  /** OpenCode Go key pool: which slot chat prefers (default primary). */
+  goPreferredSlot?: "primary" | "second";
+  /** OpenCode Go key pool slots with their credential state. */
+  goKeySlots?: GoKeySlot[];
 
   settingsWritable: boolean;
   providers: Provider[];
@@ -254,4 +263,6 @@ export interface QuotaRequest {
   providerId: string;
   bindingToken?: string;
   refresh?: boolean;
+  /** Which OpenCode Go key-pool slot to query; default primary. */
+  keySlot?: "primary" | "second";
 }

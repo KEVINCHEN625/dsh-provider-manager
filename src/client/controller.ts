@@ -62,6 +62,7 @@ export interface State {
   operations: Record<string, Operation>;
   quotas: Record<string, QuotaView>;
   revealed?: { providerId: string; value: string; source?: string };
+  revealedSecond?: { value: string; source?: string };
   clearEpoch: number;
   login?: LoginState;
 }
@@ -109,6 +110,7 @@ export class Controller {
   private visible = true;
   private disposed = false;
   private timer?: ReturnType<typeof setTimeout>;
+  private secondTimer?: ReturnType<typeof setTimeout>;
   private revealAbort?: AbortController;
   constructor(
     private transport: Transport,
@@ -314,8 +316,117 @@ export class Controller {
       operations,
     });
   };
+  async saveSecondGoKey(value: string) {
+    const key = "go-second:save";
+    this.operation(key, { status: "loading" });
+    try {
+      const credential = validateCredential(
+        await this.request((signal) =>
+          this.transport.rpc("credential/set-second-go", { value }, signal),
+        ),
+      );
+      this.update({ revealedSecond: undefined });
+      await this.applyKeyPool();
+      this.operation(key, { status: "success" });
+      const go = this.state.snapshot?.providers.find(
+        (p) => p.id === "provider-manager-opencode-go",
+      );
+      if (go) void this.refreshQuota(go, true, "second");
+      return true;
+    } catch (error) {
+      this.operation(key, { status: "error", error: errorCode(error) });
+      return false;
+    }
+  }
+  async revealSecondGo() {
+    this.hideSecond();
+    const key = "go-second:reveal";
+    this.operation(key, { status: "loading" });
+    try {
+      const raw: unknown = await this.request((signal) =>
+        this.transport.rpc("credential/reveal-second-go", {}, signal),
+      );
+      const data = (raw ?? {}) as Record<string, unknown>;
+      if (typeof data.value !== "string") throw { code: "UNAVAILABLE" };
+      const ttl =
+        typeof data.revealTTL === "number"
+          ? Math.min(30000, Math.max(1000, data.revealTTL))
+          : 30000;
+      this.update({
+        revealedSecond: {
+          value: data.value,
+          source: typeof data.source === "string" ? data.source : undefined,
+        },
+      });
+      this.operation(key, { status: "success" });
+      this.secondTimer = setTimeout(() => this.hideSecond(), ttl);
+    } catch {
+      this.operation(key, { status: "error", error: "UNAVAILABLE" });
+    }
+  }
+  hideSecond = () => {
+    clearTimeout(this.secondTimer);
+    this.update({ revealedSecond: undefined });
+  };
+  async clearSecondGo() {
+    const key = "go-second:clear";
+    this.operation(key, { status: "loading" });
+    try {
+      await this.request((signal) =>
+        this.transport.rpc("credential/clear-second-go", {}, signal),
+      );
+      this.update({ revealedSecond: undefined });
+      await this.applyKeyPool();
+      this.operation(key, { status: "success" });
+      const go = this.state.snapshot?.providers.find(
+        (p) => p.id === "provider-manager-opencode-go",
+      );
+      if (go) void this.refreshQuota(go, true, "second");
+      return true;
+    } catch (error) {
+      this.operation(key, { status: "error", error: errorCode(error) });
+      return false;
+    }
+  }
+  async setGoPreferred(slot: "primary" | "second") {
+    const key = "go-preference";
+    this.operation(key, { status: "loading" });
+    try {
+      await this.request((signal) =>
+        this.transport.rpc("go/set-preference", { slot }, signal),
+      );
+      await this.applyKeyPool();
+      this.operation(key, { status: "success" });
+      return true;
+    } catch (error) {
+      this.operation(key, { status: "error", error: errorCode(error) });
+      return false;
+    }
+  }
+  /** Re-read the snapshot's key-pool fields after a pool mutation. */
+  private async applyKeyPool() {
+    const snapshot = this.state.snapshot;
+    if (!snapshot) return;
+    const fresh = validateSnapshot(
+      await this.request((signal) =>
+        this.transport.rpc("snapshot", {}, signal),
+      ),
+    );
+    this.update({
+      snapshot: {
+        ...snapshot,
+        goPreferredSlot: fresh.goPreferredSlot,
+        goKeySlots: fresh.goKeySlots,
+        providers: snapshot.providers.map(
+          (p) =>
+            fresh.providers.find((candidate) => candidate.id === p.id) ?? p,
+        ),
+      },
+    });
+  }
   connectionChanged(connected: boolean) {
     this.hide();
+    this.hideSecond();
     ++this.loadGeneration;
     this.abortQuotas();
     this.stopPoll();
@@ -340,16 +451,21 @@ export class Controller {
   async refreshQuota(
     provider: Pick<Provider, "id" | "bindingToken">,
     refresh = false,
+    keySlot?: "second",
   ) {
     if (this.disposed) return;
     const id = provider.id;
-    const generation = (this.quotaGeneration[id] ?? 0) + 1;
-    this.quotaGeneration[id] = generation;
-    this.quotaAbort.get(id)?.abort();
+    const stateKey = keySlot === "second" ? `${id}:second` : id;
+    const generation = (this.quotaGeneration[stateKey] ?? 0) + 1;
+    this.quotaGeneration[stateKey] = generation;
+    this.quotaAbort.get(stateKey)?.abort();
     const abort = new AbortController();
-    this.quotaAbort.set(id, abort);
+    this.quotaAbort.set(stateKey, abort);
     this.update({
-      quotas: { ...this.state.quotas, [id]: { status: "loading" } },
+      quotas: {
+        ...this.state.quotas,
+        [stateKey]: { status: "loading" },
+      },
     });
     try {
       const snapshot = validateQuota(
@@ -359,10 +475,13 @@ export class Controller {
               "quota/read",
               {
                 providerId: id,
-                ...(provider.bindingToken
+                // The second pool slot derives its own token server-side;
+                // the card's token belongs to the primary binding only.
+                ...(provider.bindingToken && !keySlot
                   ? { bindingToken: provider.bindingToken }
                   : {}),
                 ...(refresh ? { refresh: true } : {}),
+                ...(keySlot ? { keySlot } : {}),
               },
               signal,
             ),
@@ -370,19 +489,21 @@ export class Controller {
         ),
         id,
       );
-      if (generation !== this.quotaGeneration[id] || this.disposed) return;
+      if (generation !== this.quotaGeneration[stateKey] || this.disposed)
+        return;
       this.update({
         quotas: {
           ...this.state.quotas,
-          [id]: { status: snapshot.status, snapshot },
+          [stateKey]: { status: snapshot.status, snapshot },
         },
       });
     } catch (error) {
-      if (generation !== this.quotaGeneration[id] || this.disposed) return;
+      if (generation !== this.quotaGeneration[stateKey] || this.disposed)
+        return;
       this.update({
         quotas: {
           ...this.state.quotas,
-          [id]: { status: "error", error: errorCode(error) },
+          [stateKey]: { status: "error", error: errorCode(error) },
         },
       });
     }
@@ -556,6 +677,7 @@ export class Controller {
   }
   dispose() {
     this.hide();
+    this.hideSecond();
     ++this.loadGeneration;
     this.abortQuotas();
     this.stopPoll();

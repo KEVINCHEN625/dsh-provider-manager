@@ -25,6 +25,12 @@ export const GO_ANTHROPIC_BASE = "https://opencode.ai/zen/go";
 export const ZEN_ENDPOINT = "https://opencode.ai/zen/v1";
 export const GO_KEY = "OPENCODE_API_KEY";
 export const GO_KEY_2 = "OPENCODE_API_KEY_2";
+/**
+ * Credential ref holding the preferred key-pool slot ("primary" | "second").
+ * A plain value ref, not settings state: settings sections are invisible to
+ * 0.2.x describe(), while the credentials service is version-independent.
+ */
+export const GO_PREFERENCE_REF = "PROVIDER_MANAGER_GO_PREFERRED";
 export const GO_MANAGER_VERSION = "0.2.9";
 export const GO_CATALOG = validateGoCatalog(catalogJson);
 const byId = new Map(GO_CATALOG.models.map((entry) => [entry.id, entry]));

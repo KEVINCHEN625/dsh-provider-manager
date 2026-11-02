@@ -113,7 +113,7 @@ After installing, restart Web and open Settings — the page is there.
 
 The list shows brand mark, name, LLM/Agent badge, key status, remaining quota, and a Details page for each card.
 
-**OpenCode Go** — key ref `OPENCODE_API_KEY`. Quota from the official usage endpoint.
+**OpenCode Go** — key pool: primary ref `OPENCODE_API_KEY` plus an optional backup (`OPENCODE_API_KEY_2`). The details page shows each key's own official quota and a button to choose which key chat prefers; the other key answers only when the preferred one has no usable key.
 
 **Command Code GOAT** — key ref `COMMANDCODE_API_KEY`. Chat and quota read the same ref, and the quota request always goes to the official credits endpoint.
 

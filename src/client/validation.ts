@@ -145,9 +145,34 @@ export function validateSnapshot(value: unknown): Snapshot {
     muse = record(data.muse);
   if (!Array.isArray(data.providers) || muse.status !== "CLI_ONLY")
     throw { code: "UNAVAILABLE" };
+  const poolSlots: Snapshot["goKeySlots"] = [];
+  if (data.goKeySlots !== undefined) {
+    if (!Array.isArray(data.goKeySlots)) throw { code: "UNAVAILABLE" };
+    for (const item of data.goKeySlots) {
+      const slot = record(item);
+      const name = slot.slot;
+      if (name !== "primary" && name !== "second")
+        throw { code: "UNAVAILABLE" };
+      poolSlots.push({
+        slot: name,
+        ref: string(slot.ref),
+        configured: boolean(slot.configured),
+        ...(slot.source !== undefined
+          ? { source: string(slot.source) }
+          : {}),
+      });
+    }
+  }
   return {
     settingsWritable: boolean(data.settingsWritable),
     customRevision: revision(data.customRevision),
+    ...(data.goPreferredSlot !== undefined
+      ? {
+          goPreferredSlot:
+            data.goPreferredSlot === "second" ? "second" : "primary",
+        }
+      : {}),
+    ...(data.goKeySlots !== undefined ? { goKeySlots: poolSlots } : {}),
     providers: data.providers.map(validateProvider),
     muse: {
       installed: boolean(muse.installed),
