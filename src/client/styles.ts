@@ -456,27 +456,69 @@ export const styles = `
   .pm-setup { justify-self: start; }
 }
 
+/* Solid surfaces only: the host's fill tokens are ~6% translucent and a
+   modal built on them is effectively invisible over the page. */
 .pm-modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 60;
 }
 .pm-modal-card {
-  background: var(--dsw-alias-fill-primary, color-mix(in srgb, currentColor 6%, transparent));
-  color: inherit;
+  background: #ffffff;
+  color: #14181f;
+  border: 1px solid rgba(0, 0, 0, 0.14);
   border-radius: 10px;
   padding: 16px;
   width: min(420px, 92vw);
   display: flex;
   flex-direction: column;
   gap: 8px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 .pm-modal-card h4 {
   margin: 0;
+}
+.pm-modal-card input,
+.pm-modal-card textarea {
+  background: #f5f6f8;
+  color: #14181f;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.pm-modal-card button {
+  background: #ffffff;
+  color: #14181f;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+.pm-modal-card button:hover:not(:disabled) {
+  background: #f0f1f4;
+}
+@media (prefers-color-scheme: dark) {
+  .pm-modal-card {
+    background: #1d2129;
+    color: #e8eaee;
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+  .pm-modal-card input,
+  .pm-modal-card textarea {
+    background: #14171d;
+    color: #e8eaee;
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+  .pm-modal-card button {
+    background: #262b34;
+    color: #e8eaee;
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+  .pm-modal-card button:hover:not(:disabled) {
+    background: #303743;
+  }
 }
 `;
