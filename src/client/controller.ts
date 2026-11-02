@@ -440,6 +440,15 @@ export class Controller {
         ),
       },
     });
+    // Both slot quotas refresh so the headline (which follows the slot chat
+    // actually uses) and the per-slot rows show fresh numbers immediately.
+    const go = this.state.snapshot?.providers.find(
+      (p) => p.id === "provider-manager-opencode-go",
+    );
+    if (go) {
+      void this.refreshQuota(go, true);
+      void this.refreshQuota(go, true, "second");
+    }
   }
   connectionChanged(connected: boolean) {
     this.hide();

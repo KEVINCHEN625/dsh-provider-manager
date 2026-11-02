@@ -142,8 +142,10 @@ function GoKeyPoolCard({
   t: Translate;
   id: string;
 }) {
+  const [primary, setPrimary] = useState("");
   const [second, setSecond] = useState("");
   useEffect(() => {
+    setPrimary("");
     setSecond("");
   }, [state.clearEpoch]);
   const snapshot = state.snapshot;
@@ -151,6 +153,8 @@ function GoKeyPoolCard({
   const slots = snapshot?.goKeySlots ?? [];
   const secondSlot = slots.find((slot) => slot.slot === "second");
   const secondQuota = state.quotas[`${provider.id}:second`];
+  const revealedPrimary =
+    state.revealed?.providerId === provider.id ? state.revealed : undefined;
   useEffect(() => {
     // Nothing in the global quota loop reads the second slot; fetch it once
     // when the details page opens so the card never sits in loading forever.
@@ -162,112 +166,196 @@ function GoKeyPoolCard({
     <section className="pm-card">
       <h3>{t("goPoolHeading")}</h3>
       <p className="pm-meter-detail">{t("goPoolHelp")}</p>
-      {slots.map((slot) => (
-        <div key={slot.slot} className="pm-keyrow">
-          <p>
-            <span
-              className={slot.configured ? "pm-dot pm-dot-on" : "pm-dot"}
-            />
-            <strong>{t(`goSlot_${slot.slot}` as LocaleKey)}</strong>{" "}
-            <code>{slot.ref}</code>
-            {slot.slot === preferred && (
-              <span className="pm-badge">{t("goPreferredBadge")}</span>
+      {slots.map((slot) => {
+        const isSecond = slot.slot === "second";
+        return (
+          <div key={slot.slot} className="pm-keyrow">
+            <p>
+              <span
+                className={slot.configured ? "pm-dot pm-dot-on" : "pm-dot"}
+              />
+              <strong>{t(`goSlot_${slot.slot}` as LocaleKey)}</strong>{" "}
+              <code>{slot.ref}</code>
+              {slot.slot === preferred && (
+                <span className="pm-badge">{t("goPreferredBadge")}</span>
+              )}
+            </p>
+            <p>
+              {slot.configured ? t("configured") : t("missing")}
+              {slot.source ? ` · ${t("source")}: ${slot.source}` : ""}
+            </p>
+            <button
+              type="button"
+              disabled={
+                slot.slot === preferred ||
+                state.operations["go-preference"]?.status === "loading"
+              }
+              onClick={() => void controller.setGoPreferred(slot.slot)}
+            >
+              {slot.slot === preferred
+                ? t("goPreferredNow")
+                : t("goPreferThis")}
+            </button>
+            {isSecond ? (
+              <>
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void controller.saveSecondGoKey(second);
+                  }}
+                >
+                  <label htmlFor={`${id}-second-key`}>{t("goSecondNew")}</label>
+                  <input
+                    id={`${id}-second-key`}
+                    type="password"
+                    autoComplete="off"
+                    value={second}
+                    onChange={(e) => setSecond(e.target.value)}
+                    disabled={!snapshot?.settingsWritable}
+                  />
+                  <button
+                    type="submit"
+                    disabled={
+                      !second.trim() ||
+                      !snapshot?.settingsWritable ||
+                      state.operations["go-second:save"]?.status === "loading"
+                    }
+                  >
+                    {t("goSecondSave")}
+                  </button>
+                </form>
+                <Result
+                  operation={state.operations["go-second:save"]}
+                  success={t("keySaved")}
+                  t={t}
+                />
+                <button
+                  type="button"
+                  disabled={
+                    !secondSlot?.configured ||
+                    state.operations["go-second:reveal"]?.status === "loading"
+                  }
+                  onClick={() => void controller.revealSecondGo()}
+                >
+                  {t("show")}
+                </button>
+                <button type="button" onClick={controller.hideSecond}>
+                  {t("hide")}
+                </button>
+                {state.revealedSecond && (
+                  <div>
+                    <label htmlFor={`${id}-second-shown`}>{t("shown")}</label>
+                    <textarea
+                      id={`${id}-second-shown`}
+                      readOnly
+                      value={state.revealedSecond.value}
+                      autoComplete="off"
+                    />
+                    <p>
+                      {t("source")}:{" "}
+                      {state.revealedSecond.source || t("unknown")}
+                    </p>
+                  </div>
+                )}
+                <Result operation={state.operations["go-second:reveal"]} t={t} />
+                <button
+                  type="button"
+                  disabled={
+                    !secondSlot?.configured || !snapshot?.settingsWritable
+                  }
+                  onClick={() => void controller.clearSecondGo()}
+                >
+                  {t("goSecondClear")}
+                </button>
+                <Result
+                  operation={state.operations["go-second:clear"]}
+                  success={t("goSecondCleared")}
+                  t={t}
+                />
+              </>
+            ) : (
+              <>
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void controller.saveKey(provider, primary);
+                  }}
+                >
+                  <label htmlFor={`${id}-primary-key`}>{t("goPrimaryNew")}</label>
+                  <input
+                    id={`${id}-primary-key`}
+                    type="password"
+                    autoComplete="off"
+                    value={primary}
+                    onChange={(e) => setPrimary(e.target.value)}
+                    disabled={!provider.bindingToken || !provider.credential?.writable}
+                  />
+                  <button
+                    type="submit"
+                    disabled={
+                      !primary.trim() ||
+                      !provider.bindingToken ||
+                      !provider.credential?.writable ||
+                      state.operations[`key:${provider.id}`]?.status === "loading"
+                    }
+                  >
+                    {t("saveKey")}
+                  </button>
+                </form>
+                <Result
+                  operation={state.operations[`key:${provider.id}`]}
+                  success={t("keySaved")}
+                  t={t}
+                />
+                <button
+                  type="button"
+                  disabled={
+                    !provider.bindingToken ||
+                    !provider.credential?.configured ||
+                    state.operations[`reveal:${provider.id}`]?.status === "loading"
+                  }
+                  onClick={() => void controller.reveal(provider)}
+                >
+                  {t("show")}
+                </button>
+                <button type="button" onClick={controller.hide}>
+                  {t("hide")}
+                </button>
+                {revealedPrimary && (
+                  <div>
+                    <label htmlFor={`${id}-primary-shown`}>{t("shown")}</label>
+                    <textarea
+                      id={`${id}-primary-shown`}
+                      readOnly
+                      value={revealedPrimary.value}
+                      autoComplete="off"
+                    />
+                    <p>
+                      {t("source")}: {revealedPrimary.source || t("unknown")}
+                    </p>
+                  </div>
+                )}
+                <Result operation={state.operations[`reveal:${provider.id}`]} t={t} />
+              </>
             )}
-          </p>
-          <p>
-            {slot.configured ? t("configured") : t("missing")}
-            {slot.source ? ` · ${t("source")}: ${slot.source}` : ""}
-          </p>
-          <button
-            type="button"
-            disabled={
-              slot.slot === preferred ||
-              state.operations["go-preference"]?.status === "loading"
-            }
-            onClick={() => void controller.setGoPreferred(slot.slot)}
-          >
-            {slot.slot === preferred
-              ? t("goPreferredNow")
-              : t("goPreferThis")}
-          </button>
-        </div>
-      ))}
+            <QuotaSummary
+              view={
+                isSecond ? secondQuota : state.quotas[provider.id]
+              }
+              t={t}
+              name={`${provider.name} · ${t(`goSlot_${slot.slot}` as LocaleKey)}`}
+              onRefresh={() =>
+                void controller.refreshQuota(
+                  provider,
+                  true,
+                  isSecond ? "second" : undefined,
+                )
+              }
+            />
+          </div>
+        );
+      })}
       <Result operation={state.operations["go-preference"]} t={t} />
-      <div className="pm-keyrow">
-        <h4>{t("goQuotaSecond")}</h4>
-        <QuotaSummary
-          view={secondQuota}
-          t={t}
-          name={`${provider.name} · ${t("goSlot_second")}`}
-          variant="all"
-          onRefresh={() => void controller.refreshQuota(provider, true, "second")}
-        />
-      </div>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          void controller.saveSecondGoKey(second);
-        }}
-      >
-        <label htmlFor={`${id}-second`}>{t("goSecondNew")}</label>
-        <input
-          id={`${id}-second`}
-          type="password"
-          autoComplete="off"
-          value={second}
-          onChange={(e) => setSecond(e.target.value)}
-          disabled={!snapshot?.settingsWritable}
-        />
-        <button
-          type="submit"
-          disabled={
-            !second.trim() ||
-            !snapshot?.settingsWritable ||
-            state.operations["go-second:save"]?.status === "loading"
-          }
-        >
-          {t("goSecondSave")}
-        </button>
-      </form>
-      <Result operation={state.operations["go-second:save"]} success={t("keySaved")} t={t} />
-      <button
-        type="button"
-        disabled={
-          !secondSlot?.configured ||
-          state.operations["go-second:reveal"]?.status === "loading"
-        }
-        onClick={() => void controller.revealSecondGo()}
-      >
-        {t("show")}
-      </button>
-      <button type="button" onClick={controller.hideSecond}>
-        {t("hide")}
-      </button>
-      {state.revealedSecond && (
-        <div>
-          <label htmlFor={`${id}-second-shown`}>{t("shown")}</label>
-          <textarea
-            id={`${id}-second-shown`}
-            readOnly
-            value={state.revealedSecond.value}
-            autoComplete="off"
-          />
-          <p>
-            {t("source")}: {state.revealedSecond.source || t("unknown")}
-          </p>
-        </div>
-      )}
-      <Result operation={state.operations["go-second:reveal"]} t={t} />
-      <button
-        type="button"
-        disabled={
-          !secondSlot?.configured || !snapshot?.settingsWritable
-        }
-        onClick={() => void controller.clearSecondGo()}
-      >
-        {t("goSecondClear")}
-      </button>
-      <Result operation={state.operations["go-second:clear"]} success={t("goSecondCleared")} t={t} />
     </section>
   );
 }
@@ -295,6 +383,20 @@ export function ProviderDetails({
   const revealed =
     state.revealed?.providerId === provider.id ? state.revealed : undefined;
   const url = endpoint(provider);
+  // On the Go details page the headline quota follows the key chat is
+  // actually using: the preferred slot when it has a key, otherwise the
+  // fallback slot the adapter reaches.
+  const isGo = provider.id === "provider-manager-opencode-go";
+  const poolSlots = state.snapshot?.goKeySlots;
+  const preferredSlot = state.snapshot?.goPreferredSlot ?? "primary";
+  const preferredConfigured =
+    poolSlots?.find((slot) => slot.slot === preferredSlot)?.configured ?? true;
+  const headlineSlot: "primary" | "second" = preferredConfigured
+    ? preferredSlot
+    : preferredSlot === "primary"
+      ? "second"
+      : "primary";
+  const headlineRef = poolSlots?.find((slot) => slot.slot === headlineSlot)?.ref;
   const keyLabel = !provider.credential
     ? "unknown"
     : provider.credential.configured
@@ -421,12 +523,31 @@ export function ProviderDetails({
         </section>
       )}
       <QuotaSummary
-        view={state.quotas[provider.id]}
+        view={
+          isGo
+            ? state.quotas[
+                headlineSlot === "second"
+                  ? `${provider.id}:second`
+                  : provider.id
+              ]
+            : state.quotas[provider.id]
+        }
         t={t}
         name={provider.name}
         variant="all"
-        onRefresh={() => void controller.refreshQuota(provider, true)}
+        onRefresh={() =>
+          void controller.refreshQuota(
+            provider,
+            true,
+            isGo && headlineSlot === "second" ? "second" : undefined,
+          )
+        }
       />
+      {isGo && headlineRef && (
+        <p className="pm-meter-detail">
+          {t("quotaShownFor")}: <code>{headlineRef}</code>
+        </p>
+      )}
       {provider.id === "provider-manager-opencode-go" && (
         <GoKeyPoolCard
           provider={provider}
