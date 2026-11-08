@@ -178,6 +178,17 @@ export const en = {
   loginSubmit: "Continue",
   loginDecline: "Decline",
   loginCopy: "Copy",
+  loginCopyUrl: "Copy sign-in URL",
+  loginUrlCopied: "Sign-in URL copied",
+  loginCopyCode: "Copy code",
+  loginCodeCopied: "Code copied",
+  loginCopyFailed: "Copy failed. Select and copy the text manually.",
+  museQuotaSnapshot: "Quota at sign-in",
+  museQuotaSnapshotHelp:
+    "Captured when you signed in, not live usage. Sign in again to request a newer snapshot.",
+  museQuotaMissing:
+    "Meta did not return all quota windows. Older sign-ins may need one new sign-in to request quota data.",
+  museUsageLink: "View usage on Meta",
   loginCopied: "Copied",
   loginSuccess:
     "Signed in. The credential is stored in the official credential store.",
@@ -197,10 +208,12 @@ export const en = {
   catalogUnverified: "Not verified yet",
   catalogUnknown: "No known catalog for this provider.",
   catalogProbe: "Continue verification",
-  catalogCredential: "Sign-in expired. Verification stopped and nothing was marked unavailable.",
+  catalogCredential:
+    "Sign-in expired. Verification stopped and nothing was marked unavailable.",
   catalogAdd: "Add from catalog",
   catalogAddPlaceholder: "models.dev model id",
-  catalogSuggest: "Probe results stay on this machine. Send a catalog update to the registry if you want other installs to see it.",
+  catalogSuggest:
+    "Probe results stay on this machine. Send a catalog update to the registry if you want other installs to see it.",
   catalogServed: "Served by",
   catalogServedSuffix: "",
   catalogReset: "Reset to the official catalog",
@@ -392,13 +405,23 @@ export const zh: Record<LocaleKey, string> = {
   oauthExpired: "登录已过期，请重新登录",
   loginOverwrite: "将覆盖现有登录",
   loginLogout: "登出",
-  loginLogoutConfirm:
-    "仅删除本机凭据，不影响上游账号。确定登出？",
+  loginLogoutConfirm: "仅删除本机凭据，不影响上游账号。确定登出？",
   loginStart: "登录",
   loginCancel: "取消登录",
   loginSubmit: "继续",
   loginDecline: "拒绝",
   loginCopy: "复制",
+  loginCopyUrl: "复制登录链接",
+  loginUrlCopied: "登录链接已复制",
+  loginCopyCode: "复制验证码",
+  loginCodeCopied: "验证码已复制",
+  loginCopyFailed: "复制失败，请选中文本手动复制。",
+  museQuotaSnapshot: "登录时额度",
+  museQuotaSnapshotHelp:
+    "这是登录时的快照，并非实时用量。重新登录可请求新的快照。",
+  museQuotaMissing:
+    "Meta 未返回全部额度窗口。旧登录记录可重新登录一次，尝试获取登录时数据。",
+  museUsageLink: "在 Meta 查看用量",
   loginCopied: "已复制",
   loginSuccess: "已登录。凭据已写入官方凭据库。",
   loginFailed: "登录失败。",
@@ -420,7 +443,8 @@ export const zh: Record<LocaleKey, string> = {
   catalogCredential: "登录已失效。探测已停止，没有把模型写成不可用。",
   catalogAdd: "从目录添加",
   catalogAddPlaceholder: "models.dev 模型 id",
-  catalogSuggest: "探测结果只留在这台机器上。若希望其他安装也能看到，请把目录更新提交到注册表。",
+  catalogSuggest:
+    "探测结果只留在这台机器上。若希望其他安装也能看到，请把目录更新提交到注册表。",
   catalogServed: "实际由",
   catalogServedSuffix: " 服务",
   catalogReset: "重置为官方目录",

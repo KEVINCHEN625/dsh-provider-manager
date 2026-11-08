@@ -48,10 +48,7 @@ export function oauthQuotaView(entry: OAuthEntry): QuotaView | undefined {
 
 export type OAuthBadge = "oauthInFlight" | "oauthSignedIn" | "oauthSignedOut";
 
-export function oauthStatus(
-  entry: OAuthEntry,
-  login?: LoginState,
-): OAuthBadge {
+export function oauthStatus(entry: OAuthEntry, login?: LoginState): OAuthBadge {
   const local =
     login?.providerId === entry.providerId &&
     login.phase !== "idle" &&
@@ -113,14 +110,15 @@ export function OAuthCard({
         </div>
       </div>
       <div className="pm-quota">
+        {entry.builtin &&
+          entry.providerId === "muse" &&
+          entry.quota?.status === "ready" && (
+            <p className="pm-meter-detail">{t("museQuotaSnapshot")}</p>
+          )}
         {entry.quota?.status === "unsupported" ? (
           <p>{t("oauthQuotaUnsupported")}</p>
         ) : entry.quota ? (
-          <QuotaSummary
-            view={oauthQuotaView(entry)}
-            t={t}
-            name={entry.label}
-          />
+          <QuotaSummary view={oauthQuotaView(entry)} t={t} name={entry.label} />
         ) : (
           <p>{t("loginMethod")}</p>
         )}

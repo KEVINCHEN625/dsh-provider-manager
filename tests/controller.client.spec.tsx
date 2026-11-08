@@ -701,3 +701,109 @@ test("shared OpenCode key updates and refreshes both cards independently", async
   expect(new Set(reads)).toEqual(new Set(cards.map((c) => c.id)));
   c.dispose();
 });
+
+test.each(["ok", "cancelled", "failed"])(
+  "late login poll cannot revive a %s session or old authorization details",
+  async (result) => {
+    let resolve!: (v: any) => void;
+    let calls = 0;
+    const c = new Controller({
+      rpc: async (e) =>
+        e === "login/events"
+          ? ++calls === 1
+            ? new Promise((r) => (resolve = r))
+            : { status: "done", result, events: [], nextIndex: 1 }
+          : fixtureSnapshot(),
+      reveal: async () => ({ value: "", revealTTL: 1 }),
+    });
+    c.state.login = {
+      providerId: "p",
+      sessionId: "s",
+      phase: "running",
+      events: [],
+      nextIndex: 0,
+    };
+    const old = (c as any).pollLogin();
+    await (c as any).pollLogin();
+    resolve({
+      status: "running",
+      events: [
+        {
+          index: 0,
+          kind: "notice",
+          message: "old",
+          url: "https://old.test",
+          code: "old-code",
+        },
+      ],
+      nextIndex: 1,
+    });
+    await old;
+    expect(c.state.login?.phase).toBe("done");
+    expect(c.state.login?.events).toEqual([]);
+    c.dispose();
+  },
+);
+
+test("slow login polling still publishes replies while a newer poll is in flight", async () => {
+  const replies: ((v: any) => void)[] = [];
+  const c = new Controller({
+    rpc: () => new Promise((r) => replies.push(r)),
+    reveal: async () => ({ value: "", revealTTL: 1 }),
+  });
+  c.state.login = {
+    providerId: "p",
+    sessionId: "s",
+    phase: "running",
+    events: [],
+    nextIndex: 0,
+  };
+  const first = (c as any).pollLogin();
+  const second = (c as any).pollLogin();
+  replies[0]({
+    status: "running",
+    events: [
+      { index: 0, kind: "notice", message: "fresh", url: "https://fresh.test" },
+    ],
+    nextIndex: 1,
+  });
+  await first;
+  expect(c.state.login?.events).toHaveLength(1);
+  replies[1]({ status: "running", events: [], nextIndex: 0 });
+  await second;
+  expect(c.state.login?.nextIndex).toBe(1);
+  c.dispose();
+});
+
+test("automatic login polling waits for completion before scheduling another request", async () => {
+  vi.useFakeTimers();
+  let polls = 0;
+  let resolve!: (v: any) => void;
+  const running = { status: "running", events: [], nextIndex: 0 };
+  const c = new Controller(
+    {
+      rpc: async (e) =>
+        e === "login/start"
+          ? { sessionId: "s" }
+          : e === "login/events"
+            ? ++polls === 1
+              ? running
+              : new Promise((r) => (resolve = r))
+            : {},
+      reveal: async () => ({ value: "", revealTTL: 1 }),
+    },
+    15000,
+    300000,
+    1000,
+  );
+  await c.loginStart("p");
+  await vi.advanceTimersByTimeAsync(3500);
+  expect(polls).toBe(2);
+  resolve(running);
+  await vi.advanceTimersByTimeAsync(999);
+  expect(polls).toBe(2);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(polls).toBe(3);
+  c.dispose();
+  vi.useRealTimers();
+});

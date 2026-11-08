@@ -604,6 +604,7 @@ test("oauthUnavailable empty state does not crash", async () => {
 });
 
 test("OAuth details render notice, text, secret, select, decline, withdraw and success", async () => {
+  const open = vi.spyOn(window, "open").mockReturnValue(null);
   let events: any = {
     events: [
       {
@@ -729,6 +730,8 @@ test("OAuth details render notice, text, secret, select, decline, withdraw and s
   };
   fireEvent.click(screen.getByRole("button", { name: en.loginCancel }));
   expect(await screen.findByText(en.loginSuccess)).toBeTruthy();
+  expect(open).toHaveBeenCalledTimes(1);
+  open.mockRestore();
 });
 
 test("list card shows Signing in from local login before snapshot inFlight", async () => {

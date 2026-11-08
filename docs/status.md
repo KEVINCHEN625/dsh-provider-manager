@@ -1,5 +1,17 @@
 # Current status
 
+Controller (2026-11-08) installed the OAuth sign-in update on Mac Web and
+headless. Sign in opens the provider's authorization URL in a separate tab
+and keeps a copyable link in the original page. Completed attempts clear the
+authorization link and code. Muse displays its login-time quota windows and
+observation time when Meta includes them in the key response. Claude OAuth
+reads its available five-hour and weekly windows through the existing quota
+reader. The final artifact SHA-256 is
+`fd4af138178763857530c53dc11d9f7b6da5ea1af1ad0adebb14b57ff4e0c323`.
+The 553-test suite, typecheck, build, isolated Muse OAuth flow with simulated
+Meta responses, and live Web overview after restart passed. Quota fields
+were exercised with fixtures, without signing in to a real account.
+
 Controller (2026-11-08) verified and installed the subscription fixes on Mac
 Web and headless. The installed tarball SHA-256 is
 `7cc892eb7cd64c445f8ba7f7ba33902f681285c65de11de8473da10a0f8a942f`.

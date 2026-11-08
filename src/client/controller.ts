@@ -108,8 +108,10 @@ export class Controller {
   private quotaGeneration: Record<string, number> = {};
   private quotaAbort = new Map<string, AbortController>();
   private quotaPoll?: ReturnType<typeof setInterval>;
-  private loginPoll?: ReturnType<typeof setInterval>;
+  private loginPoll?: ReturnType<typeof setTimeout>;
   private loginGeneration = 0;
+  private loginPollSequence = 0;
+  private loginPollApplied = 0;
   private visible = true;
   private disposed = false;
   private timer?: ReturnType<typeof setTimeout>;
@@ -874,6 +876,12 @@ export class Controller {
       });
       this.operation("login", { status: "idle" });
       await this.ensureLoginPoll();
+      if (
+        !this.disposed &&
+        generation === this.loginGeneration &&
+        this.state.login?.sessionId === started.sessionId
+      )
+        return started.sessionId;
     } catch (error) {
       if (this.disposed || generation !== this.loginGeneration) return;
       this.operation("login", { status: "error", error: errorCode(error) });
@@ -961,18 +969,23 @@ export class Controller {
   private async ensureLoginPoll() {
     this.stopLoginPoll();
     if (this.disposed) return;
+    const generation = this.loginGeneration;
     await this.pollLogin();
     const login = this.state.login;
     if (
       this.disposed ||
+      generation !== this.loginGeneration ||
       !login?.sessionId ||
       (login.phase !== "running" && login.phase !== "awaiting-prompt")
     )
       return;
-    this.loginPoll = setInterval(() => void this.pollLogin(), this.loginPollMs);
+    this.loginPoll = setTimeout(
+      () => void this.ensureLoginPoll(),
+      this.loginPollMs,
+    );
   }
   private stopLoginPoll() {
-    clearInterval(this.loginPoll);
+    clearTimeout(this.loginPoll);
     this.loginPoll = undefined;
   }
   private async pollLogin() {
@@ -986,6 +999,7 @@ export class Controller {
       return;
     const sessionId = login.sessionId;
     const generation = this.loginGeneration;
+    const sequence = ++this.loginPollSequence;
     try {
       const result = validateLoginEvents(
         await this.request((signal) =>
@@ -996,9 +1010,20 @@ export class Controller {
           ),
         ),
       );
-      if (generation !== this.loginGeneration || this.disposed) return;
+      if (
+        generation !== this.loginGeneration ||
+        this.disposed ||
+        sequence < this.loginPollApplied
+      )
+        return;
       const current = this.state.login;
-      if (current?.sessionId !== sessionId) return;
+      if (
+        current?.sessionId !== sessionId ||
+        current.phase === "done" ||
+        result.nextIndex < current.nextIndex
+      )
+        return;
+      this.loginPollApplied = sequence;
       const events = result.reset
         ? result.events
         : [
@@ -1014,10 +1039,10 @@ export class Controller {
       this.update({
         login: {
           ...current,
-          events,
+          events: phase === "done" ? [] : events,
           nextIndex: result.nextIndex,
           phase,
-          pendingPrompt: result.pendingPrompt,
+          pendingPrompt: phase === "done" ? undefined : result.pendingPrompt,
           result: result.result,
           error: result.error,
         },
@@ -1027,15 +1052,23 @@ export class Controller {
         if (result.result === "ok") void this.load();
       }
     } catch (error) {
-      if (generation !== this.loginGeneration || this.disposed) return;
+      if (
+        generation !== this.loginGeneration ||
+        this.disposed ||
+        sequence < this.loginPollApplied
+      )
+        return;
       if (errorCode(error) === "NOT_FOUND") {
+        this.loginPollApplied = sequence;
         this.stopLoginPoll();
         const current = this.state.login;
-        if (current?.sessionId === sessionId)
+        if (current?.sessionId === sessionId && current.phase !== "done")
           this.update({
             login: {
               ...current,
               phase: "done",
+              events: [],
+              pendingPrompt: undefined,
               result: "failed",
               error: "NOT_FOUND",
             },

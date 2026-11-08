@@ -1,17 +1,22 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   PROMPT_WITHDRAWN,
+  httpUrl,
   type OAuthCatalogView,
   type OAuthEntry,
 } from "../shared/protocol.js";
 import { formatContextWindow } from "../shared/api-presets.js";
-import type { Controller, State } from "./controller.js";
+import type { Controller, State, LoginState } from "./controller.js";
 import type { Translate, LocaleKey } from "./locales.js";
 import { errorCode } from "./controller.js";
 import { oauthBrandColor, oauthQuotaView, oauthStatus } from "./OAuthCard.js";
 import { QuotaSummary } from "./QuotaSummary.js";
 import { Result } from "./Result.js";
 import { BrandMark, RoleBadge, brandMark } from "./ProviderIcon.js";
+
+function safeLoginUrl(value: string | undefined) {
+  return value === undefined ? undefined : httpUrl(value);
+}
 
 function formatTokens(value: number | undefined) {
   if (value === undefined) return "—";
@@ -42,7 +47,124 @@ export function OAuthDetails({
   const active = login?.providerId === entry.providerId;
   const [method, setMethod] = useState(entry.methods[0]?.id || "");
   const [answer, setAnswer] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<Record<string, "ok" | "error">>({});
+  const copyGeneration = useRef(0);
+  const reservation = useRef<{
+    providerId: string;
+    sessionId?: string;
+    popup: Window;
+    navigated: boolean;
+    timer?: ReturnType<typeof setTimeout>;
+  }>();
+  const closeBlank = () => {
+    const reserved = reservation.current;
+    reservation.current = undefined;
+    if (!reserved) return;
+    clearTimeout(reserved.timer);
+    if (reserved.navigated) return;
+    try {
+      if (
+        !reserved.popup.closed &&
+        reserved.popup.location.href === "about:blank"
+      )
+        reserved.popup.close();
+    } catch {
+      /* A user-navigated page no longer belongs to this reservation. */
+    }
+  };
+  const consumeNotice = (current: LoginState | undefined) => {
+    const reserved = reservation.current;
+    if (!reserved || !current) return;
+    if (
+      current.providerId !== reserved.providerId ||
+      current.phase === "done"
+    ) {
+      closeBlank();
+      return;
+    }
+    if (!reserved.sessionId) return;
+    if (current.sessionId !== reserved.sessionId) {
+      closeBlank();
+      return;
+    }
+    if (reserved.navigated) return;
+    const notice = current.events.find(
+      (event) => event.kind === "notice" && safeLoginUrl(event.url),
+    );
+    if (notice?.kind === "notice" && notice.url) {
+      try {
+        if (
+          reserved.popup.closed ||
+          reserved.popup.location.href !== "about:blank"
+        ) {
+          closeBlank();
+          return;
+        }
+        reserved.popup.location.replace(safeLoginUrl(notice.url)!);
+        reserved.navigated = true;
+        clearTimeout(reserved.timer);
+      } catch {
+        closeBlank();
+      }
+    } else if (current.phase === "awaiting-prompt") closeBlank();
+  };
+  const startLogin = () => {
+    const live = controller.getSnapshot().login;
+    if (
+      live?.providerId === entry.providerId &&
+      ["starting", "running", "awaiting-prompt"].includes(live.phase)
+    )
+      return;
+    closeBlank();
+    ++copyGeneration.current;
+    setCopied({});
+    // Open while user activation is live, then sever opener before any URL can arrive.
+    if (!/^api[-_]?key$/i.test(method)) {
+      try {
+        const popup = window.open("about:blank", "_blank");
+        if (popup) {
+          reservation.current = {
+            providerId: entry.providerId,
+            popup,
+            navigated: false,
+          };
+          popup.opener = null;
+          reservation.current.timer = setTimeout(closeBlank, 60_000);
+        }
+      } catch {
+        closeBlank();
+      }
+    }
+    const reserved = reservation.current;
+    void controller.loginStart(entry.providerId, method).then((sessionId) => {
+      if (!reserved || reservation.current !== reserved) return;
+      const current = controller.getSnapshot().login;
+      if (
+        !sessionId ||
+        current?.providerId !== reserved.providerId ||
+        current.sessionId !== sessionId
+      ) {
+        closeBlank();
+        return;
+      }
+      reserved.sessionId = sessionId;
+      consumeNotice(current);
+    });
+  };
+  useEffect(() => {
+    setMethod(entry.methods[0]?.id || "");
+    return () => {
+      ++copyGeneration.current;
+      closeBlank();
+    };
+  }, [entry.providerId]);
+  useEffect(() => {
+    consumeNotice(login);
+  }, [login]);
+  useEffect(() => {
+    ++copyGeneration.current;
+    setCopied({});
+  }, [login?.sessionId, login?.phase === "done", entry.providerId]);
   const [catalog, setCatalog] = useState<OAuthCatalogView>();
   const [catalogError, setCatalogError] = useState<string>();
   const [catalogPick, setCatalogPick] = useState("");
@@ -73,19 +195,66 @@ export function OAuthDetails({
     status === "oauthSignedIn" && entry.account
       ? `${t("oauthSignedIn")} · ${entry.account}`
       : t(status);
-  const quotaBusy =
-    state.operations[`oauth-quota:${entry.providerId}`]?.status === "loading";
+  const quotaOperation = state.operations[`oauth-quota:${entry.providerId}`];
+  const quotaBusy = quotaOperation?.status === "loading";
   const pending = active ? login?.pendingPrompt : undefined;
-  const events = active ? (login?.events ?? []) : [];
+  const events = active && login?.phase !== "done" ? (login?.events ?? []) : [];
   const phase = active ? login?.phase : "idle";
-  const copy = async (value: string) => {
+  const copy = async (key: string, value: string) => {
+    const generation = copyGeneration.current;
     try {
       await navigator.clipboard.writeText(value);
-      setCopied(true);
+      if (generation === copyGeneration.current)
+        setCopied((current) => ({ ...current, [key]: "ok" }));
     } catch {
-      setCopied(false);
+      if (generation === copyGeneration.current)
+        setCopied((current) => ({ ...current, [key]: "error" }));
     }
   };
+  const museSnapshot = entry.builtin === true && entry.providerId === "muse";
+  const quotaSection = museSnapshot ? (
+    <section className="pm-card">
+      {entry.quota?.status === "ready" && entry.quota.windows.length > 0 ? (
+        <QuotaSummary
+          view={oauthQuotaView(entry)}
+          t={t}
+          name={entry.label}
+          variant="all"
+          heading={t("museQuotaSnapshot")}
+        />
+      ) : (
+        <h3>{t("museQuotaSnapshot")}</h3>
+      )}
+      {(!entry.quota?.windows.some((window) => window.id === "five-hour") ||
+        !entry.quota?.windows.some((window) => window.id === "weekly")) && (
+        <p>{t("museQuotaMissing")}</p>
+      )}
+      <p>{t("museQuotaSnapshotHelp")}</p>
+      <a
+        href="https://dev.meta.ai/usage"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {t("museUsageLink")}
+      </a>
+    </section>
+  ) : entry.quota?.status === "unsupported" ? (
+    <p>{t("oauthQuotaUnsupported")}</p>
+  ) : entry.quota || quotaBusy || quotaOperation?.status === "error" ? (
+    <QuotaSummary
+      view={
+        quotaBusy
+          ? { status: "loading" }
+          : quotaOperation?.status === "error"
+            ? { status: "error", error: quotaOperation.error }
+            : oauthQuotaView(entry)
+      }
+      t={t}
+      name={entry.label}
+      variant="all"
+      onRefresh={() => void controller.refreshOAuthQuota(entry.providerId)}
+    />
+  ) : null;
   return (
     <div className="pm-page">
       <button type="button" className="pm-back" onClick={onClose}>
@@ -127,7 +296,10 @@ export function OAuthDetails({
             <select
               id={`${id}-method`}
               value={method}
-              onChange={(event) => setMethod(event.target.value)}
+              onChange={(event) => {
+                closeBlank();
+                setMethod(event.target.value);
+              }}
             >
               {entry.methods.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -144,7 +316,7 @@ export function OAuthDetails({
             phase === "running" ||
             phase === "awaiting-prompt"
           }
-          onClick={() => void controller.loginStart(entry.providerId, method)}
+          onClick={startLogin}
         >
           {t("loginStart")}
         </button>
@@ -161,7 +333,13 @@ export function OAuthDetails({
           </button>
         )}
         {(phase === "running" || phase === "awaiting-prompt") && (
-          <button type="button" onClick={() => void controller.loginCancel()}>
+          <button
+            type="button"
+            onClick={() => {
+              closeBlank();
+              void controller.loginCancel();
+            }}
+          >
             {t("loginCancel")}
           </button>
         )}
@@ -178,15 +356,32 @@ export function OAuthDetails({
                         ? t("promptWithdrawn")
                         : event.message}
                     </p>
-                    {event.url && (
+                    {safeLoginUrl(event.url) && (
                       <p>
                         <a
-                          href={event.url}
+                          href={safeLoginUrl(event.url)}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
                           {event.url}
-                        </a>
+                        </a>{" "}
+                        <button
+                          type="button"
+                          className="pm-quiet"
+                          onClick={() =>
+                            void copy(
+                              `${event.index}:url`,
+                              safeLoginUrl(event.url)!,
+                            )
+                          }
+                        >
+                          {copied[`${event.index}:url`] === "ok"
+                            ? t("loginUrlCopied")
+                            : t("loginCopyUrl")}
+                        </button>
+                        {copied[`${event.index}:url`] === "error" && (
+                          <span role="status">{t("loginCopyFailed")}</span>
+                        )}
                       </p>
                     )}
                     {event.code && (
@@ -195,10 +390,17 @@ export function OAuthDetails({
                         <button
                           type="button"
                           className="pm-quiet"
-                          onClick={() => void copy(event.code!)}
+                          onClick={() =>
+                            void copy(`${event.index}:code`, event.code!)
+                          }
                         >
-                          {copied ? t("loginCopied") : t("loginCopy")}
+                          {copied[`${event.index}:code`] === "ok"
+                            ? t("loginCodeCopied")
+                            : t("loginCopyCode")}
                         </button>
+                        {copied[`${event.index}:code`] === "error" && (
+                          <span role="status">{t("loginCopyFailed")}</span>
+                        )}
                       </p>
                     )}
                   </>
@@ -275,13 +477,11 @@ export function OAuthDetails({
         </p>
       )}
       {phase === "done" && login?.result !== "ok" && (
-        <button
-          type="button"
-          onClick={() => void controller.loginStart(entry.providerId, method)}
-        >
+        <button type="button" onClick={startLogin}>
           {t("loginRetry")}
         </button>
       )}
+      {quotaSection}
       <section className="pm-card">
         <h3>{t("models")}</h3>
         {catalog ? (
@@ -485,21 +685,6 @@ export function OAuthDetails({
           <p>{catalogError ? t(catalogError as LocaleKey) : t("loading")}</p>
         )}
       </section>
-      {entry.quota?.status === "unsupported" ? (
-        <p>{t("oauthQuotaUnsupported")}</p>
-      ) : (
-        entry.quota && (
-          <QuotaSummary
-            view={quotaBusy ? { status: "loading" } : oauthQuotaView(entry)}
-            t={t}
-            name={entry.label}
-            variant="all"
-            onRefresh={() =>
-              void controller.refreshOAuthQuota(entry.providerId)
-            }
-          />
-        )
-      )}
       <Result operation={state.operations.login} t={t} />
       <Result operation={state.operations.logout} t={t} />
     </div>

@@ -1,3 +1,4 @@
+import { museQuotaFromRecord } from "./muse/usage.js";
 import { recordDigest } from "./oauth-usage.js";
 import { randomBytes } from "node:crypto";
 import {
@@ -131,11 +132,17 @@ export async function oauthEntries(
     if (entry.methods.length < 1) continue;
     let account: string | undefined;
     let bindingToken: string | undefined;
+    let museQuota: Pick<OAuthEntry, "quota" | "quotaFetchedAt"> = {};
     if (configured && readRecord) {
       try {
         const record = await readRecord(entry.key);
         account = accountFromPayload(grantPayload(record));
         bindingToken = recordDigest(record);
+        if (
+          credentialKeyScope(entry.key) === PLUGIN_SCOPE &&
+          credentialKeyId(entry.key) === "muse"
+        )
+          museQuota = museQuotaFromRecord(record);
       } catch {
         account = undefined;
       }
@@ -151,6 +158,7 @@ export async function oauthEntries(
       ...(kind ? { kind } : {}),
       ...(account ? { account } : {}),
       ...(bindingToken ? { bindingToken } : {}),
+      ...museQuota,
       inFlight: entry.inFlight === true,
       ...(credentialKeyScope(entry.key) === PLUGIN_SCOPE
         ? { builtin: true }

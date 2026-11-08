@@ -226,8 +226,8 @@ test("a provider without an endpoint is unsupported and invents no percent", asy
     {
       list: () => [
         {
-          key: credentialKey("llm-pi-ai", "anthropic"),
-          label: "Anthropic",
+          key: credentialKey("llm-pi-ai", "kimi-coding"),
+          label: "Kimi",
           methods: [{ id: "oauth", label: "OAuth" }],
           inFlight: false,
         },

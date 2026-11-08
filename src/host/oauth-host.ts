@@ -6,6 +6,7 @@ import {
 } from "@deepseek-ai/dsh-credentials";
 import {
   RECORD_SCOPE,
+  PLUGIN_SCOPE,
   SafeError,
   exact,
   text,
@@ -24,6 +25,7 @@ import { QuotaReader } from "./quota.js";
 import {
   OAUTH_QUOTA_TTL_MS,
   accessTokenFromRecord,
+  anthropicAccessTokenFromRecord,
   oauthUsageAdapters,
   recordDigest,
 } from "./oauth-usage.js";
@@ -84,7 +86,11 @@ export class OAuthHost {
     );
     return {
       oauth: listed.oauth.map((entry) =>
-        entry.configured && !oauthUsageAdapters[entry.providerId]
+        entry.configured &&
+        !entry.quota &&
+        (!oauthUsageAdapters[entry.providerId] ||
+          (entry.providerId === "anthropic" &&
+            (entry.builtin || entry.kind !== "grant")))
           ? { ...entry, quota: { status: "unsupported" as const, windows: [] } }
           : entry,
       ),
@@ -103,14 +109,16 @@ export class OAuthHost {
       throw new SafeError("INVALID_INPUT");
     const entry = await this.requireEntry(providerId);
     const record = await this.credentials.readRecord(
-      credentialKey(RECORD_SCOPE, providerId),
+      credentialKey(entry.builtin ? PLUGIN_SCOPE : RECORD_SCOPE, providerId),
     );
+    signal?.throwIfAborted();
     const bindingToken = recordDigest(record);
     if (
       entry.bindingToken !== bindingToken ||
       (parsed.bindingToken && parsed.bindingToken !== bindingToken)
     )
       throw new SafeError("BINDING_CHANGED");
+    if (entry.builtin && providerId === "muse") return entry;
     return this.decorate(entry, record, parsed.refresh === true, signal);
   }
   async logout(input: unknown) {
@@ -304,7 +312,18 @@ export class OAuthHost {
     refresh: boolean,
     signal?: AbortSignal,
   ): Promise<OAuthEntry> {
-    if (!entry.configured || !oauthUsageAdapters[entry.providerId]) {
+    const unsupportedAnthropic =
+      entry.providerId === "anthropic" &&
+      (entry.builtin ||
+        entry.kind !== "grant" ||
+        !record ||
+        typeof record !== "object" ||
+        (record as { kind?: unknown }).kind !== "grant");
+    if (
+      !entry.configured ||
+      !oauthUsageAdapters[entry.providerId] ||
+      unsupportedAnthropic
+    ) {
       if (!entry.configured) return entry;
       return {
         ...entry,
@@ -312,7 +331,10 @@ export class OAuthHost {
       };
     }
     const key = credentialKey(RECORD_SCOPE, entry.providerId);
-    const token = accessTokenFromRecord(record);
+    const token =
+      entry.providerId === "anthropic"
+        ? anthropicAccessTokenFromRecord(record)
+        : accessTokenFromRecord(record);
     const bindingToken = recordDigest(record);
     if (!token)
       return {

@@ -10,8 +10,11 @@ import {
   MUSE_TOKEN_URL,
 } from "./catalog.js";
 
+import { parseMuseUsage, type MuseUsage } from "./usage.js";
+
 export interface MuseCredential {
   access: string;
+  museUsage?: MuseUsage;
   email?: string;
   name?: string;
 }
@@ -40,7 +43,8 @@ export async function runMuseDeviceFlow(
   );
   const deviceCode = text(started.device_code);
   const userCode = text(started.user_code);
-  const url = text(started.verification_uri_complete) || text(started.verification_uri);
+  const url =
+    text(started.verification_uri_complete) || text(started.verification_uri);
   if (!deviceCode || !userCode || !url)
     throw new Error("Muse device authorization did not return a code");
   session.notify({
@@ -77,12 +81,10 @@ export async function runMuseDeviceFlow(
       deps.mintUrl ?? MUSE_MINT_URL,
       access,
       session.signal,
+      now,
     );
-    return {
-      access: minted.access || access,
-      ...(minted.email ? { email: minted.email } : {}),
-      ...(minted.name ? { name: minted.name } : {}),
-    };
+    session.signal.throwIfAborted();
+    return minted;
   }
   throw new AuthorizationDeclinedError("expired_token");
 }
@@ -92,30 +94,34 @@ async function mintKey(
   url: string,
   access: string,
   signal: AbortSignal,
-): Promise<{ access?: string; email?: string; name?: string }> {
-  try {
-    const response = await fetchImpl(url, {
-      method: "POST",
-      signal,
-      headers: {
-        accept: "application/json",
-        authorization: `Bearer ${access}`,
-        "content-type": "application/json",
-        "user-agent": "muse-code/1.0.2",
-      },
-      body: JSON.stringify({ dca_token: access }),
-    });
-    if (!response.ok) return {};
-    const body = (await response.json()) as Record<string, unknown>;
-    return {
-      access: text(body.api_key),
-      email: text(body.user_email),
-      name: text(body.user_full_name),
-    };
-  } catch (error) {
-    if (signal.aborted) throw error;
-    return {};
-  }
+  now: () => number,
+): Promise<MuseCredential> {
+  const response = await fetchImpl(url, {
+    method: "POST",
+    redirect: "error",
+    signal,
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${access}`,
+      "content-type": "application/json",
+      "user-agent": "muse-code/1.0.2",
+    },
+    body: JSON.stringify({ dca_token: access }),
+  });
+  if (!response.ok) throw new Error("Muse key mint failed");
+  const raw: unknown = await response.json();
+  if (!raw || typeof raw !== "object" || Array.isArray(raw))
+    throw new Error("Muse key mint returned no API key");
+  const body = raw as Record<string, unknown>;
+  const key = text(body.api_key);
+  if (!key) throw new Error("Muse key mint returned no API key");
+  const museUsage = parseMuseUsage(body.subs_usage, now());
+  return {
+    access: key,
+    ...(text(body.user_email) ? { email: text(body.user_email) } : {}),
+    ...(text(body.user_full_name) ? { name: text(body.user_full_name) } : {}),
+    ...(museUsage ? { museUsage } : {}),
+  };
 }
 
 async function postForm(
@@ -126,6 +132,7 @@ async function postForm(
 ): Promise<Record<string, unknown>> {
   const response = await fetchImpl(url, {
     method: "POST",
+    redirect: "error",
     signal,
     headers: {
       accept: "application/json",
@@ -134,7 +141,10 @@ async function postForm(
     },
     body: new URLSearchParams(fields),
   });
-  const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  const body = (await response.json().catch(() => ({}))) as Record<
+    string,
+    unknown
+  >;
   if (!response.ok && !text(body.error))
     throw new Error("Muse authorization request failed");
   return body;
@@ -171,6 +181,7 @@ function number(value: unknown) {
 }
 
 function limitMs(expiresIn: unknown) {
-  const seconds = typeof expiresIn === "number" ? expiresIn * 1000 : MUSE_POLL_LIMIT_MS;
+  const seconds =
+    typeof expiresIn === "number" ? expiresIn * 1000 : MUSE_POLL_LIMIT_MS;
   return Math.min(Math.max(seconds, 1_000), MUSE_POLL_LIMIT_MS);
 }
