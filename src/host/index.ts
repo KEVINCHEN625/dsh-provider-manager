@@ -15,7 +15,11 @@ export {
 import type { Context } from "@deepseek-ai/cordis";
 import type {} from "@deepseek-ai/dsh-client-connection";
 import type {} from "@deepseek-ai/dsh-host-webserver";
-import { Manager, ConfigSchema, type Config as ConfigType } from "./providers.js";
+import {
+  Manager,
+  ConfigSchema,
+  type Config as ConfigType,
+} from "./providers.js";
 import { createRevealHandler } from "./http.js";
 import { exact, text, SafeError } from "../shared/protocol.js";
 export const inject = ["settings", "credentials", "llm"];
@@ -69,9 +73,6 @@ export function apply(ctx: Context, config: ConfigType = {}) {
                   payload,
                   AbortSignal.any([signal, lifetime.signal]),
                 );
-                break;
-              case "credential/reveal-second-go":
-                value = await manager.revealSecondGoKey();
                 break;
               case "credential/clear-second-go":
                 value = await manager.clearSecondGoKey();

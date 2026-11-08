@@ -1,6 +1,9 @@
 import { randomBytes } from "node:crypto";
 import type { CredentialKey } from "@deepseek-ai/dsh-credentials";
-import { credentialKey, isCredentialKeySegment } from "@deepseek-ai/dsh-credentials";
+import {
+  credentialKey,
+  isCredentialKeySegment,
+} from "@deepseek-ai/dsh-credentials";
 import {
   RECORD_SCOPE,
   SafeError,
@@ -60,8 +63,7 @@ export class OAuthHost {
     catalogs?: CatalogStore,
   ) {
     this.catalogs =
-      catalogs ??
-      new CatalogStore({ ttlMs: config.oauthCatalogTtlMs });
+      catalogs ?? new CatalogStore({ ttlMs: config.oauthCatalogTtlMs });
     this.routes = new OAuthRoutes(settings);
     this.logins = new LoginSessionManager(
       () => this.authorization,
@@ -80,16 +82,15 @@ export class OAuthHost {
       (key) => this.credentials.describeRecord(key),
       (key) => this.credentials.readRecord(key),
     );
-    const oauth: OAuthEntry[] = [];
-    for (const entry of listed.oauth) {
-      if (entry.configured && this.routes.state(entry.providerId) !== "custom") {
-        const hit = await this.hit(entry.providerId, signal);
-        await this.routes.writeManaged(entry.providerId, entry.label, hit.models);
-      }
-      oauth.push(await this.decorate(entry, false, signal));
-    }
-    return { oauth };
+    return {
+      oauth: listed.oauth.map((entry) =>
+        entry.configured && !oauthUsageAdapters[entry.providerId]
+          ? { ...entry, quota: { status: "unsupported" as const, windows: [] } }
+          : entry,
+      ),
+    };
   }
+
   async quota(input: unknown, signal?: AbortSignal) {
     const parsed = exact(input, ["providerId", "bindingToken", "refresh"]);
     const providerId = text(parsed.providerId);
@@ -105,9 +106,12 @@ export class OAuthHost {
       credentialKey(RECORD_SCOPE, providerId),
     );
     const bindingToken = recordDigest(record);
-    if (parsed.bindingToken && parsed.bindingToken !== bindingToken)
+    if (
+      entry.bindingToken !== bindingToken ||
+      (parsed.bindingToken && parsed.bindingToken !== bindingToken)
+    )
       throw new SafeError("BINDING_CHANGED");
-    return this.decorate(entry, parsed.refresh === true, signal);
+    return this.decorate(entry, record, parsed.refresh === true, signal);
   }
   async logout(input: unknown) {
     const parsed = exact(input, ["providerId"]);
@@ -121,7 +125,10 @@ export class OAuthHost {
     await this.routes.removeOwned(providerId);
     return { removed: true };
   }
-  async catalog(input: unknown, signal?: AbortSignal): Promise<OAuthCatalogView> {
+  async catalog(
+    input: unknown,
+    signal?: AbortSignal,
+  ): Promise<OAuthCatalogView> {
     const providerId = providerIdOf(input);
     await this.requireEntry(providerId);
     return this.view(providerId, signal);
@@ -178,7 +185,10 @@ export class OAuthHost {
       hit.models,
     );
   }
-  private async view(providerId: string, signal?: AbortSignal): Promise<OAuthCatalogView> {
+  private async view(
+    providerId: string,
+    signal?: AbortSignal,
+  ): Promise<OAuthCatalogView> {
     const described = this.authorization.describe(
       credentialKey(RECORD_SCOPE, providerId),
     );
@@ -197,7 +207,9 @@ export class OAuthHost {
       specSource: hit.specSource,
       route,
       models: hit.models,
-      probeRemaining: hit.models.filter((model) => model.status === "unverified").length,
+      probeRemaining: hit.models.filter(
+        (model) => model.status === "unverified",
+      ).length,
       ...(credential ? { credential } : {}),
       ...(hit.fetchedAt ? { fetchedAt: hit.fetchedAt } : {}),
       ...(hit.specFetchedAt ? { specFetchedAt: hit.specFetchedAt } : {}),
@@ -261,7 +273,8 @@ export class OAuthHost {
           ? "available"
           : classified.kind === "unavailable"
             ? "unavailable"
-            : previous?.status === "available" || previous?.status === "unavailable"
+            : previous?.status === "available" ||
+                previous?.status === "unavailable"
               ? previous.status
               : "unverified";
       await this.routes.rememberProbe(providerId, modelId, {
@@ -287,6 +300,7 @@ export class OAuthHost {
   }
   private async decorate(
     entry: OAuthEntry,
+    record: unknown,
     refresh: boolean,
     signal?: AbortSignal,
   ): Promise<OAuthEntry> {
@@ -298,12 +312,6 @@ export class OAuthHost {
       };
     }
     const key = credentialKey(RECORD_SCOPE, entry.providerId);
-    let record: unknown;
-    try {
-      record = await this.credentials.readRecord(key);
-    } catch {
-      return { ...entry, quota: { status: "error", windows: [], error: "UNAVAILABLE" } };
-    }
     const token = accessTokenFromRecord(record);
     const bindingToken = recordDigest(record);
     if (!token)

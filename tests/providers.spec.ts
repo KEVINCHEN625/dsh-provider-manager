@@ -181,3 +181,25 @@ test("reserved Muse route and unknown cards are rejected", async () => {
   expect(s.muse.status).toBe("CLI_ONLY");
   expect(s.providers.every((p: { notice?: string }) => !p.notice)).toBe(true);
 });
+
+test.each([
+  ["provider-manager-commandcode"],
+  ["commandcode"],
+  ["commandcode", "provider-manager-commandcode"],
+])("Command Code card prefers built-in route among %j", async (...ids) => {
+  const routes = ids as string[];
+  const f = fixture();
+  f.services.llm.listProviders = () => routes.map((id) => ({ id, name: id }));
+  f.services.llm.listModels = async (route: string) => [
+    { id: `model-${route}` },
+  ];
+  const m = new Manager(f.services);
+  const card = await m.card("commandcode");
+  const selected = routes.includes("provider-manager-commandcode")
+    ? "provider-manager-commandcode"
+    : "commandcode";
+  expect(card.available).toBe(true);
+  expect(card.models[0].id).toBe(`model-${selected}`);
+  expect(m.binding("commandcode").ref).toBe("COMMANDCODE_API_KEY");
+  expect(f.writes).toEqual([]);
+});

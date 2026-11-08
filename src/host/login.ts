@@ -1,3 +1,4 @@
+import { recordDigest } from "./oauth-usage.js";
 import { randomBytes } from "node:crypto";
 import {
   AuthorizationDeclinedError,
@@ -52,7 +53,9 @@ export interface AuthorizationSurface {
         inFlight: boolean;
       }
     | undefined;
-  begin(request: AuthorizationRequest): Promise<{ status: "authorized" | "cancelled" }>;
+  begin(
+    request: AuthorizationRequest,
+  ): Promise<{ status: "authorized" | "cancelled" }>;
   cancel(key: CredentialKey): void;
 }
 
@@ -62,7 +65,9 @@ export interface RecordInfo {
   writable?: boolean;
 }
 
-export function authorizationOf(value: unknown): AuthorizationSurface | undefined {
+export function authorizationOf(
+  value: unknown,
+): AuthorizationSurface | undefined {
   if (!value || typeof value !== "object") return undefined;
   const candidate = value as Record<string, unknown>;
   if (
@@ -125,9 +130,12 @@ export async function oauthEntries(
     }
     if (entry.methods.length < 1) continue;
     let account: string | undefined;
+    let bindingToken: string | undefined;
     if (configured && readRecord) {
       try {
-        account = accountFromPayload(grantPayload(await readRecord(entry.key)));
+        const record = await readRecord(entry.key);
+        account = accountFromPayload(grantPayload(record));
+        bindingToken = recordDigest(record);
       } catch {
         account = undefined;
       }
@@ -142,6 +150,7 @@ export async function oauthEntries(
       configured,
       ...(kind ? { kind } : {}),
       ...(account ? { account } : {}),
+      ...(bindingToken ? { bindingToken } : {}),
       inFlight: entry.inFlight === true,
       ...(credentialKeyScope(entry.key) === PLUGIN_SCOPE
         ? { builtin: true }
@@ -187,10 +196,7 @@ export class LoginSessionManager {
     private getAuthorization: () => AuthorizationSurface | undefined,
     private now: () => number = () => Date.now(),
     private id: () => string = () => randomBytes(16).toString("hex"),
-    private onAuthorized?: (
-      providerId: string,
-      scope: string,
-    ) => Promise<void>,
+    private onAuthorized?: (providerId: string, scope: string) => Promise<void>,
   ) {}
   start(input: unknown): LoginStartResult {
     this.sweep();
@@ -266,11 +272,7 @@ export class LoginSessionManager {
     this.sweep();
     const p = exact(input, ["sessionId", "seq", "decline", "value"]);
     const session = this.live(text(p.sessionId));
-    if (
-      typeof p.seq !== "number" ||
-      !Number.isSafeInteger(p.seq) ||
-      p.seq < 1
-    )
+    if (typeof p.seq !== "number" || !Number.isSafeInteger(p.seq) || p.seq < 1)
       throw new SafeError("INVALID_INPUT");
     const pending = session.pending;
     if (!pending || pending.seq !== p.seq) throw new SafeError("STALE");
@@ -380,7 +382,10 @@ export class LoginSessionManager {
       this.finish(session, "failed", mapped);
     }
   }
-  private prompt(session: Session, prompt: AuthorizationPrompt): Promise<string> {
+  private prompt(
+    session: Session,
+    prompt: AuthorizationPrompt,
+  ): Promise<string> {
     const seq = ++session.prompts;
     const promptKind: LoginPromptKind =
       prompt.kind === "secret" || prompt.kind === "select"
@@ -412,7 +417,9 @@ export class LoginSessionManager {
         promptKind,
         ...(message ? { message } : {}),
         ...(options && options.length ? { options } : {}),
-        ...(options ? { optionIds: new Set(options.map((item) => item.id)) } : {}),
+        ...(options
+          ? { optionIds: new Set(options.map((item) => item.id)) }
+          : {}),
         resolve,
         reject,
       };
@@ -486,8 +493,7 @@ function noticeEvent(notice: {
 }): LoginEvent | undefined {
   const message = clipText(notice.message, LOGIN_MESSAGE_MAX);
   if (!message) return undefined;
-  const url =
-    typeof notice.url === "string" ? httpUrl(notice.url) : undefined;
+  const url = typeof notice.url === "string" ? httpUrl(notice.url) : undefined;
   const code = clipText(notice.code, LOGIN_CODE_MAX);
   return {
     kind: "notice",

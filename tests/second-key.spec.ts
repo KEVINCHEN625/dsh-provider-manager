@@ -42,7 +42,10 @@ describe("OpenCode Go key-pool slot 2", () => {
   test("revealSecondGoKey returns the stored value with a TTL", async () => {
     const { manager } = managerWithStore();
     await manager.setSecondGoKey({ value: "second-key-value" });
-    const revealed = await manager.revealSecondGoKey();
+    const revealed = await manager.reveal({
+      providerId: "provider-manager-opencode-go",
+      keySlot: "second",
+    });
     expect(revealed.value).toBe("second-key-value");
     expect(revealed.revealTTL).toBeLessThanOrEqual(30000);
   });
@@ -56,6 +59,8 @@ describe("OpenCode Go key-pool slot 2", () => {
 
   test("oversized values are refused", async () => {
     const { manager } = managerWithStore();
-    await expect(manager.setSecondGoKey({ value: "a".repeat(16385) })).rejects.toThrow();
+    await expect(
+      manager.setSecondGoKey({ value: "a".repeat(16385) }),
+    ).rejects.toThrow();
   });
 });

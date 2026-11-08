@@ -20,13 +20,8 @@ function formatTokens(value: number | undefined) {
 }
 
 function canActivate(model: OAuthCatalogView["models"][number]) {
-  return (
-    model.available &&
-    model.contextWindow !== undefined &&
-    model.maxTokens !== undefined &&
-    model.efforts.length > 0 &&
-    model.input.length > 0
-  );
+  // Host selectorModels accepts available rows even when only id/name are known.
+  return model.available;
 }
 
 export function OAuthDetails({
@@ -81,7 +76,7 @@ export function OAuthDetails({
   const quotaBusy =
     state.operations[`oauth-quota:${entry.providerId}`]?.status === "loading";
   const pending = active ? login?.pendingPrompt : undefined;
-  const events = active ? login?.events ?? [] : [];
+  const events = active ? (login?.events ?? []) : [];
   const phase = active ? login?.phase : "idle";
   const copy = async (value: string) => {
     try {
@@ -166,10 +161,7 @@ export function OAuthDetails({
           </button>
         )}
         {(phase === "running" || phase === "awaiting-prompt") && (
-          <button
-            type="button"
-            onClick={() => void controller.loginCancel()}
-          >
+          <button type="button" onClick={() => void controller.loginCancel()}>
             {t("loginCancel")}
           </button>
         )}
@@ -375,7 +367,8 @@ export function OAuthDetails({
                           {model.specContextWindow !== undefined &&
                           model.specContextWindow !== model.contextWindow ? (
                             <div>
-                              {t("catalogSpec")} {formatTokens(model.specContextWindow)}
+                              {t("catalogSpec")}{" "}
+                              {formatTokens(model.specContextWindow)}
                             </div>
                           ) : null}
                         </td>
@@ -394,7 +387,9 @@ export function OAuthDetails({
                             : model.status === "unavailable" || !model.available
                               ? t("catalogUnavailable")
                               : t("catalogAvailable")}
-                          {model.verifiedAt ? <div>{model.verifiedAt}</div> : null}
+                          {model.verifiedAt ? (
+                            <div>{model.verifiedAt}</div>
+                          ) : null}
                         </td>
                       </tr>
                     ))}

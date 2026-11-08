@@ -77,7 +77,9 @@ test("read failure has retry, then catalog and source; custom draft survives rel
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
   await screen.findByText("OpenCode Go");
   await openDetails();
-  expect((await screen.findAllByText("fixture-model")).length).toBeGreaterThan(0);
+  expect((await screen.findAllByText("fixture-model")).length).toBeGreaterThan(
+    0,
+  );
   expect(screen.getByText("env")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: en.back }));
   await openAdd();
@@ -213,7 +215,9 @@ test("credential permission failure does not hide a successfully read model coun
     providers: [{ ...provider, error: "REF_NOT_ALLOWED" }],
   }));
   await openDetails();
-  expect((await screen.findAllByText("fixture-model")).length).toBeGreaterThan(0);
+  expect((await screen.findAllByText("fixture-model")).length).toBeGreaterThan(
+    0,
+  );
   expect(screen.getByText("1 models")).toBeTruthy();
   expect(screen.queryByText("Model catalog unavailable")).toBeNull();
 });
@@ -577,8 +581,14 @@ test("oauth details show the codex catalog windows and effort pills", async () =
   expect(screen.getAllByText("272K").length).toBeGreaterThan(0);
   expect(screen.getByText(/1\.05M/)).toBeTruthy();
   expect(screen.getByText(en.catalogUnavailable)).toBeTruthy();
-  expect(screen.getByText(`${en.catalogServed} gpt-5.6-luna${en.catalogServedSuffix}`)).toBeTruthy();
-  expect(screen.getAllByText(en.catalogSourceSnapshot).length).toBeGreaterThan(0);
+  expect(
+    screen.getByText(
+      `${en.catalogServed} gpt-5.6-luna${en.catalogServedSuffix}`,
+    ),
+  ).toBeTruthy();
+  expect(screen.getAllByText(en.catalogSourceSnapshot).length).toBeGreaterThan(
+    0,
+  );
   expect(screen.getByRole("button", { name: en.catalogActivate })).toBeTruthy();
 });
 
@@ -735,3 +745,65 @@ test("list card shows Signing in from local login before snapshot inFlight", asy
   expect(await screen.findByText(en.oauthInFlight)).toBeTruthy();
   expect(screen.queryByText(en.oauthSignedOut)).toBeNull();
 });
+
+test("window blur and navigation clear the second key as well as the primary", async () => {
+  const { c } = setup();
+  await screen.findByText("OpenCode Go");
+  await c.revealSecondGo();
+  expect(c.state.revealedSecond?.value).toBe("SYNTHETIC");
+  fireEvent.blur(window);
+  expect(c.state.revealedSecond).toBeUndefined();
+  await c.revealSecondGo();
+  await openAdd();
+  expect(c.state.revealedSecond).toBeUndefined();
+  c.dispose();
+});
+
+test.each([
+  { route: "missing", status: "available", available: true },
+  { route: "empty", status: "available", available: true },
+  { route: "missing", status: "unavailable", available: false },
+  { route: "empty", status: "unverified", available: false },
+])(
+  "OAuth activate follows availability for minimal $status row on $route route",
+  async ({ route, status, available }) => {
+    const activate = vi.fn();
+    const model = {
+      id: "minimal-model",
+      name: "Minimal Model",
+      status,
+      available,
+      efforts: [],
+      input: [],
+    };
+    const { c } = setup(en, async (endpoint: string) => {
+      if (
+        endpoint === "oauth/catalog" ||
+        endpoint === "oauth/catalog/activate"
+      ) {
+        if (endpoint === "oauth/catalog/activate") activate();
+        return {
+          providerId: "openai-codex",
+          source: "snapshot",
+          specSource: "snapshot",
+          route,
+          models: [model],
+        };
+      }
+      return { ...snapshot, oauth: [oauthEntry] };
+    });
+    fireEvent.click(await screen.findByRole("tab", { name: "OAuth" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: `${en.details}: ChatGPT Codex` }),
+    );
+    await screen.findByText("minimal-model");
+    if (available) {
+      fireEvent.click(screen.getByRole("button", { name: en.catalogActivate }));
+      await waitFor(() => expect(activate).toHaveBeenCalledTimes(1));
+    } else
+      expect(
+        screen.queryByRole("button", { name: en.catalogActivate }),
+      ).toBeNull();
+    c.dispose();
+  },
+);

@@ -102,6 +102,9 @@ export class Controller {
   private requests = new Set<AbortController>();
   private loadGeneration = 0;
   private revealGeneration = 0;
+  private oauthGeneration = 0;
+  private secondRevealGeneration = 0;
+  private secondRevealAbort?: AbortController;
   private quotaGeneration: Record<string, number> = {};
   private quotaAbort = new Map<string, AbortController>();
   private quotaPoll?: ReturnType<typeof setInterval>;
@@ -163,18 +166,19 @@ export class Controller {
     this.abortQuotas();
     this.update({ status: "loading", error: undefined });
     try {
-      const snapshot = await this.attachOAuth(
-        validateSnapshot(
-          await this.request((signal) =>
-            this.transport.rpc("snapshot", {}, signal),
-          ),
+      const snapshot = validateSnapshot(
+        await this.request((signal) =>
+          this.transport.rpc("snapshot", {}, signal),
         ),
       );
       if (generation === this.loadGeneration) {
         this.retryDelay = 5000;
         this.update({ status: "ready", snapshot, quotas: {} });
       }
-      if (generation === this.loadGeneration) this.readVisibleQuotas();
+      if (generation === this.loadGeneration) {
+        this.readVisibleQuotas();
+        await this.refreshOAuth(false);
+      }
     } catch (error) {
       if (generation === this.loadGeneration) {
         this.update({ status: "error", error: errorCode(error) });
@@ -321,6 +325,7 @@ export class Controller {
     }
   }
   hide = () => {
+    this.hideSecond();
     ++this.revealGeneration;
     this.revealAbort?.abort();
     clearTimeout(this.timer);
@@ -334,6 +339,7 @@ export class Controller {
     });
   };
   async saveSecondGoKey(value: string) {
+    this.hideSecond();
     const key = "go-second:save";
     this.operation(key, { status: "loading" });
     try {
@@ -342,13 +348,9 @@ export class Controller {
           this.transport.rpc("credential/set-second-go", { value }, signal),
         ),
       );
-      this.update({ revealedSecond: undefined });
+      this.hideSecond();
       await this.applyKeyPool();
       this.operation(key, { status: "success" });
-      const go = this.state.snapshot?.providers.find(
-        (p) => p.id === "provider-manager-opencode-go",
-      );
-      if (go) void this.refreshQuota(go, true, "second");
       return true;
     } catch (error) {
       this.operation(key, { status: "error", error: errorCode(error) });
@@ -356,49 +358,58 @@ export class Controller {
     }
   }
   async revealSecondGo() {
-    this.hideSecond();
+    this.hide();
+    const generation = this.secondRevealGeneration;
     const key = "go-second:reveal";
     this.operation(key, { status: "loading" });
+    const abort = new AbortController();
+    this.secondRevealAbort = abort;
     try {
-      const raw: unknown = await this.request((signal) =>
-        this.transport.rpc("credential/reveal-second-go", {}, signal),
+      const data = await this.request(
+        (signal) =>
+          this.transport.reveal(
+            { providerId: "provider-manager-opencode-go", keySlot: "second" },
+            signal,
+          ),
+        abort,
       );
-      const data = (raw ?? {}) as Record<string, unknown>;
-      if (typeof data.value !== "string") throw { code: "UNAVAILABLE" };
-      const ttl =
-        typeof data.revealTTL === "number"
-          ? Math.min(30000, Math.max(1000, data.revealTTL))
-          : 30000;
+      if (generation !== this.secondRevealGeneration || this.disposed) return;
       this.update({
-        revealedSecond: {
-          value: data.value,
-          source: typeof data.source === "string" ? data.source : undefined,
-        },
+        revealedSecond: { value: data.value, source: data.source },
       });
       this.operation(key, { status: "success" });
-      this.secondTimer = setTimeout(() => this.hideSecond(), ttl);
-    } catch {
-      this.operation(key, { status: "error", error: "UNAVAILABLE" });
+      this.secondTimer = setTimeout(
+        () => this.hideSecond(),
+        Math.min(30000, Math.max(1, data.revealTTL || 30000)),
+      );
+    } catch (error) {
+      if (generation === this.secondRevealGeneration && !this.disposed)
+        this.operation(key, { status: "error", error: errorCode(error) });
     }
   }
   hideSecond = () => {
+    ++this.secondRevealGeneration;
+    this.secondRevealAbort?.abort();
     clearTimeout(this.secondTimer);
-    this.update({ revealedSecond: undefined });
+    this.update({
+      revealedSecond: undefined,
+      operations: {
+        ...this.state.operations,
+        "go-second:reveal": { status: "idle" },
+      },
+    });
   };
   async clearSecondGo() {
+    this.hideSecond();
     const key = "go-second:clear";
     this.operation(key, { status: "loading" });
     try {
       await this.request((signal) =>
         this.transport.rpc("credential/clear-second-go", {}, signal),
       );
-      this.update({ revealedSecond: undefined });
+      this.hideSecond();
       await this.applyKeyPool();
       this.operation(key, { status: "success" });
-      const go = this.state.snapshot?.providers.find(
-        (p) => p.id === "provider-manager-opencode-go",
-      );
-      if (go) void this.refreshQuota(go, true, "second");
       return true;
     } catch (error) {
       this.operation(key, { status: "error", error: errorCode(error) });
@@ -469,6 +480,7 @@ export class Controller {
   visibilityChanged(visible: boolean) {
     this.visible = visible;
     if (!visible) {
+      this.hide();
       this.stopPoll();
       this.abortQuotas();
       return;
@@ -577,57 +589,136 @@ export class Controller {
       return { ...snapshot, oauth: [], oauthUnavailable: true };
     }
   }
-  private async refreshOAuth() {
+  private async refreshOAuth(keepOnError = true) {
     const generation = this.loadGeneration;
+    const sequence = ++this.oauthGeneration;
     const current = this.state.snapshot;
     if (!current || this.state.status !== "ready") return;
-    const next = await this.attachOAuth(current, true);
-    if (this.disposed || generation !== this.loadGeneration) return;
+    const next = await this.attachOAuth(current, keepOnError);
+    if (
+      this.disposed ||
+      generation !== this.loadGeneration ||
+      sequence !== this.oauthGeneration
+    )
+      return;
     const latest = this.state.snapshot;
     if (!latest) return;
+    const operations = { ...this.state.operations };
+    for (const prior of latest.oauth) {
+      const entry = next.oauth.find(
+        (item) => item.providerId === prior.providerId,
+      );
+      if (!entry?.configured || entry.bindingToken !== prior.bindingToken) {
+        const key = `oauth:${prior.providerId}`;
+        this.quotaGeneration[key] = (this.quotaGeneration[key] ?? 0) + 1;
+        this.quotaAbort.get(key)?.abort();
+        operations[`oauth-quota:${prior.providerId}`] = { status: "idle" };
+      }
+    }
     this.update({
+      operations,
       snapshot: {
         ...latest,
-        oauth: next.oauth,
+        oauth: next.oauth.map((entry) => {
+          const prior = latest.oauth.find(
+            (item) => item.providerId === entry.providerId,
+          );
+          const same =
+            entry.configured &&
+            entry.bindingToken &&
+            entry.bindingToken === prior?.bindingToken;
+          return same
+            ? {
+                ...entry,
+                quota: prior.quota ?? entry.quota,
+                quotaFetchedAt: prior.quotaFetchedAt,
+              }
+            : entry;
+        }),
         oauthUnavailable: next.oauthUnavailable,
       },
     });
+    if (this.visible)
+      for (const entry of this.state.snapshot?.oauth ?? [])
+        if (
+          entry.configured &&
+          entry.bindingToken &&
+          entry.quota?.status !== "unsupported"
+        )
+          void this.refreshOAuthQuota(entry.providerId, false);
   }
-  async refreshOAuthQuota(providerId: string) {
+  async refreshOAuthQuota(providerId: string, refresh = true) {
     const entry = this.state.snapshot?.oauth.find(
       (item) => item.providerId === providerId,
     );
-    if (!entry || this.disposed) return;
+    if (
+      !entry?.configured ||
+      !entry.bindingToken ||
+      entry.quota?.status === "unsupported" ||
+      this.disposed
+    )
+      return;
+    const requestKey = `oauth:${providerId}`;
+    const sequence = (this.quotaGeneration[requestKey] ?? 0) + 1;
+    this.quotaGeneration[requestKey] = sequence;
+    this.quotaAbort.get(requestKey)?.abort();
+    const abort = new AbortController();
+    this.quotaAbort.set(requestKey, abort);
+    const generation = this.loadGeneration;
+    const current = () =>
+      !this.disposed &&
+      generation === this.loadGeneration &&
+      sequence === this.quotaGeneration[requestKey] &&
+      this.state.snapshot?.oauth.some(
+        (item) =>
+          item.providerId === providerId &&
+          item.configured &&
+          item.bindingToken === entry.bindingToken,
+      );
     const key = `oauth-quota:${providerId}`;
     this.operation(key, { status: "loading" });
     try {
       const updated = validateOAuthEntry(
-        await this.request((signal) =>
-          this.transport.rpc(
-            "oauth/quota",
-            {
-              providerId,
-              ...(entry.bindingToken
-                ? { bindingToken: entry.bindingToken }
-                : {}),
-              refresh: true,
-            },
-            signal,
-          ),
+        await this.request(
+          (signal) =>
+            this.transport.rpc(
+              "oauth/quota",
+              {
+                providerId,
+                ...(entry.bindingToken
+                  ? { bindingToken: entry.bindingToken }
+                  : {}),
+                refresh,
+              },
+              signal,
+            ),
+          abort,
         ),
       );
       const snapshot = this.state.snapshot;
-      if (!snapshot) return;
+      if (!snapshot || !current()) return;
+      if (
+        updated.bindingToken !== entry.bindingToken ||
+        updated.providerId !== providerId
+      )
+        throw { code: "INVALID_RESPONSE" };
       this.update({
         snapshot: {
           ...snapshot,
           oauth: snapshot.oauth.map((item) =>
-            item.providerId === providerId ? updated : item,
+            item.providerId === providerId
+              ? {
+                  ...item,
+                  quota: updated.quota,
+                  quotaFetchedAt: updated.quotaFetchedAt,
+                }
+              : item,
           ),
         },
       });
       this.operation(key, { status: "success" });
     } catch (error) {
+      if (!current()) return;
       this.operation(key, { status: "error", error: errorCode(error) });
     }
   }
@@ -675,11 +766,36 @@ export class Controller {
   }
   async logout(providerId: string) {
     if (this.disposed) return;
+    ++this.oauthGeneration;
+    const quotaKey = `oauth:${providerId}`;
+    this.quotaGeneration[quotaKey] = (this.quotaGeneration[quotaKey] ?? 0) + 1;
+    this.quotaAbort.get(quotaKey)?.abort();
+    this.operation(`oauth-quota:${providerId}`, { status: "idle" });
     this.operation("logout", { status: "loading" });
     try {
       await this.request((signal) =>
         this.transport.rpc("oauth/logout", { providerId }, signal),
       );
+      const snapshot = this.state.snapshot;
+      if (snapshot)
+        this.update({
+          snapshot: {
+            ...snapshot,
+            oauth: snapshot.oauth.map((entry) =>
+              entry.providerId === providerId
+                ? {
+                    ...entry,
+                    configured: false,
+                    account: undefined,
+                    bindingToken: undefined,
+                    quota: undefined,
+                    quotaFetchedAt: undefined,
+                    kind: undefined,
+                  }
+                : entry,
+            ),
+          },
+        });
       this.operation("logout", { status: "success" });
       await this.refreshOAuth();
     } catch (error) {
@@ -702,6 +818,10 @@ export class Controller {
       this.quotaGeneration[id] += 1;
     for (const abort of this.quotaAbort.values()) abort.abort();
     this.quotaAbort.clear();
+    const operations = { ...this.state.operations };
+    for (const key of Object.keys(operations))
+      if (key.startsWith("oauth-quota:")) operations[key] = { status: "idle" };
+    this.update({ operations });
   }
   dispose() {
     this.hide();

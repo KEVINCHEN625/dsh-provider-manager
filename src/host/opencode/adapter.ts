@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+import { createHash } from "node:crypto";
 import type { Context } from "@deepseek-ai/cordis";
 import { PiAiAdapter } from "@deepseek-ai/dsh-llm-pi-ai";
 import {
@@ -12,19 +14,56 @@ import {
   GO_EXHAUST_TTL_MS,
   goSlotOrder,
   isQuotaExhaustion,
-  otherSlot,
   readGoPreferred,
-  type GoSlot,
 } from "./pool.js";
 import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import { createBuiltInGoProfile } from "./profile.js";
+import { untilAborted } from "../quota.js";
 export function createBuiltInGoAdapter(ctx: Context): PiAiAdapter {
   const profiles = new Map([[GO_ROUTE, createBuiltInGoProfile()]]);
-    // Quota failover: 429/402/403 during the first chunk of a stream marks the
-  // slot exhausted for a TTL and retries once against the other slot.
-  const exhaustedUntil = new Map<string, number>();
-  let forcedSlot: GoSlot | undefined;
-  let lastSlotRef: string | undefined;
+  type Identity = { ref: string; digest: string };
+  type Candidate = Identity & { value: string };
+  type Attempt = { selected?: Identity; forced?: Candidate };
+  // Only irreversible identities live beyond an invocation. Replacing a key
+  // immediately escapes the health state of the previous credential.
+  const exhausted = new Map<string, number>();
+  const identity = (candidate: Identity) =>
+    `${candidate.ref}:${candidate.digest}`;
+  const attempts = new AsyncLocalStorage<Attempt>();
+  const digest = (value: string) =>
+    createHash("sha256").update(value).digest("hex");
+  const readCandidate = async (ref: string): Promise<Candidate | undefined> => {
+    const hit = await ctx.credentials.resolve(credentialRef(ref));
+    if (!hit?.value) return undefined;
+    const value = assertUsableApiKey(hit.value, GO_ROUTE, ref);
+    return { ref, digest: digest(value), value };
+  };
+  const isExhausted = (candidate: Identity) => {
+    return (exhausted.get(identity(candidate)) ?? 0) > Date.now();
+  };
+  const markExhausted = (selected: Identity | undefined) => {
+    if (!selected) return;
+    for (const [key, until] of exhausted)
+      if (until <= Date.now()) exhausted.delete(key);
+    exhausted.set(identity(selected), Date.now() + GO_EXHAUST_TTL_MS);
+  };
+  const retryCandidate = async (attempt: Attempt, signal?: AbortSignal) => {
+    const selected = attempt.selected;
+    if (!selected || signal?.aborted) return undefined;
+    // An unusable backup cannot replace the original quota failure.
+    const pending = readCandidate(selected.ref === GO_KEY ? GO_KEY_2 : GO_KEY);
+    const candidate = await (
+      signal ? untilAborted(pending, signal) : pending
+    ).catch(() => undefined);
+    if (
+      signal?.aborted ||
+      !candidate ||
+      candidate.digest === selected.digest ||
+      isExhausted(candidate)
+    )
+      return undefined;
+    return candidate;
+  };
 
   /**
    * pi-ai never throws: quota failures arrive as the FIRST chunk, already
@@ -51,81 +90,92 @@ export function createBuiltInGoAdapter(ctx: Context): PiAiAdapter {
     return false;
   };
 
+  // Async generators execute on next(), not construction. Bind all iterator
+  // entry points so overlapping calls (including one prepared call) stay local.
+  function scopedIterator(
+    perform: () => AsyncIterable<unknown>,
+    attempt: Attempt,
+  ) {
+    const inner = attempts.run(attempt, () =>
+      perform()[Symbol.asyncIterator](),
+    );
+    return {
+      next: () => attempts.run(attempt, () => inner.next()),
+      return: () => attempts.run(attempt, () => inner.return?.()),
+      throw: (error: unknown) =>
+        attempts.run(attempt, () => inner.throw?.(error)),
+    };
+  }
   async function* withFailover(
     perform: () => AsyncIterable<unknown>,
+    signal?: AbortSignal,
   ): AsyncGenerator<unknown, void, undefined> {
-    let iterator = perform()[Symbol.asyncIterator]();
-    // Consumer close (return()) must reach the upstream stream, so every
-    // hand-driven loop forwards it in a finally.
-    let closed = false;
-    const closeInner = () => {
-      if (closed) return Promise.resolve();
-      closed = true;
-      return Promise.resolve(iterator.return?.()).then(() => undefined);
-    };
-    // Buffer the opening run of the stream: usage-only chunks carry no
-    // content, so holding them costs nothing and lets the quota finish
-    // chunk (which may follow several of them) trigger the failover.
-    const buffered: unknown[] = [];
-    let done = false;
-    try {
-      for (;;) {
-        const probe = await iterator.next();
-        if (probe.done) {
-          done = true;
-          break;
-        }
-        buffered.push(probe.value);
-        if ((probe.value as { type?: string }).type !== "usage") break;
-      }
-    } catch (error) {
-      await closeInner();
-      if (!isQuotaExhaustion(error) || lastSlotRef === undefined) throw error;
-      exhaustedUntil.set(lastSlotRef, Date.now() + GO_EXHAUST_TTL_MS);
-      yield* retryOnOtherSlot(perform);
-      return;
-    }
-    const last = buffered[buffered.length - 1];
-    if (!done && quotaFailureChunk(last) && lastSlotRef) {
-      await closeInner();
-      exhaustedUntil.set(lastSlotRef, Date.now() + GO_EXHAUST_TTL_MS);
-      yield* retryOnOtherSlot(perform);
-      return;
-    }
-    try {
-      for (const chunk of buffered) yield chunk;
-      if (done) return;
-      for (;;) {
-        const next = await iterator.next();
-        if (next.done) return;
-        yield next.value;
-      }
-    } finally {
-      await closeInner();
-    }
-  }
-
-  async function* retryOnOtherSlot(
-    perform: () => AsyncIterable<unknown>,
-  ): AsyncGenerator<unknown, void, undefined> {
-    forcedSlot = otherSlot(lastSlotRef === GO_KEY ? "primary" : "second");
-    try {
-      const iterator = perform()[Symbol.asyncIterator]();
+    const attempt: Attempt = {};
+    for (let index = 0; index < 2; index++) {
+      const iterator = scopedIterator(perform, attempt);
+      let closed = false;
+      const close = async () => {
+        if (closed) return;
+        closed = true;
+        await iterator.return();
+      };
       try {
+        const buffered: unknown[] = [];
+        let done = false;
+        try {
+          for (;;) {
+            const next = await iterator.next();
+            if (next.done) {
+              done = true;
+              break;
+            }
+            buffered.push(next.value);
+            if ((next.value as { type?: string }).type !== "usage") break;
+          }
+        } catch (error) {
+          if (
+            !signal?.aborted &&
+            (error as { name?: string })?.name !== "AbortError" &&
+            isQuotaExhaustion(error)
+          ) {
+            markExhausted(attempt.selected);
+            await close();
+            if (index === 0) {
+              const candidate = await retryCandidate(attempt, signal);
+              if (candidate) {
+                attempt.forced = candidate;
+                continue;
+              }
+            }
+          }
+          throw error;
+        }
+        if (!done && quotaFailureChunk(buffered.at(-1)) && !signal?.aborted) {
+          markExhausted(attempt.selected);
+          await close();
+          done = true;
+          if (index === 0) {
+            const candidate = await retryCandidate(attempt, signal);
+            if (candidate) {
+              attempt.forced = candidate;
+              continue;
+            }
+          }
+        }
+        for (const chunk of buffered) yield chunk;
+        if (done) return;
         for (;;) {
           const next = await iterator.next();
           if (next.done) return;
           yield next.value;
         }
       } finally {
-        await iterator.return?.();
+        await close();
       }
-    } finally {
-      forcedSlot = undefined;
     }
   }
 
-const adapter = new PiAiAdapter({
+  const adapter = new PiAiAdapter({
     profiles: () => profiles,
     // This closed API-key-only lane never performs ambient discovery or OAuth.
     auth: {
@@ -145,26 +195,25 @@ const adapter = new PiAiAdapter({
       },
     },
     resolveApiKey: async (_provider, _profile) => {
-      // Key pool: the preferred slot (persisted via readGoPreferred, default
-      // primary = the earliest-configured ref) is tried first. A slot marked
-      // exhausted (429/402/403 during a stream) drops to the back until its
-      // TTL lapses, so live traffic fails over automatically; the forced
-      // slot from an in-flight failover retry wins outright.
-      const preference: GoSlot =
-        forcedSlot ?? (await readGoPreferred((ref) => ctx.credentials.resolve(ref)));
-      const now = Date.now();
-      const [head, tail] = goSlotOrder(preference);
-      const order =
-        (exhaustedUntil.get(head) ?? 0) > now &&
-        (exhaustedUntil.get(tail) ?? 0) <= now
-          ? [tail, head]
-          : [head, tail];
-      for (const ref of order) {
-        const hit = await ctx.credentials.resolve(credentialRef(ref));
-        if (hit?.value) {
-          lastSlotRef = ref;
-          return assertUsableApiKey(hit.value, GO_ROUTE, ref);
+      const attempt = attempts.getStore();
+      let candidate = attempt?.forced;
+      if (attempt) attempt.forced = undefined;
+      if (!candidate) {
+        const preference = await readGoPreferred((ref) =>
+          ctx.credentials.resolve(ref),
+        );
+        const [head, tail] = goSlotOrder(preference);
+        candidate = await readCandidate(head);
+        if (!candidate) candidate = await readCandidate(tail);
+        else if (isExhausted(candidate)) {
+          const backup = await readCandidate(tail).catch(() => undefined);
+          if (backup && !isExhausted(backup)) candidate = backup;
         }
+      }
+      if (candidate) {
+        if (attempt)
+          attempt.selected = { ref: candidate.ref, digest: candidate.digest };
+        return candidate.value;
       }
       throw new LlmError(
         `Provider Manager: store ${GO_KEY} (and optionally ${GO_KEY_2}) before using OpenCode Go`,
@@ -182,8 +231,13 @@ const adapter = new PiAiAdapter({
   const bindStream = (name: "stream" | "streamSimple") => {
     const original = (adapter as unknown as Record<string, Function>)[name];
     if (typeof original !== "function") return;
-    (adapter as unknown as Record<string, unknown>)[name] = (...args: unknown[]) =>
-      withFailover(() => original.apply(adapter, args));
+    (adapter as unknown as Record<string, unknown>)[name] = (
+      ...args: unknown[]
+    ) =>
+      withFailover(
+        () => original.apply(adapter, args),
+        (args[0] as { signal?: AbortSignal })?.signal,
+      );
   };
   bindStream("stream");
   bindStream("streamSimple");
@@ -209,6 +263,10 @@ const adapter = new PiAiAdapter({
     Promise.resolve(prepareCall(provider, model, signal)).then((call) => ({
       ...call,
       model: hideEmptyReasoning(call.model),
+      stream: (options) =>
+        withFailover(() => call.stream(options), options.signal) as ReturnType<
+          typeof call.stream
+        >,
     }));
   return adapter;
 }

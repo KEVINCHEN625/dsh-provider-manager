@@ -90,3 +90,48 @@ test("slow unfinished body times out and releases connection", async () => {
     await f.close();
   }
 });
+
+test("second Go key uses strict HTTP with fixed slot whitelist and no-store", async () => {
+  const { Manager } = await import("../src/host/providers.js");
+  const { fixture } = await import("./fixtures/services.js");
+  const services = fixture();
+  services.values.set("OPENCODE_API_KEY_2", "synthetic-second");
+  const f = await server(new Manager(services.services));
+  const send = async (payload: any, origin?: string) =>
+    new Promise<any>((resolve, reject) => {
+      const options = req(f.port);
+      if (origin !== undefined) options.headers.Origin = origin;
+      const r = http.request(options, (res) => {
+        let body = "";
+        res.on("data", (x) => (body += x));
+        res.on("end", () =>
+          resolve({
+            status: res.statusCode,
+            body: JSON.parse(body),
+            headers: res.headers,
+          }),
+        );
+      });
+      r.on("error", reject);
+      r.end(JSON.stringify(payload));
+    });
+  try {
+    const allowed = {
+      providerId: "provider-manager-opencode-go",
+      keySlot: "second",
+    };
+    const result = await send(allowed);
+    expect(result.status).toBe(200);
+    expect(result.body.value).toBe("synthetic-second");
+    expect(result.headers["cache-control"]).toBe("no-store");
+    for (const invalid of [
+      { ...allowed, ref: "ANY_SECRET" },
+      { ...allowed, providerId: "commandcode" },
+      { ...allowed, keySlot: "primary" },
+    ])
+      expect((await send(invalid)).status).toBe(400);
+    expect((await send(allowed, "https://foreign.test")).status).toBe(403);
+  } finally {
+    await f.close();
+  }
+});

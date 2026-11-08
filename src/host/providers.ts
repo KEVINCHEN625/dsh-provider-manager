@@ -1,3 +1,4 @@
+import { CC_ROUTE } from "./commandcode/catalog.js";
 import {
   GO_ROUTE,
   GO_NAME,
@@ -95,7 +96,7 @@ const quotaDefinitions: Record<
       source: "opencode-official",
       url: OPENCODE_USAGE_URL,
       kind: "opencode",
-      },
+    },
   ],
   [
     GO_ROUTE,
@@ -103,7 +104,7 @@ const quotaDefinitions: Record<
       source: "opencode-official",
       url: OPENCODE_USAGE_URL,
       kind: "opencode",
-      },
+    },
   ],
   [
     "commandcode",
@@ -111,7 +112,7 @@ const quotaDefinitions: Record<
       source: "command-default-reference",
       url: COMMAND_CREDITS_URL,
       kind: "command",
-      },
+    },
   ],
 ]);
 // The legacy management card is retired. The route stays reserved and the
@@ -190,7 +191,12 @@ export class Manager {
   }
   async quota(input: unknown, signal?: AbortSignal): Promise<QuotaSnapshot> {
     signal?.throwIfAborted();
-    const p = exact(input, ["providerId", "bindingToken", "refresh", "keySlot"]);
+    const p = exact(input, [
+      "providerId",
+      "bindingToken",
+      "refresh",
+      "keySlot",
+    ]);
     const providerId = text(p.providerId);
     if (p.refresh !== undefined && typeof p.refresh !== "boolean")
       throw new SafeError("INVALID_INPUT");
@@ -224,8 +230,7 @@ export class Manager {
       stale: false,
     });
     const isGo = providerId === "opencode-go" || providerId === GO_ROUTE;
-    if (keySlot === "second" && !isGo)
-      throw new SafeError("INVALID_INPUT");
+    if (keySlot === "second" && !isGo) throw new SafeError("INVALID_INPUT");
     // The second pool slot has no settings binding; its token is derived the
     // same deterministic way over the fixed second ref.
     const currentBinding = (): ReturnType<Manager["binding"]> => {
@@ -471,7 +476,10 @@ export class Manager {
    */
   static SECOND_GO_REF = "OPENCODE_API_KEY_2";
 
-  async setSecondGoKey(input: unknown, signal?: AbortSignal): Promise<{
+  async setSecondGoKey(
+    input: unknown,
+    signal?: AbortSignal,
+  ): Promise<{
     configured: boolean;
     writable: boolean;
     source: string | undefined;
@@ -492,14 +500,16 @@ export class Manager {
     };
   }
 
-  async revealSecondGoKey(): Promise<{
+  private async revealSecondGoKey(signal?: AbortSignal): Promise<{
     value: string;
     source: string | undefined;
     revealTTL: number;
   }> {
+    signal?.throwIfAborted();
     const result = await this.services.credentials.resolve(
       credentialRef(Manager.SECOND_GO_REF),
     );
+    signal?.throwIfAborted();
     if (!result) throw new SafeError("UNAVAILABLE");
     return {
       value: result.value,
@@ -551,7 +561,10 @@ export class Manager {
   }
 
   /** Persist the preferred key-pool slot and return the refreshed pool. */
-  async setGoPreference(input: unknown, signal?: AbortSignal): Promise<{
+  async setGoPreference(
+    input: unknown,
+    signal?: AbortSignal,
+  ): Promise<{
     preferred: GoSlot;
     slots: {
       slot: GoSlot;
@@ -573,6 +586,12 @@ export class Manager {
   }
 
   async reveal(input: unknown, signal?: AbortSignal) {
+    if (input && typeof input === "object" && "keySlot" in input) {
+      const p = exact(input, ["providerId", "keySlot"]);
+      if (p.providerId !== GO_ROUTE || p.keySlot !== "second")
+        throw new SafeError("INVALID_INPUT");
+      return this.revealSecondGoKey(signal);
+    }
     const { b } = this.check(input);
     signal?.throwIfAborted();
     const result = await this.services.credentials.resolve(
@@ -595,7 +614,13 @@ export class Manager {
     const f = fixed[id];
     if (!f && (!id.startsWith("custom:") || id.length <= "custom:".length))
       throw new SafeError("INVALID_INPUT");
-    const route = f ? id : id.slice(7);
+    const route =
+      id === "commandcode" &&
+      this.services.llm.listProviders().some((p) => p.id === CC_ROUTE)
+        ? CC_ROUTE
+        : f
+          ? id
+          : id.slice(7);
     const d = this.descriptors().find((d) => d.ns === (f?.ns ?? "llm-pi-ai"));
     const card: Provider = {
       id,

@@ -1,5 +1,38 @@
 # Current status
 
+Controller (2026-11-08) verified and installed the subscription fixes on Mac
+Web and headless. The installed tarball SHA-256 is
+`7cc892eb7cd64c445f8ba7f7ba33902f681285c65de11de8473da10a0f8a942f`.
+The final Go attempt returns its quota error without looking up another key,
+and the first failed stream closes before waiting for the backup. The OAuth
+activation button accepts the same available models as the Host. The real
+Connection integration test now runs its HTTP and lifecycle assertions.
+
+Verification covered 491 Vitest tests, typecheck, build, packaged plugin
+imports, isolated Web credential operations with synthetic keys, and an
+isolated headless streamed turn against a loopback fixture. The live Web
+overview and OAuth metadata passed after the targeted restart on port 3080.
+The existing local `probe-ns` tarball reference blocked a normal pnpm add in
+the installation trial, so the controller backed up and replaced only the
+Provider Manager package and its lockfile entries. The legacy Muse patch
+suite requires the retired third-party OpenCode Go fixture and did not pass
+in this environment. Subscription generation was exercised with mocks.
+
+Controller (2026-11-04, subscription essentials): four focused fixes are
+implemented in the uncommitted source tree and independently reviewed: the
+base list publishes before local OAuth metadata; quota reads run separately
+with identity guards; backup-key reveal uses the protected HTTP path and
+clears on lifecycle changes; the Command Code card maps to the built-in route;
+Go failover owns per-invocation state and covers prepared streams. No new
+shared cache or background route owner was introduced. Final Vitest: 35 files,
+482 tests passed; Host/Client typecheck and build passed. A clean staging
+candidate passed browser-factory/import checks and mocked prepared-failover
+smokes using the current Mac Web/headless dependency resolution (pi-ai peer
+0.1.5-rc.3), as well as the development 0.2.1-rc.5 peer combination. No real
+subscription generation, live profile installation, restart, commit, push or
+release was performed. Details and exact candidate path:
+[subscription-fix acceptance](superpowers/plans/2026-11-04-subscriptions-essential-acceptance.md).
+
 Executor (2026-10-31, `binding-fix`): 0.2.x hosts stopped collecting our
 settings section (sub-field volatile no longer honored), so `binding()` could
 not find `llm-commandcode` and the Command Code card failed with "This

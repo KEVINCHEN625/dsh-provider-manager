@@ -40,6 +40,13 @@ test("real Cordis delayed DI and repeated mount dispose own one RPC and HTTP reg
   expect(routes.size).toBe(1);
   const handler = channels.get("/provider-manager");
   expect(
+    await handler(
+      "credential/reveal-second-go",
+      {},
+      new AbortController().signal,
+    ),
+  ).toMatchObject({ ok: false, error: { code: "UNSUPPORTED" } });
+  expect(
     await handler("reveal", {}, new AbortController().signal),
   ).toMatchObject({ ok: false, error: { code: "UNSUPPORTED" } });
   expect(

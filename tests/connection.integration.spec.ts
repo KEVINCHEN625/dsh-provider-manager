@@ -27,9 +27,6 @@ test("published scoped Connection registers and disposes prefix/exact routes", a
 });
 
 test("real WebServer + Connection: authenticated snapshot, exact reveal, disposal and remount", async () => {
-  // dsh 0.2.1 webServer gate returns 503 to test-origin requests; the plugin's
-  // real connection behavior is verified by live-host regression (three routes).
-  return;
   const ctx = new Context();
   const f = fixture();
   for (const [name, value] of Object.entries(f.services))
@@ -39,6 +36,7 @@ test("real WebServer + Connection: authenticated snapshot, exact reveal, disposa
   let authenticated = true;
   new HostConnectionService(ctx, [], {
     isAuthenticated: () => authenticated,
+    authenticateApi: () => undefined,
   } as any);
   let plugin = ctx.plugin(manager);
   await plugin;
@@ -60,10 +58,7 @@ test("real WebServer + Connection: authenticated snapshot, exact reveal, disposa
       ),
     });
   try {
-    const probe = await fetch(origin + "/provider-manager/snapshot", { method: "POST", headers: { "Content-Type": "application/json", Origin: origin }, body: "{}" });
-    if (probe.status === 503) return; // 0.2.1 host gate: covered by live regression
     const snapshot = await request("snapshot", {});
-    if (snapshot.status === 503) return; // 0.2.1 host gate: covered by live regression
     expect(snapshot.status).toBe(200);
     const data = await snapshot.json();
     expect(data.result.ok).toBe(true);
@@ -81,7 +76,11 @@ test("real WebServer + Connection: authenticated snapshot, exact reveal, disposa
       },
     });
     expect(JSON.stringify(quotaBody)).not.toContain("SYNTHETIC");
-    expect(data.result.value.providers.some((item: { id: string }) => item.id === "opencode-go")).toBe(false);
+    expect(
+      data.result.value.providers.some(
+        (item: { id: string }) => item.id === "opencode-go",
+      ),
+    ).toBe(false);
     const provider = data.result.value.providers.find(
       (item: { id: string }) => item.id === "provider-manager-opencode-go",
     );

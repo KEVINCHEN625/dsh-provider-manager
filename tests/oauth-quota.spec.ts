@@ -72,9 +72,9 @@ test("token whitelist uses access_token or apiKey and skips refresh_token", () =
       payload: { refresh_token: refresh },
     }),
   ).toBeUndefined();
-  expect(
-    accessTokenFromRecord({ kind: "api-key", key: "stored-key" }),
-  ).toBe("stored-key");
+  expect(accessTokenFromRecord({ kind: "api-key", key: "stored-key" })).toBe(
+    "stored-key",
+  );
 });
 
 function host(options: {
@@ -144,14 +144,23 @@ test("oauth quota waits an hour, forced refresh refetches, and 401 expires", asy
     fetch: async () => body(),
   });
   const first = await oauth.snapshot();
-  expect(first.oauth[0]?.quota).toMatchObject({
+  const initialQuota = await oauth.quota({
+    providerId: "openrouter",
+    bindingToken: first.oauth[0]?.bindingToken,
+    refresh: false,
+  });
+  expect(initialQuota.quota).toMatchObject({
     status: "ready",
     windows: [{ id: "credits", remainingPercent: 75, usedPercent: 25 }],
   });
   expect(JSON.stringify(first)).not.toContain(token);
   expect(JSON.stringify(first)).not.toContain(refresh);
   now += 3_600_000 - 1;
-  await oauth.snapshot();
+  await oauth.quota({
+    providerId: "openrouter",
+    bindingToken: first.oauth[0]?.bindingToken,
+    refresh: false,
+  });
   expect(calls).toHaveLength(1);
   const forced = await oauth.quota({
     providerId: "openrouter",
@@ -185,11 +194,16 @@ test("a changed record drops the cache and a foreign binding is rejected", async
     payload: { access_token: token, refresh_token: refresh, email: "a@b.co" },
   });
   expect(first.oauth[0]?.bindingToken).toBe(digest);
+  await oauth.quota({ providerId: "openrouter", bindingToken: digest });
   replace({
     kind: "grant",
     payload: { access_token: token, refresh_token: refresh, email: "b@b.co" },
   });
-  await oauth.snapshot();
+  const changed = await oauth.snapshot();
+  await oauth.quota({
+    providerId: "openrouter",
+    bindingToken: changed.oauth[0]?.bindingToken,
+  });
   expect(calls).toHaveLength(2);
   await expect(
     oauth.quota({
@@ -238,5 +252,85 @@ test("a provider without an endpoint is unsupported and invents no percent", asy
   });
   expect(JSON.stringify(snapshot)).not.toContain(token);
   listed.dispose();
+  oauth.dispose();
+});
+
+test("metadata snapshot never fetches quota or catalog and binds one record read", async () => {
+  const { oauth, calls } = host({
+    fetch: async () => {
+      throw Error("metadata must stay local");
+    },
+  });
+  const result = await oauth.snapshot();
+  expect(calls).toEqual([]);
+  expect(result.oauth[0].bindingToken).toBe(
+    recordDigest({
+      kind: "grant",
+      payload: { access_token: token, refresh_token: refresh, email: "a@b.co" },
+    }),
+  );
+  expect(result.oauth[0].quota).toBeUndefined();
+  oauth.dispose();
+});
+
+test("metadata makes zero catalog requests or settings writes and leaves persisted routes intact", async () => {
+  const { fixture } = await import("./fixtures/services.js");
+  const { CatalogStore } = await import("../src/host/oauth-catalog.js");
+  const f = fixture();
+  f.sections[2].value.providers["openrouter"] = {
+    models: ["persisted-model"],
+    apiKeyEnv: "preserved",
+  };
+  let catalogs = 0;
+  let usages = 0;
+  let reads = 0;
+  const oauth = new OAuthHost(
+    {
+      list: () => [
+        {
+          key: credentialKey("llm-pi-ai", "openrouter"),
+          label: "OpenRouter",
+          methods: [{ id: "oauth", label: "OAuth" }],
+          inFlight: false,
+        },
+      ],
+      describe: () => undefined,
+      begin: async () => ({ status: "cancelled" }),
+      cancel: () => {},
+    },
+    {
+      describeRecord: async () => ({ configured: true, kind: "grant" }),
+      readRecord: async () => {
+        reads++;
+        return {
+          kind: "grant",
+          payload: { access_token: "synthetic", email: "same@example.test" },
+        };
+      },
+      deleteRecord: async () => {},
+    },
+    new QuotaReader({
+      fetch: async () => {
+        usages++;
+        throw Error("no usage");
+      },
+    }),
+    {},
+    f.services.settings,
+    new CatalogStore({
+      fetch: async () => {
+        catalogs++;
+        throw Error("no catalog");
+      },
+    }),
+  );
+  const before = structuredClone(f.sections);
+  const snap = await oauth.snapshot();
+  expect(snap.oauth[0].account).toBe("same@example.test");
+  expect(reads).toBe(1);
+  expect(catalogs).toBe(0);
+  expect(usages).toBe(0);
+  expect(f.writes).toEqual([]);
+  expect(f.sections).toEqual(before);
   oauth.dispose();
 });
